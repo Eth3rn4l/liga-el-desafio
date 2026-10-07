@@ -1,0 +1,6 @@
+# Datos reales de jugadores: no se suben al repositorio
+*.xlsx
+*.xlsm
+*.csv
+importar_*.sql
+.DS_Store

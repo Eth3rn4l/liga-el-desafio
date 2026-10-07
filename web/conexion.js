@@ -56,6 +56,7 @@
 .acc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .acc-h h2{margin:0;font-family:var(--f-display);font-weight:900;font-size:22px;line-height:1.15}
 .acc-h .eyebrow{display:block;font-family:var(--f-num);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--red-hi,#e2472c);margin-bottom:4px}
+.acc-logo{width:52px;height:52px;flex:none}
 .acc-x{background:none;border:0;color:var(--muted);font-size:22px;line-height:1;padding:2px 6px;cursor:pointer}
 .acc form{display:flex;flex-direction:column;gap:12px;margin:0}
 .acc .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -148,7 +149,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     }
     const d = VIEWS[v]();
     back.hidden = false;
-    back.innerHTML = `<div class="acc" role="dialog" aria-modal="true" aria-labelledby="accTitle"><div class="acc-h"><div><span class="eyebrow">${d.eyebrow}</span><h2 id="accTitle">${d.title}</h2></div>${d.noClose || !Auth.closable ? "" : '<button class="acc-x" type="button" data-close aria-label="Cerrar">×</button>'}</div>${d.body}</div>`;
+    back.innerHTML = `<div class="acc" role="dialog" aria-modal="true" aria-labelledby="accTitle"><div class="acc-h"><img class="acc-logo" src="logo-256.png" alt="" width="52" height="52"><div style="flex:1;min-width:0"><span class="eyebrow">${d.eyebrow}</span><h2 id="accTitle">${d.title}</h2></div>${d.noClose || !Auth.closable ? "" : '<button class="acc-x" type="button" data-close aria-label="Cerrar">×</button>'}</div>${d.body}</div>`;
     clearInterval(timer);
     if (v === "code"){ timer = setInterval(tickResend, 500); tickResend(); }
     const first = back.querySelector("input:not([type=checkbox])"); if (first) setTimeout(() => first.focus(), 30);

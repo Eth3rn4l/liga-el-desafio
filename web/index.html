@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0b0909">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:image" content="logo.png">
 <title>Liga Commander El Desafío</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +40,11 @@ button{cursor:pointer}
 
 /* Header */
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.brand{display:flex;flex-direction:column;line-height:1}
+.brand{display:flex;flex-direction:column;line-height:1;min-width:0}
+.brand-wrap{display:flex;align-items:center;gap:14px;min-width:0}
+.brand-logo{width:64px;height:64px;flex:none;filter:drop-shadow(0 4px 14px rgba(233,180,76,.25))}
+@media (max-width:520px){.brand-logo{width:48px;height:48px}.brand-wrap{gap:10px}}
+body.display .brand-logo{width:88px;height:88px}
 .brand .eyebrow{font-family:var(--f-num);letter-spacing:.22em;font-size:12px;color:var(--muted);text-transform:uppercase}
 .brand h1{margin:4px 0 0;font-family:var(--f-display);font-weight:900;font-size:clamp(24px,4vw,34px);letter-spacing:.01em;text-transform:uppercase}
 .brand h1 span{color:var(--red-hi)}
@@ -319,7 +326,8 @@ body.portal #sampleBanner{display:none!important}
 .wheel-box{position:relative;width:min(100%,600px);aspect-ratio:1;max-width:100%}
 .wheel-box canvas{width:100%;height:100%;display:block;border-radius:50%;box-shadow:0 0 0 6px var(--surface-2),0 0 0 8px var(--red),0 18px 60px rgba(0,0,0,.6)}
 .pointer{position:absolute;top:-14px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:34px solid var(--gold);filter:drop-shadow(0 3px 4px rgba(0,0,0,.6))}
-.hub{position:absolute;inset:0;margin:auto;width:20%;height:20%;border-radius:50%;background:var(--bg);border:3px solid var(--gold);display:grid;place-items:center;text-align:center;font-family:var(--f-display);font-weight:900;font-size:clamp(10px,2.2vw,15px);line-height:1.05;text-transform:uppercase;color:var(--fg)}
+.hub img{width:86%;height:86%;object-fit:contain}
+.hub{position:absolute;inset:0;margin:auto;width:22%;height:22%;border-radius:50%;background:var(--bg);border:3px solid var(--gold);display:grid;place-items:center;text-align:center;font-family:var(--f-display);font-weight:900;font-size:clamp(10px,2.2vw,15px);line-height:1.05;text-transform:uppercase;color:var(--fg)}
 .wheel-actions{display:flex;flex-direction:column;align-items:center;gap:6px}
 .spin-btn{font-size:16px;padding:12px 28px}
 .winner-card{width:100%;max-width:600px;text-align:center;border:1px solid var(--gold);border-radius:16px;padding:18px;background:radial-gradient(120% 120% at 50% 0%,rgba(233,180,76,.18),transparent 60%),var(--surface);animation:pop .5s ease-out}
@@ -435,9 +443,12 @@ body.portal #sampleBanner{display:none!important}
 
 <div class="wrap">
   <header class="top">
-    <div class="brand">
-      <span class="eyebrow" id="brandEyebrow">Cafetería El Desafío · Magic: The Gathering</span>
-      <h1>Liga Commander <span>El Desafío</span></h1>
+    <div class="brand-wrap">
+      <img class="brand-logo" src="logo-256.png" width="64" height="64" alt="Logo de Cafetería El Desafío">
+      <div class="brand">
+        <span class="eyebrow" id="brandEyebrow">Cafetería El Desafío · Magic: The Gathering</span>
+        <h1>Liga Commander <span>El Desafío</span></h1>
+      </div>
     </div>
     <nav class="tabs" aria-label="Secciones">
       <button type="button" class="tab" data-view="live" aria-current="page">Liga en vivo</button>
@@ -515,7 +526,7 @@ body.portal #sampleBanner{display:none!important}
         <div class="wheel-box">
           <canvas id="wheel" aria-label="Ruleta del sorteo" role="img"></canvas>
           <div class="pointer" aria-hidden="true"></div>
-          <div class="hub" aria-hidden="true">El<br>Desafío</div>
+          <div class="hub" aria-hidden="true"><img src="logo-256.png" alt=""></div>
         </div>
         <div class="wheel-actions">
           <button class="btn primary spin-btn" id="btnSpin" type="button">Girar la ruleta</button>

@@ -6,13 +6,13 @@ Plataforma web para las ligas semanales de **Magic: The Gathering – Commander*
 
 ## Qué hace
 
-**Dos ligas, un portal:** se cambia entre Liga Precon y Liga Bracket 3 desde el menú (☰). Cada liga tiene su propia fecha en curso, calendario, standing, sorteo y estadísticas. En Bracket 3 solo se declara el comandante, buscado en vivo en la base de cartas de [Scryfall](https://scryfall.com) (siempre al día con las cartas nuevas).
+**Dos ligas, un portal:** se cambia entre Liga Precon y Liga Bracket 3 desde el menú (☰). Cada liga tiene su propia fecha en curso, calendario, standing, sorteo y estadísticas. En Bracket 3 solo se declara el comandante (con aceptación de las reglas de construcción de la liga), buscado en vivo en la base de cartas de [Scryfall](https://scryfall.com) (siempre al día con las cartas nuevas).
 
 **Para el organizador**
 - Reloj de ronda en vivo (modo pantalla para TV) y control de rondas.
 - Inscripción manual, en bloque o por los propios jugadores, con mazo precon y comandante elegidos desde un catálogo de ~180 precons.
 - Armado de mesas de 4 (o 3) con tres sistemas: **Suizo**, **Suizo Desafío** (2 rondas al azar + suizo) y **Al azar**. Nunca junta comandantes iguales en una mesa y evita repetir rivales.
-- Puntaje configurable (ganar, kill, sobrevivir, tope por mesa) y desempate por **puntos → kills → Buchholz**.
+- Puntaje configurable (ganar, kill, sobrevivir, tope por mesa) y, en Bracket 3, los logros de la casa: *Muy joven para morir* (+1), *Demasiado bruto para jugar* (−2) y *No es tu lugar* (0 en la mesa) y desempate por **puntos → kills → Buchholz**.
 - **Calendario de ligas mensuales**: se eligen los días de cada liga, su configuración, y se pueden mover fechas que no se pudieron jugar.
 - **Warnings** por jugador (2 en una fecha = −2 puntos), corrección de estadísticas con registro de cambios, y borrado de datos con confirmación.
 - **Sorteo** con ruleta animada, filtros combinables (fuera del top 4, 0 puntos, primera vez, sin premio en el mes, sin warnings…) y sin repetir ganadores.

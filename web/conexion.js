@@ -314,11 +314,13 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     historial:     {key:"id",      shape:"data"},
     votos:         {key:"user_id", shape:"data"},
     inscripciones: {key:"user_id", shape:"data"},
-    vinculos:      {key:"user_id", shape:"cols"}
+    vinculos:      {key:"user_id", shape:"cols", scoped:true}
   };
-  const toRow = (t, id, obj) => T[t].shape === "cols"
+  T.votos.scoped = true; T.inscripciones.scoped = true;
+  let LIGA_ID = "precon";   // vínculos, votos e inscripciones son por liga (columna "liga")
+  const toRow = (t, id, obj) => Object.assign(T[t].shape === "cols"
     ? {[T[t].key]:id, pid:obj.pid, deck:obj.deck == null ? null : obj.deck, actualizado:new Date().toISOString()}
-    : {[T[t].key]:id, data:obj};
+    : {[T[t].key]:id, data:obj}, T[t].scoped ? {liga: LIGA_ID} : {});
   const fromRow = (t, row) => {
     if (T[t].shape === "cols"){ const o = {pid:row.pid}; if (row.deck != null) o.deck = row.deck; return o; }
     return row.data;
@@ -326,7 +328,8 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
   const watch = {}; // tabla → {rows:Map, subs:[], loading, timer}
   async function load(t){
     const w = watch[t]; if (!w) return;
-    const {data, error} = await sb.from(t).select("*");
+    let q = sb.from(t).select("*"); if (T[t].scoped) q = q.eq("liga", LIGA_ID);
+    const {data, error} = await q;
     if (error){ w.subs.forEach(s => s.err && s.err(error)); return; }
     w.rows = new Map((data || []).map(r => [String(r[T[t].key]), fromRow(t, r)]));
     w.subs.forEach(s => { try { s.cb(w.rows); } catch(e){ console.error(e); } });
@@ -355,8 +358,8 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     doc(path){
       const [t, id] = path.split("/");
       return {
-        async set(obj){ await mustOk(sb.from(t).upsert(toRow(t, id, obj))); reload(t); },
-        async delete(){ await mustOk(sb.from(t).delete().eq(T[t].key, id)); reload(t); },
+        async set(obj){ await mustOk(sb.from(t).upsert(toRow(t, id, obj), T[t].scoped ? {onConflict: T[t].key + ",liga"} : undefined)); reload(t); },
+        async delete(){ let q = sb.from(t).delete().eq(T[t].key, id); if (T[t].scoped) q = q.eq("liga", LIGA_ID); await mustOk(q); reload(t); },
         onSnapshot(cb, err){ return subscribe(t, rows => { const v = rows.get(id); cb({exists: v != null, data: () => v}); }, err); }
       };
     },
@@ -366,8 +369,9 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
   };
 
   /* ---------- Sesión y perfil ---------- */
-  async function connect(){
+  async function connect(liga){
     if (!sb) return null;
+    if (liga) LIGA_ID = liga;
     const {data:{session}} = await sb.auth.getSession();
     const u = session && session.user;
     let admin = false, perfil = null;

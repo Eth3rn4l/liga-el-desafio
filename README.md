@@ -1,10 +1,12 @@
 # Liga Commander · El Desafío
 
-Plataforma web para la liga semanal de **Magic: The Gathering – Commander (precons)** de Cafetería El Desafío: reloj de rondas, mesas, standing en vivo, cuentas de jugadores con verificación por correo, estadísticas y sorteo.
+Plataforma web para las ligas semanales de **Magic: The Gathering – Commander** de Cafetería El Desafío — **Liga Precon** (sábados, mazos preconstruidos) y **Liga Bracket 3** (jueves, mazos propios) — reloj de rondas, mesas, standing en vivo, cuentas de jugadores con verificación por correo, estadísticas y sorteo.
 
 **En producción:** https://liga-eldesafio.netlify.app · Portal de jugadores: https://liga-eldesafio.netlify.app/jugador.html
 
 ## Qué hace
+
+**Dos ligas, un portal:** se cambia entre Liga Precon y Liga Bracket 3 desde el menú (☰). Cada liga tiene su propia fecha en curso, calendario, standing, sorteo y estadísticas. En Bracket 3 solo se declara el comandante, buscado en vivo en la base de cartas de [Scryfall](https://scryfall.com) (siempre al día con las cartas nuevas).
 
 **Para el organizador**
 - Reloj de ronda en vivo (modo pantalla para TV) y control de rondas.
@@ -37,11 +39,12 @@ web/
 supabase/
   01_esquema.sql  tablas, trigger de perfiles y políticas RLS
   02_permisos.sql ajuste de permisos de lectura
+  03_dos_ligas.sql separa vínculos, reportes e inscripciones por liga
 ```
 
 ## Montarlo desde cero
 
-1. Crear un proyecto en Supabase y ejecutar `supabase/01_esquema.sql` y luego `02_permisos.sql` en el SQL Editor.
+1. Crear un proyecto en Supabase y ejecutar en orden `supabase/01_esquema.sql`, `02_permisos.sql` y `03_dos_ligas.sql` en el SQL Editor.
 2. En *Authentication → Email*: confirmar correo activado, código de 6 dígitos y expiración de 900 s; plantilla de correo con `{{ .Token }}`; SMTP propio configurado.
 3. Poner la URL del proyecto y la llave *publishable* en `web/config.js` (es pública por diseño; la *secret key* nunca va en el frontend).
 4. Publicar la carpeta `web/` en Netlify (o conectar este repositorio: `netlify.toml` ya apunta a `web`).

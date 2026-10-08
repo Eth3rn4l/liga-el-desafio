@@ -154,7 +154,7 @@ body.display .wrap{max-width:none}
 html:has(body.display),body.display{height:100%;overflow:hidden}
 body.display .wrap{height:100vh;display:flex;flex-direction:column;gap:12px;padding:12px 22px 14px;overflow:hidden}
 body.display .top{flex:none}
-body.display .tabs,body.display #conn,body.display #lnkOther,body.display #btnAccount,body.display .banner,body.display #mine,body.display #ficha,body.display #rulesHint,body.display .legend,body.display .mesa-foot,body.display .pending,body.display .jornada-info{display:none!important}
+body.display .tabs,body.display .burger,body.display #conn,body.display #lnkOther,body.display #btnAccount,body.display .banner,body.display #mine,body.display #ficha,body.display #rulesHint,body.display .legend,body.display .mesa-foot,body.display .pending,body.display .jornada-info{display:none!important}
 body.display #btnDisplay{opacity:.18;transition:opacity .2s}
 body.display #btnDisplay:hover,body.display #btnDisplay:focus-visible{opacity:1}
 body.display .clock{flex:none;padding:10px 22px 12px}
@@ -402,6 +402,33 @@ body.portal #sampleBanner{display:none!important}
 .win-list .pos-n{font-family:var(--f-num);font-size:18px;color:var(--gold);text-align:center}
 .win-list.toplist .pos-n{color:var(--muted)}
 .tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.hdr-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+.liga-badge{font-family:var(--f-num);font-size:12px;letter-spacing:.14em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:1px solid rgba(233,180,76,.5);color:var(--gold);white-space:nowrap}
+.burger{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;flex:none}
+.burger span{display:block;width:20px;height:2px;border-radius:2px;background:var(--fg)}
+.burger:hover{border-color:var(--muted)}
+.drawer-back{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:120}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(340px,88vw);background:var(--surface);border-left:1px solid var(--line);z-index:121;padding:18px;display:flex;flex-direction:column;gap:18px;overflow:auto;box-shadow:-20px 0 60px rgba(0,0,0,.5)}
+.drawer-h{display:flex;justify-content:space-between;align-items:center}
+.drawer-h b{font-family:var(--f-display);font-weight:900;font-size:20px;text-transform:uppercase}
+.drawer-sec{display:flex;flex-direction:column;gap:8px}
+.drawer-sec .lbl{font-family:var(--f-num);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.drawer-sec > div{display:flex;flex-direction:column;gap:6px}
+.drawer .tabs{flex-direction:column;border:0;padding:0;background:none;border-radius:0;gap:6px}
+.drawer .tab,.drawer .dl,.drawer .btn{width:100%;text-align:left;justify-content:flex-start;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font-size:13px}
+.drawer .tab[aria-current="page"],.drawer .dl.on{border-color:var(--red-hi);background:rgba(155,29,8,.25);color:var(--fg)}
+.drawer .dl{display:flex;flex-direction:column;gap:2px;color:var(--fg);text-decoration:none;font-family:var(--f-display);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.drawer .dl small{font-family:var(--f-body);font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:12px}
+.drawer #conn{align-self:flex-start}
+.tv-exit{position:fixed;top:10px;right:12px;z-index:130;display:none;opacity:.15}
+.tv-exit:hover,.tv-exit:focus-visible{opacity:1}
+body.display .tv-exit{display:inline-flex}
+body.display .hdr-right{display:none}
+.ci{display:inline-flex;gap:2px;margin-right:6px;vertical-align:middle}
+.ci i{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.4)}
+.pip-W{background:#f8f4e3}.pip-U{background:#3d8fd8}.pip-B{background:#5b4b57}.pip-R{background:#e0473a}.pip-G{background:#3f9d5c}
+.combo-list li .ci{margin-right:8px}
+.cmd-search + .combo-list li{flex-direction:row;align-items:center}
 .tab{border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:999px;font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
 .tab[aria-current="page"]{background:var(--red);color:#fff}
 .tab:hover:not([aria-current="page"]){color:var(--fg)}
@@ -468,6 +495,14 @@ body.portal #sampleBanner{display:none!important}
 <body>
 
 
+<div class="drawer-back" id="menuBack" hidden></div>
+<aside class="drawer" id="menuDrawer" aria-label="Menú" hidden>
+  <div class="drawer-h"><b>Menú</b><button class="acc-x" id="btnMenuClose" type="button" aria-label="Cerrar menú">×</button></div>
+  <div class="drawer-sec"><span class="lbl">Liga</span><div id="ligaLinks"></div></div>
+  <div class="drawer-sec"><span class="lbl">Secciones</span><div id="menuTabs"></div></div>
+  <div class="drawer-sec"><span class="lbl">Cuenta y vistas</span><div id="menuActions"></div></div>
+</aside>
+<button class="btn ghost tv-exit" id="btnTvExit" type="button">Salir de modo pantalla</button>
 <div class="wrap">
   <header class="top">
     <div class="brand-wrap">
@@ -476,6 +511,10 @@ body.portal #sampleBanner{display:none!important}
         <span class="eyebrow" id="brandEyebrow">Cafetería El Desafío · Magic: The Gathering</span>
         <h1>Liga Commander <span>El Desafío</span></h1>
       </div>
+    </div>
+    <div class="hdr-right">
+      <span class="liga-badge" id="ligaBadge"></span>
+      <button class="burger" id="btnMenu" type="button" aria-expanded="false" aria-controls="menuDrawer" aria-label="Abrir menú"><span></span><span></span><span></span></button>
     </div>
     <nav class="tabs" aria-label="Secciones">
       <button type="button" class="tab" data-view="live" aria-current="page">Liga en vivo</button>
@@ -651,7 +690,13 @@ body.portal #sampleBanner{display:none!important}
 <script>
 (function(){
   "use strict";
-  const LKEY = "liga-commander-desafio-v2";
+  // Liga activa: ?liga=b3 (Bracket 3, jueves) o ?liga=precon (sábados). Sin parámetro: lunes a jueves Bracket 3, viernes a domingo Precon.
+  const LIGA = (() => { const q = new URLSearchParams(location.search).get("liga"); if (q === "b3" || q === "precon") return q; const d = new Date().getDay(); return d >= 1 && d <= 4 ? "b3" : "precon"; })();
+  const B3 = LIGA === "b3";
+  const LIGAS = {precon:{nombre:"Liga Precon", dia:"Sábados", dow:6}, b3:{nombre:"Liga Bracket 3", dia:"Jueves", dow:4}};
+  const DOW = LIGAS[LIGA].dow, DIA_NOMBRE = B3 ? "jueves" : "sábado";
+  const STATE_DOC = B3 ? "liga/estado_b3" : "liga/estado", CAL_DOC = B3 ? "liga/calendario_b3" : "liga/calendario";
+  const LKEY = "liga-commander-desafio-v2" + (B3 ? "-b3" : "");
   const SAMPLE = ["Matías R.","Camila S.","Benjamín T.","Javiera P.","Tomás A.","Fernanda M.","Ignacio V.","Catalina H.","Joaquín L.","Valentina C.","Diego B.","Antonia F.","Nicolás G.","Isidora N.","Sebastián O.","Martina Q.","Felipe U.","Constanza E.","Cristóbal D.","Josefa Z.","Vicente K.","Florencia W.","Maximiliano Y.","Trinidad I.","Agustín J.","Emilia X.","Lucas P.","Sofía R.","Gaspar M.","Amanda T.","Pablo S.","Renata C."];
   const WARN_LIMIT = 2, WARN_PEN = 2;   // 2 warnings en una misma fecha = -2 puntos del día
   const DEFCFG = {min:70, rounds:3, win:3, kill:1, surv:1, cap:3, pairing:"suizo"};
@@ -676,17 +721,25 @@ body.portal #sampleBanner{display:none!important}
   /* ---------- Mazos ---------- */
   function deckOf(pid){
     const p = S && S.players.find(x => x.id === pid);
-    let best = p && p.deck && p.deck.k ? p.deck : null;
-    Object.values(linkData).forEach(v => { if (v.pid === pid && v.deck && v.deck.k && (!best || (v.deck.ts || 0) > (best.ts || 0))) best = v.deck; });
+    let best = p && p.deck && (p.deck.k || p.deck.c) ? p.deck : null;
+    Object.values(linkData).forEach(v => { if (v.pid === pid && v.deck && (v.deck.k || v.deck.c) && (!best || (v.deck.ts || 0) > (best.ts || 0))) best = v.deck; });
     return best;
   }
+  const CI_NAMES = {"":"Incoloro", W:"Blanco", U:"Azul", B:"Negro", R:"Rojo", G:"Verde", WU:"Azorius", UB:"Dimir", BR:"Rakdos", RG:"Gruul", WG:"Selesnya", WB:"Orzhov", UR:"Izzet", BG:"Golgari", WR:"Boros", UG:"Simic",
+    WUB:"Esper", UBR:"Grixis", BRG:"Jund", WRG:"Naya", WUG:"Bant", WBG:"Abzan", WUR:"Jeskai", UBG:"Sultai", WBR:"Mardu", URG:"Temur", UBRG:"Sin blanco", WBRG:"Sin azul", WURG:"Sin negro", WUBG:"Sin rojo", WUBR:"Sin verde", WUBRG:"5 colores"};
+  const ciKey = ci => "WUBRG".split("").filter(c => (ci || "").includes(c)).join("");
+  const ciPips = ci => ciKey(ci).split("").map(c => `<i class="pip-${c}" aria-hidden="true"></i>`).join("");
   function cmdLine(pid, long){
     const d = deckOf(pid);
-    if (!d) return `<span class="cmd none">Sin mazo declarado</span>`;
+    if (!d) return `<span class="cmd none">${B3 ? "Sin comandante declarado" : "Sin mazo declarado"}</span>`;
+    if (B3 || !d.k) return `<span class="cmd">${d.ci != null ? `<span class="ci">${ciPips(d.ci)}</span>` : ""}${esc(d.c || "")}</span>`;
     const deck = DECK[d.k];
     return `<span class="cmd" title="${esc(deckLabel(d.k))}">${esc(d.c || (deck && deck.cmd) || "")}${deck ? " · " + esc(long ? deckLabel(d.k) : deck.name) : ""}</span>`;
   }
   function deckFormHTML(prefix, d){
+    if (B3) return `<div class="deck-form" id="${prefix}Form">
+      <div class="field"><label for="${prefix}Cmd">Comandante</label>${cmdSearchHTML(prefix + "Cmd", d && d.c, d && d.ci)}</div>
+      <div class="row"><button class="btn primary" type="button" data-deck-save="${prefix}">Guardar comandante</button><span class="err" id="${prefix}Err"></span></div></div>`;
     const k = d && d.k, c = (d && d.c) || (k && DECK[k] ? DECK[k].cmd : "");
     return `<div class="deck-form" id="${prefix}Form">
       <div class="field"><label for="${prefix}Deck">Mazo preconstruido</label>${comboHTML(prefix + "Deck", k ? deckLabel(k) : "", "Busca por mazo, set o comandante")}</div>
@@ -694,12 +747,58 @@ body.portal #sampleBanner{display:none!important}
       <div class="row"><button class="btn primary" type="button" data-deck-save="${prefix}">Guardar mazo</button><span class="err" id="${prefix}Err"></span></div></div>`;
   }
   function readDeckForm(prefix){
+    if (B3){ const r = readCmd(prefix); return r ? Object.assign(r, {ts: Date.now()}) : null; }
     const k = DECK_BY_LABEL[$(prefix + "Deck").value.trim()];
     const c = $(prefix + "Cmd").value.trim();
     if (!k){ $(prefix + "Err").textContent = "Elige el mazo desde el desplegable: debe ser un precon de la lista."; return null; }
     if (!c){ $(prefix + "Err").textContent = "Elige el comandante."; return null; }
     return {k, c: c || DECK[k].cmd, ts: Date.now()};
   }
+  /* ---------- Bracket 3: búsqueda de comandante en Scryfall ---------- */
+  const scry = {timer:0, ctl:null, fail:false};
+  function cmdSearchHTML(id, value, ci){
+    return `<div class="combo"><input id="${id}" class="cmd-search" role="combobox" aria-expanded="false" aria-controls="${id}List" aria-autocomplete="list" autocomplete="off" spellcheck="false" placeholder="Escribe el nombre del comandante" value="${esc(value || "")}" data-ok="${esc(value || "")}" data-ci="${esc(ci || "")}"><ul class="combo-list" id="${id}List" role="listbox" hidden></ul></div>`;
+  }
+  function readCmd(prefix){
+    const i = $(prefix + "Cmd"), err = $(prefix + "Err"), v = (i.value || "").trim();
+    if (!v){ err.textContent = "Escribe y elige el comandante."; return null; }
+    if (i.dataset.ok !== v && !scry.fail){ err.textContent = "Elige el comandante desde la lista de resultados (así queda bien escrito)."; return null; }
+    return {k:"", c:v, ci:i.dataset.ok === v ? (i.dataset.ci || "") : undefined};
+  }
+  async function scrySearch(i, ul, q){
+    try {
+      if (scry.ctl) scry.ctl.abort();
+      scry.ctl = new AbortController();
+      const r = await fetch("https://api.scryfall.com/cards/search?order=edhrec&unique=cards&q=" + encodeURIComponent("is:commander legal:commander " + q), {signal:scry.ctl.signal, headers:{Accept:"application/json"}});
+      scry.fail = false;
+      if (r.status === 404){ ul.innerHTML = '<li class="dis">Sin resultados. Revisa el nombre.</li>'; ul.hidden = false; return; }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      ul.innerHTML = (j.data || []).slice(0, 12).map(c => `<li role="option" data-name="${esc(c.name)}" data-ci="${(c.color_identity || []).join("")}"><span class="ci">${ciPips((c.color_identity || []).join(""))}</span>${esc(c.name)}</li>`).join("");
+      ul.hidden = false; i.setAttribute("aria-expanded", "true");
+    } catch(e){
+      if (e.name === "AbortError") return;
+      scry.fail = true;
+      ul.innerHTML = '<li class="dis">No se pudo buscar en Scryfall. Escribe el nombre completo y guarda.</li>'; ul.hidden = false;
+    }
+  }
+  document.addEventListener("input", e => {
+    const i = e.target.closest && e.target.closest(".cmd-search"); if (!i) return;
+    i.dataset.ok = ""; i.dataset.ci = "";
+    const ul = $(i.id + "List"), q = i.value.trim();
+    clearTimeout(scry.timer);
+    if (q.length < 2){ ul.hidden = true; return; }
+    scry.timer = setTimeout(() => scrySearch(i, ul, q), 280);
+  });
+  document.addEventListener("pointerdown", e => { if (e.target.closest(".cmd-search + .combo-list li")) e.preventDefault(); });
+  document.addEventListener("click", e => {
+    const li = e.target.closest(".cmd-search + .combo-list li[data-name]"); if (!li) return;
+    const ul = li.parentElement, i = ul.previousElementSibling;
+    i.value = li.dataset.name; i.dataset.ok = li.dataset.name; i.dataset.ci = li.dataset.ci;
+    ul.hidden = true; i.setAttribute("aria-expanded", "false");
+    const err = $(i.id.replace(/Cmd$/, "") + "Err"); if (err) err.textContent = "";
+  });
+  document.addEventListener("focusout", e => { const i = e.target.closest && e.target.closest(".cmd-search"); if (i) setTimeout(() => { const ul = $(i.id + "List"); if (ul && document.activeElement !== i) ul.hidden = true; }, 150); });
   const typing = root => { if (comboState && root.contains(comboState.input)) return true; const a = document.activeElement; return a && root.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName); };
 
   function normalize(st){
@@ -718,7 +817,7 @@ body.portal #sampleBanner{display:none!important}
   function commit(){
     if (M.mode === "local"){ try { localStorage.setItem(LKEY, JSON.stringify(S)); } catch(e){} }
     else if (M.mode === "live" && M.admin){
-      M.db.doc("liga/estado").set(JSON.parse(JSON.stringify(S))).catch(e => { $("adminErr").textContent = "No se pudo guardar: " + (e && e.message || e); });
+      M.db.doc(STATE_DOC).set(JSON.parse(JSON.stringify(S))).catch(e => { $("adminErr").textContent = "No se pudo guardar: " + (e && e.message || e); });
     }
     render();
   }
@@ -834,23 +933,28 @@ body.portal #sampleBanner{display:none!important}
     return `<div class="reg-form" id="${prefix}Form">
       <div class="field"><label for="${prefix}First">Nombre</label><input id="${prefix}First" autocomplete="off" value="${esc(r ? r.first : "")}"></div>
       <div class="field"><label for="${prefix}Last">Apellido</label><input id="${prefix}Last" autocomplete="off" value="${esc(r ? r.last : "")}"></div>
-      <div class="field wide"><label for="${prefix}Deck">Mazo preconstruido</label>${comboHTML(prefix + "Deck", k ? deckLabel(k) : "", "Busca por mazo, set o comandante")}</div>
-      <div class="field wide"><label for="${prefix}Cmd">Comandante</label>${comboHTML(prefix + "Cmd", c, "Elige primero el mazo")}</div>
+      ${B3 ? `<div class="field wide"><label for="${prefix}Cmd">Comandante</label>${cmdSearchHTML(prefix + "Cmd", r && r.deck && r.deck.c, r && r.deck && r.deck.ci)}</div>` :
+      `<div class="field wide"><label for="${prefix}Deck">Mazo preconstruido</label>${comboHTML(prefix + "Deck", k ? deckLabel(k) : "", "Busca por mazo, set o comandante")}</div>
+      <div class="field wide"><label for="${prefix}Cmd">Comandante</label>${comboHTML(prefix + "Cmd", c, "Elige primero el mazo")}</div>`}
       ${prefix === "rgA" ? `<div class="field wide"><label for="${prefix}Email">Correo (opcional · para contacto)</label><input id="${prefix}Email" type="email" autocomplete="off" inputmode="email" value="${esc(r && r.email || "")}" placeholder="nombre@correo.cl"></div>` : ""}
       <div class="row wide"><button class="btn primary" type="button" data-reg-save="${prefix}">${r && r.deck ? "Guardar cambios" : "Inscribir"}</button>${r && prefix === "rgA" ? '<button class="btn ghost" type="button" data-reg-cancel>Cancelar</button>' : ""}<span class="err" id="${prefix}Err"></span></div></div>`;
   }
   function readReg(prefix, selfId){
     const v = id => $(prefix + id).value.trim().replace(/\s+/g, " ");
-    const first = v("First"), last = v("Last"), k = DECK_BY_LABEL[v("Deck")], c = v("Cmd");
+    const first = v("First"), last = v("Last"), k = B3 ? "" : DECK_BY_LABEL[v("Deck")], c = v("Cmd");
+    const b3 = B3 ? readCmd(prefix) : null;
     const email = $(prefix + "Email") ? v("Email").toLowerCase() : "";
     const err = !first ? "Falta el nombre." : !last ? "Falta el apellido." :
       email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? "El correo no tiene un formato válido." :
+      B3 ? (b3 ? "" : null) :
       !k ? "Elige el mazo desde el desplegable: debe ser un precon de la lista." :
       !c ? "Falta el comandante." : "";
+    if (err === null) return null;   // readCmd ya mostró el error
     if (err){ $(prefix + "Err").textContent = err; return null; }
     const dup = registrants().find(r => r.id !== selfId && fullName(r).toLowerCase() === (first + " " + last).toLowerCase());
     if (dup){ $(prefix + "Err").textContent = `${first} ${last} ya está inscrito.`; return null; }
-    return email ? {first, last, email, deck:{k, c, ts:Date.now()}} : {first, last, deck:{k, c, ts:Date.now()}};
+    const deck = B3 ? Object.assign(b3, {ts:Date.now()}) : {k, c, ts:Date.now()};
+    return email ? {first, last, email, deck} : {first, last, deck};
   }
   function findDeckKey(txt){
     txt = txt.trim().toLowerCase(); if (!txt) return null;
@@ -880,7 +984,8 @@ body.portal #sampleBanner{display:none!important}
       ${ADMUI() ? `<div class="row insc-close"><button class="btn primary" id="btnCloseInsc" type="button" ${n < 3 ? "disabled" : ""}>Cerrar inscripciones y armar ronda 1</button><span class="note">${n < 3 ? "Se necesitan al menos 3 participantes." : "Después de cerrar, las mesas de la ronda 1 se sortean al azar."}</span></div>` : ""}`;
   }
   function cmdLineDeck(d, long){
-    if (!d || !d.k) return `<span class="cmd none">Sin mazo declarado</span>`;
+    if (!d || !(d.k || d.c)) return `<span class="cmd none">${B3 ? "Sin comandante declarado" : "Sin mazo declarado"}</span>`;
+    if (B3 || !d.k) return `<span class="cmd">${d.ci != null ? `<span class="ci">${ciPips(d.ci)}</span>` : ""}${esc(d.c || "")}</span>`;
     const deck = DECK[d.k];
     return `<span class="cmd">${esc(d.c || (deck && deck.cmd) || "")}${deck ? " · " + esc(long ? deckLabel(d.k) : deck.name) : ""}</span>`;
   }
@@ -939,17 +1044,17 @@ body.portal #sampleBanner{display:none!important}
   }
 
   /* ---------- Histórico y estadísticas ---------- */
-  const HKEY = "liga-commander-desafio-hist";
+  const HKEY = "liga-commander-desafio-hist" + (B3 ? "-b3" : "");
   const BONO_MAZOS = 3, BONO_PTS = 3;
-  const CKEY = "liga-commander-desafio-cal";
+  const CKEY = "liga-commander-desafio-cal" + (B3 ? "-b3" : "");
   let CAL = {ligas:{}};          // {ligas: {"2026-10": {mes, fechas:["2026-10-10", ...]}}}
   let archWarned = false, hist = {}, view = "live", statMonth = null, statMonthUser = false, rankScope = "all", delAsk = null;
   const iso = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   const today = () => iso(new Date());
   const parseISO = f => { const [y, m, d] = f.split("-").map(Number); return new Date(y, m - 1, d); };
   // La liga se juega todos los sábados: la fecha de una jornada es el sábado más reciente (hoy si es sábado)
-  const lastSaturday = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return iso(d); };
-  const saturdaysOf = ym => { const [y, m] = ym.split("-").map(Number), out = []; const d = new Date(y, m - 1, 1); while (d.getDay() !== 6) d.setDate(d.getDate() + 1); while (d.getMonth() === m - 1){ out.push(iso(d)); d.setDate(d.getDate() + 7); } return out; };
+  const lastSaturday = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() - DOW + 7) % 7)); return iso(d); };   // último día de liga (hoy si corresponde)
+  const saturdaysOf = ym => { const [y, m] = ym.split("-").map(Number), out = []; const d = new Date(y, m - 1, 1); while (d.getDay() !== DOW) d.setDate(d.getDate() + 1); while (d.getMonth() === m - 1){ out.push(iso(d)); d.setDate(d.getDate() + 7); } return out; };
   // El mes de la liga son siempre los primeros 4 sábados; un 5.º sábado se puede jugar pero no suma
   const FECHAS_MES = 4;
   // Mes de liga: normalmente el del calendario, pero una fecha puede contar para el mes anterior
@@ -990,9 +1095,9 @@ body.portal #sampleBanner{display:none!important}
   function currentEvent(){
     if (!S || S.phase === "inscripcion" || !S.rounds.some(r => r.tables.some(t => t.result))) return null;
     const done = S.rounds.length === S.cfg.rounds && S.rounds.every(r => r.tables.every(t => t.result));
-    const ev = {id: S.archivedId || "actual", mes: curMes(), fecha: (S.archivedId && hist[S.archivedId] && hist[S.archivedId].fecha) || S.fecha || lastSaturday(),
+    const ev = {id: S.archivedId || "actual", liga: LIGA, mes: curMes(), fecha: (S.archivedId && hist[S.archivedId] && hist[S.archivedId].fecha) || S.fecha || lastSaturday(),
       enCurso: !done, ejemplo: !!S.sample, rondas: S.cfg.rounds,
-      jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k : "", cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch}; }),
+      jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k || "" : "", ci:d && d.ci || undefined, cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch}; }),
       sorteo: ((S.sorteo && S.sorteo.ganadores) || []).map(pname)};
     // vs[rival] = [mesas juntos, mesas que ganó el rival, mesas que gané yo]
     const vsOf = {};
@@ -1011,7 +1116,7 @@ body.portal #sampleBanner{display:none!important}
     if (!M.admin) return;
     const ev = currentEvent(); if (!ev) return;
     const f = ($("archDate") && $("archDate").value) || lastSaturday();
-    if (parseISO(f).getDay() !== 6 && !archWarned){ archWarned = true; $("archErr").textContent = "Esa fecha no es sábado. Si es correcta, presiona de nuevo para guardar."; return; }
+    if (parseISO(f).getDay() !== DOW && !archWarned){ archWarned = true; $("archErr").textContent = `Esa fecha no es ${DIA_NOMBRE}. Si es correcta, presiona de nuevo para guardar.`; return; }
     archWarned = false;
     const id = S.archivedId || "f" + f.replace(/-/g, "") + "_" + Math.random().toString(36).slice(2, 6);
     const doc = Object.assign({}, ev, {id, fecha:f, enCurso:false, guardado:Date.now()});
@@ -1044,7 +1149,7 @@ body.portal #sampleBanner{display:none!important}
     inMonth.forEach(e => e.jugadores.forEach(j => {
       const key = fold(j.nombre).trim(); const p = P[key] = P[key] || {nombre:j.nombre, fechas:0, base:0, w:0, kills:0, s:0, pj:0, buch:0, decks:{}, porMes:{}};
       p.fechas++; p.base += j.pts; p.w += j.w; p.kills += j.kills; p.s += j.s; p.pj += j.pj; p.buch += j.buch || 0;
-      if (j.k){ p.decks[j.k] = (p.decks[j.k] || 0) + 1; const ym = mesDe(e); (p.porMes[ym] = p.porMes[ym] || new Set()).add(j.k); }
+      const dk = j.k || (j.cmd ? "c:" + j.cmd : ""); if (dk){ p.decks[dk] = (p.decks[dk] || 0) + 1; const ym = mesDe(e); (p.porMes[ym] = p.porMes[ym] || new Set()).add(dk); }
     }));
     // Bono de variedad: +BONO_PTS por cada mes en que el jugador usó al menos BONO_MAZOS mazos distintos
     Object.values(P).forEach(p => {
@@ -1070,6 +1175,11 @@ body.portal #sampleBanner{display:none!important}
       name:n, sub:`${x.decks.size} ${x.decks.size === 1 ? "mazo distinto" : "mazos distintos"}`, v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"}`, tip:`${x.uses} inscripciones con mazos de ${n}`}));
     const edWin = Object.entries(ED).filter(([, x]) => x.w > 0).sort((a, b) => b[1].w - a[1].w || (b[1].w / b[1].pj) - (a[1].w / a[1].pj)).slice(0, 10).map(([n, x]) => ({
       name:n, sub:`${Math.round(x.w / Math.max(1, x.pj) * 100)}% de mesas ganadas`, v:x.w, val:`${x.w} V · ${x.pj} PJ`, tip:`${x.w} mesas ganadas en ${x.pj} partidas`}));
+    const CU = {}, CO = {};
+    rk.forEach(e => e.jugadores.forEach(j => { if (j.cmd){ const x = CU[j.cmd] = CU[j.cmd] || {uses:0, w:0, ci:j.ci}; x.uses++; x.w += j.w; }
+      if (j.ci != null){ const ck = ciKey(j.ci), y = CO[ck] = CO[ck] || {uses:0, w:0}; y.uses++; y.w += j.w; } }));
+    const cmdUse = Object.entries(CU).sort((a, b) => b[1].uses - a[1].uses || b[1].w - a[1].w).slice(0, 10).map(([n, x]) => ({name:n, sub:"", v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"} · ${x.w} V`, tip:`${x.uses} inscripciones, ${x.w} mesas ganadas`}));
+    const colUse = Object.entries(CO).sort((a, b) => b[1].uses - a[1].uses).slice(0, 10).map(([ck, x]) => ({name:CI_NAMES[ck] || ck, sub:ck || "C", v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"} · ${x.w} V`, tip:`${x.uses} inscripciones, ${x.w} mesas ganadas`}));
     const cmdRows = Object.entries(C).filter(([, c]) => c.kills > 0).sort((a, b) => b[1].kills - a[1].kills || a[1].pj - b[1].pj).slice(0, 10).map(([n, c]) => ({
       name:n, sub:"", v:c.kills, val:`${c.kills} ${c.kills === 1 ? "kill" : "kills"} · ${c.pj} PJ`, tip:`${c.kills} kills en ${c.pj} partidas`}));
     const seg = `<div class="seg" role="group" aria-label="Período de los rankings"><button type="button" data-scope="all" aria-pressed="${rankScope === "all"}">Histórico</button><button type="button" data-scope="month" aria-pressed="${rankScope === "month"}">${statMonth === "all" ? "Período" : "Mes"}</button></div>`;
@@ -1077,7 +1187,7 @@ body.portal #sampleBanner{display:none!important}
     const hasEx = evsAll.some(e => e.ejemplo);
     const evList = evsAll.map(e => `<li><span><b>${(() => { const fn = fechaInfo(e, evsAll); return (fn.extra ? "Fecha extra (no suma) · " : "Fecha " + fn.n + " de " + fn.total + " · ") + (mesDe(e) !== e.fecha.slice(0, 7) ? monthLabel(mesDe(e)) + " · " : ""); })()}${fmtDate(e.fecha)}</b> · ${e.jugadores.length} jugadores${e.enCurso ? ' · <span class="tag">En curso</span>' : ""}${e.ejemplo ? ' · <span class="tag draw">Ejemplo</span>' : ""}</span>${ADMUI() && !e.enCurso && e.id !== "actual" ? (delAsk === e.id ? `<span style="display:flex;gap:6px"><button type="button" class="danger" data-ev-del-yes="${esc(e.id)}">Sí, quitar</button><button type="button" data-ev-del-no>Cancelar</button></span>` : `<button type="button" data-ev-del="${esc(e.id)}">Quitar</button>`) : ""}</li>`).join("");
     const cur = currentEvent();
-    const archive = ADMUI() && cur ? `<div class="archive"><div class="field"><label for="archDate">Sábado de la jornada</label><input type="date" id="archDate" value="${esc(cur.fecha)}"></div><button class="btn primary" type="button" id="btnArchive">${S.archivedId ? "Actualizar en el histórico" : "Guardar jornada en el histórico"}</button><span class="err" id="archErr"></span></div><p class="note" style="margin:0">${cur.enCurso ? "La jornada sigue en curso: ya cuenta en las estadísticas; guárdala al terminar para que quede fija." : S.archivedId ? "Ya está guardada. Si corriges un resultado, presiona Actualizar." : "Guárdala para que quede en el histórico antes de empezar una nueva liga."}</p>` : "";
+    const archive = ADMUI() && cur ? `<div class="archive"><div class="field"><label for="archDate">Día de la jornada</label><input type="date" id="archDate" value="${esc(cur.fecha)}"></div><button class="btn primary" type="button" id="btnArchive">${S.archivedId ? "Actualizar en el histórico" : "Guardar jornada en el histórico"}</button><span class="err" id="archErr"></span></div><p class="note" style="margin:0">${cur.enCurso ? "La jornada sigue en curso: ya cuenta en las estadísticas; guárdala al terminar para que quede fija." : S.archivedId ? "Ya está guardada. Si corriges un resultado, presiona Actualizar." : "Guárdala para que quede en el histórico antes de empezar una nueva liga."}</p>` : "";
     const myCard = myStatsHTML(evs, cm);   // evs ya excluye las fechas extra
     box.innerHTML = myCard + `<div class="stats-head"><div><h2>Estadísticas de la liga</h2><div class="sub2">Standing mensual, mazos más jugados y comandantes con más kills.</div></div>
         <div class="field"><label for="monthSel">Período</label><select id="monthSel">${months.map(m => `<option value="${m}" ${m === statMonth ? "selected" : ""}>${monthLabel(m)}</option>`).join("")}<option value="all" ${statMonth === "all" ? "selected" : ""}>Todo el histórico</option></select></div></div>
@@ -1101,17 +1211,17 @@ body.portal #sampleBanner{display:none!important}
       })() : ""}
       ${evs.length && ADMUI() ? `<div class="summary"><span><b>${inMonth.length}</b>${inMonth.length === 1 ? "jornada" : "jornadas"}</span><span><b>${stand.length}</b>jugadores</span><span><b>${totK}</b>kills</span></div>` : ""}
       ${!evs.length ? '<div class="empty"><b>Aún no hay jornadas</b>Cuando se registren resultados en la liga, aquí aparecerán el standing del mes y los rankings de mazos y comandantes.</div>' : `
-      <div class="card"><h3>Standing ${statMonth === "all" ? "histórico" : "de " + monthLabel(statMonth).toLowerCase()}</h3><p class="card-sub">Suma de puntos de todas las jornadas del período, más el <b>bono de variedad: +${BONO_PTS} pts</b> para quien juegue al menos ${BONO_MAZOS} mazos distintos entre las ${statMonth === "all" ? "fechas" : ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES) + " fechas"} del mes. ${statMonth === cm ? "El bono del mes en curso queda firme al cierre del mes." : ""} Desempate: kills, Buchholz y victorias.</p>
-        <div class="stand-scroll"><table><thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th>Base</th><th>Bono</th><th>Mazos</th><th>Fechas</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th class="l">Mazo más usado</th></tr></thead><tbody>${stand.map((p, i) => {
+      <div class="card"><h3>Standing ${statMonth === "all" ? "histórico" : "de " + monthLabel(statMonth).toLowerCase()}</h3><p class="card-sub">Suma de puntos de todas las jornadas del período, más el <b>bono de variedad: +${BONO_PTS} pts</b> para quien juegue al menos ${BONO_MAZOS} ${B3 ? "comandantes" : "mazos"} distintos entre las ${statMonth === "all" ? "fechas" : ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES) + " fechas"} del mes. ${statMonth === cm ? "El bono del mes en curso queda firme al cierre del mes." : ""} Desempate: kills, Buchholz y victorias.</p>
+        <div class="stand-scroll"><table><thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${stand.map((p, i) => {
           const top = Object.entries(p.decks).sort((a, b) => b[1] - a[1])[0];
           const pk = fold(p.nombre).trim();
-          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${ADMUI() && editPlayer === pk ? " sel" : ""}" ${ADMUI() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${ADMUI() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td class="l" style="color:var(--muted)">${top && DECK[top[0]] ? esc(DECK[top[0]].name) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${ADMUI() ? '<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números.</p>' : ""}</div>
+          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${ADMUI() && editPlayer === pk ? " sel" : ""}" ${ADMUI() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${ADMUI() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td class="l" style="color:var(--muted)">${top ? esc(DECK[top[0]] ? DECK[top[0]].name : top[0].replace(/^c:/, "")) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${ADMUI() ? '<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números.</p>' : ""}</div>
       ${ADMUI() && editPlayer ? editStatsHTML(evsAll, statMonth) : ""}
       <div class="stats-grid">
-        <div class="card"><div class="sec-head" style="margin:0"><h3>Mazos más usados</h3>${seg}</div>${bars(deckRows)}</div>
+        ${B3 ? `<div class="card"><div class="sec-head" style="margin:0"><h3>Comandantes más jugados</h3>${seg}</div>${bars(cmdUse)}</div>` : `<div class="card"><div class="sec-head" style="margin:0"><h3>Mazos más usados</h3>${seg}</div>${bars(deckRows)}</div>`}
         <div class="card"><div class="sec-head" style="margin:0"><h3>Comandantes con más kills</h3>${seg}</div>${bars(cmdRows)}</div>
-        <div class="card"><div class="sec-head" style="margin:0"><h3>Ediciones más jugadas</h3>${seg}</div>${bars(edUse)}</div>
-        <div class="card"><div class="sec-head" style="margin:0"><h3>Ediciones que más ganan</h3>${seg}</div>${bars(edWin)}</div>
+        ${B3 ? `<div class="card"><div class="sec-head" style="margin:0"><h3>Colores más jugados</h3>${seg}</div>${bars(colUse)}</div>` : `<div class="card"><div class="sec-head" style="margin:0"><h3>Ediciones más jugadas</h3>${seg}</div>${bars(edUse)}</div>
+        <div class="card"><div class="sec-head" style="margin:0"><h3>Ediciones que más ganan</h3>${seg}</div>${bars(edWin)}</div>`}
       </div>`}
       ${ADMUI() && evs.length ? adminResumenHTML(evsAll, statMonth) : ""}
       ${ADMUI() && (evs.length || archive) ? `<div class="card"><h3>Jornadas guardadas</h3>${archive}${evs.length ? `<ul class="ev-list">${evList}</ul>` : ""}</div>` : ""}`;
@@ -1177,10 +1287,10 @@ body.portal #sampleBanner{display:none!important}
     const key = fold(me.name).trim();
     const mine = evs.map(e => ({e, j: e.jugadores.find(j => fold(j.nombre).trim() === key)})).filter(x => x.j);
     const tot = mine.reduce((a, {j}) => ({pts:a.pts + j.pts, w:a.w + j.w, k:a.k + j.kills, pj:a.pj + j.pj}), {pts:0, w:0, k:0, pj:0});
-    const monthDecks = new Set(mine.filter(x => mesDe(x.e) === cm).map(x => x.j.k).filter(Boolean));
+    const monthDecks = new Set(mine.filter(x => mesDe(x.e) === cm).map(x => x.j.k || (x.j.cmd ? "c:" + x.j.cmd : "")).filter(Boolean));
     // posición en el standing del mes (con bono)
     const P = {};
-    evs.filter(e => mesDe(e) === cm).forEach(e => e.jugadores.forEach(j => { const k = fold(j.nombre).trim(); const p = P[k] = P[k] || {pts:0, w:0, kills:0, buch:0, d:new Set()}; p.pts += j.pts; p.w += j.w; p.kills += j.kills; p.buch += j.buch || 0; if (j.k) p.d.add(j.k); }));
+    evs.filter(e => mesDe(e) === cm).forEach(e => e.jugadores.forEach(j => { const k = fold(j.nombre).trim(); const p = P[k] = P[k] || {pts:0, w:0, kills:0, buch:0, d:new Set()}; p.pts += j.pts; p.w += j.w; p.kills += j.kills; p.buch += j.buch || 0; const dk = j.k || (j.cmd ? "c:" + j.cmd : ""); if (dk) p.d.add(dk); }));
     Object.values(P).forEach(p => p.pts += p.d.size >= BONO_MAZOS ? BONO_PTS : 0);
     const order = Object.entries(P).sort((a, b) => b[1].pts - a[1].pts || b[1].kills - a[1].kills || b[1].buch - a[1].buch || b[1].w - a[1].w).map(x => x[0]);
     const pos = order.indexOf(key);
@@ -1200,11 +1310,11 @@ body.portal #sampleBanner{display:none!important}
         <div class="kpi"><b>${mine.length}</b><span>Fechas jugadas</span></div>
         <div class="kpi"><b>${tot.w}</b><span>Victorias</span></div>
         <div class="kpi"><b>${tot.k}</b><span>Kills</span></div>
-        <div class="kpi"><b class="${monthDecks.size >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(monthDecks.size, BONO_MAZOS)}/${BONO_MAZOS}</b><span>Mazos este mes (bono +${BONO_PTS})</span></div>
+        <div class="kpi"><b class="${monthDecks.size >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(monthDecks.size, BONO_MAZOS)}/${BONO_MAZOS}</b><span>${B3 ? "Comandantes" : "Mazos"} este mes (bono +${BONO_PTS})</span></div>
       </div>
       <div class="mine-grid">
         <div class="box"><h3>Últimas fechas</h3><ul class="hist">${mine.slice(0, 6).map(({e, j}) => `<li><span class="r">${fmtDate(e.fecha)}</span><span class="vs">${DECK[j.k] ? esc(DECK[j.k].name) : "–"} · ${j.w} V · ${j.kills} K</span><span class="res ${j.pts >= 6 ? "w" : ""}">${j.pts} pts${e.enCurso ? " · en curso" : ""}</span></li>`).join("") || '<li><span class="vs">Todavía no hay fechas registradas.</span></li>'}</ul></div>
-        <div class="box"><h3>Tus favoritos</h3><p class="msg" style="margin:0">Mazo más jugado: <b>${topDeck && DECK[topDeck[0]] ? esc(DECK[topDeck[0]].name) + " (" + topDeck[1] + ")" : "–"}</b></p><p class="msg" style="margin:0">Comandante con más kills: <b>${topCmd ? esc(topCmd[0]) + " (" + topCmd[1] + ")" : "–"}</b></p><p class="msg" style="margin:0">Edición favorita: <b>${topEd ? esc(topEd[0]) + " (" + topEd[1][0] + (topEd[1][0] === 1 ? " vez" : " veces") + ")" : "–"}</b></p><p class="msg" style="margin:0">Mesas ganadas: <b>${tot.w} de ${tot.pj} (${pct}%)</b></p></div>
+        <div class="box"><h3>Tus favoritos</h3>${B3 ? "" : `<p class="msg" style="margin:0">Mazo más jugado: <b>${topDeck && DECK[topDeck[0]] ? esc(DECK[topDeck[0]].name) + " (" + topDeck[1] + ")" : "–"}</b></p>`}<p class="msg" style="margin:0">Comandante con más kills: <b>${topCmd ? esc(topCmd[0]) + " (" + topCmd[1] + ")" : "–"}</b></p>${B3 ? (() => { const cc = {}; mine.forEach(({j}) => { if (j.cmd) cc[j.cmd] = (cc[j.cmd] || 0) + 1; }); const t = Object.entries(cc).sort((a, b) => b[1] - a[1])[0]; return `<p class="msg" style="margin:0">Comandante más jugado: <b>${t ? esc(t[0]) + " (" + t[1] + ")" : "–"}</b></p>`; })() : ""}<p class="msg" style="margin:0" ${B3 ? "hidden" : ""}>Edición favorita: <b>${topEd ? esc(topEd[0]) + " (" + topEd[1][0] + (topEd[1][0] === 1 ? " vez" : " veces") + ")" : "–"}</b></p><p class="msg" style="margin:0">Mesas ganadas: <b>${tot.w} de ${tot.pj} (${pct}%)</b></p></div>
         <div class="box"><h3>Tus rivales</h3>${rv.length ? `<p class="msg" style="margin:0">Más enfrentado: <b>${esc(masVisto[0])}</b> (${masVisto[1][0]} ${masVisto[1][0] === 1 ? "mesa" : "mesas"})</p>
           <p class="msg" style="margin:0">Tu némesis: <b>${nemesis ? esc(nemesis[0]) : "–"}</b>${nemesis ? ` (te ganó ${nemesis[1][1]} ${nemesis[1][1] === 1 ? "mesa" : "mesas"})` : ""}</p>
           <p class="msg" style="margin:0">Tu víctima favorita: <b>${victima ? esc(victima[0]) : "–"}</b>${victima ? ` (le ganaste ${victima[1][2]} ${victima[1][2] === 1 ? "mesa" : "mesas"})` : ""}</p>
@@ -1220,7 +1330,7 @@ body.portal #sampleBanner{display:none!important}
     const jugadas = new Set(realHist(null).map(e => e.fecha)), ayer = (() => { const d = parseISO(today()); d.setDate(d.getDate() - 1); return iso(d); })();
     const all = Object.values(CAL.ligas || {}).flatMap(l => l.fechas || []).sort();
     const prox = all.find(f => f >= ayer && !jugadas.has(f)); if (prox) return prox;
-    const d = parseISO(today()); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7)); const sab = iso(d);   // próximo sábado (hoy si es sábado)
+    const d = parseISO(today()); d.setDate(d.getDate() + ((DOW - d.getDay() + 7) % 7)); const sab = iso(d);   // próximo sábado (hoy si es sábado)
     return jugadas.has(sab) ? (d.setDate(d.getDate() + 7), iso(d)) : sab;
   }
   function aplicarCfgLiga(st){
@@ -1259,10 +1369,10 @@ body.portal #sampleBanner{display:none!important}
 
   /* ---------- Calendario de ligas ---------- */
   let calEdit = null;   // {mes, fechas:[...], nueva:bool}
-  const saturdaysFrom = ym => { const [y, m] = ym.split("-").map(Number), out = []; const d = new Date(y, m - 1, 1); while (d.getDay() !== 6) d.setDate(d.getDate() + 1); while (d.getMonth() === m - 1){ out.push(iso(d)); d.setDate(d.getDate() + 7); } return out; };
+  const saturdaysFrom = ym => { const [y, m] = ym.split("-").map(Number), out = []; const d = new Date(y, m - 1, 1); while (d.getDay() !== DOW) d.setDate(d.getDate() + 1); while (d.getMonth() === m - 1){ out.push(iso(d)); d.setDate(d.getDate() + 7); } return out; };
   const playedDates = mes => { const set = new Set(realHist(null).filter(e => mesDe(e) === mes).map(e => e.fecha)); if (S && S.fecha && S.phase !== "inscripcion" && curMes() === mes) set.add(S.fecha); return set; };
   function saveCal(){
-    if (M.mode === "live" && M.admin) M.db.doc("liga/calendario").set(JSON.parse(JSON.stringify(CAL))).catch(e => { const el = $("calErr"); if (el) el.textContent = "No se pudo guardar el calendario: " + (e && e.message || e); });
+    if (M.mode === "live" && M.admin) M.db.doc(CAL_DOC).set(JSON.parse(JSON.stringify(CAL))).catch(e => { const el = $("calErr"); if (el) el.textContent = "No se pudo guardar el calendario: " + (e && e.message || e); });
     else if (M.mode === "local"){ try { localStorage.setItem(CKEY, JSON.stringify(CAL)); } catch(e){} }
     render(); if (view === "stats") renderStats();
   }
@@ -1284,7 +1394,7 @@ body.portal #sampleBanner{display:none!important}
           <div class="field"><label for="lgSurv">Por sobrevivir</label><input type="number" id="lgSurv" min="0" max="20" value="${calEdit.cfg.surv}"></div>
           <div class="field"><label for="lgCap">Tope por mesa</label><input type="number" id="lgCap" min="1" max="20" value="${calEdit.cfg.cap}"></div>
         </div></div>
-        <div class="field"><label>Días en que se juega${calEdit.nueva ? " · se proponen los sábados del mes" : ""}</label><div class="dates">${calEdit.fechas.map((f, i) => {
+        <div class="field"><label>Días en que se juega${calEdit.nueva ? ` · se proponen los ${DIA_NOMBRE}s del mes` : ""}</label><div class="dates">${calEdit.fechas.map((f, i) => {
           const lk = locked.has(f);
           return `<div class="drow"><span class="n">Fecha ${i + 1}</span><input type="date" data-cal-i="${i}" value="${f}" ${lk ? "disabled" : ""} aria-label="Día de la fecha ${i + 1}"><span class="wd">${f ? DIAS[parseISO(f).getDay()] : ""}</span>${lk ? '<span class="lock">Ya se jugó</span>' : `<button type="button" class="xb" data-cal-del="${i}" aria-label="Quitar fecha ${i + 1}" title="Quitar">×</button>`}</div>`; }).join("")}</div></div>
         <div class="row"><button class="btn" type="button" id="calAdd" ${calEdit.fechas.length >= 6 ? "disabled" : ""}>+ Agregar día</button></div>
@@ -2117,8 +2227,19 @@ body.portal #sampleBanner{display:none!important}
     const bad = [], seen = new Set(registrants().map(r => fullName(r).toLowerCase()));
     let ok = 0;
     lines.forEach((l, i) => {
-      const [nm = "", dk = "", cm = "", em = ""] = l.split(/[;|]/).map(x => x.trim().replace(/\s+/g, " "));
-      const parts = nm.split(" "), k = findDeckKey(dk);
+      const cols = l.split(/[;|]/).map(x => x.trim().replace(/\s+/g, " "));
+      const [nm = "", dk = "", cm = "", em = ""] = B3 ? [cols[0], "", cols[1], cols[2]] : cols;
+      const parts = (nm || "").split(" "), k = B3 ? "" : findDeckKey(dk);
+      if (B3){
+        if (parts.length < 2){ bad.push(`Línea ${i + 1}: falta nombre y apellido`); return; }
+        if (seen.has(nm.toLowerCase())){ bad.push(`Línea ${i + 1}: ${nm} ya está inscrito`); return; }
+        seen.add(nm.toLowerCase());
+        const r = {first:parts[0], last:parts.slice(1).join(" ")};
+        if (cm) r.deck = {k:"", c:cm, ts:Date.now()};
+        if (em && /@/.test(em)) r.email = em.toLowerCase();
+        S.players.push(Object.assign({id:"p" + Date.now().toString(36) + i + Math.random().toString(36).slice(2,5), name:fullName(r)}, r)); ok++;
+        return;
+      }
       if (parts.length < 2){ bad.push(`Línea ${i + 1}: falta nombre y apellido`); return; }
       if (!k){ bad.push(`Línea ${i + 1}: “${dk || "sin mazo"}” no es un precon de la lista`); return; }
       if (seen.has(nm.toLowerCase())){ bad.push(`Línea ${i + 1}: ${nm} ya está inscrito`); return; }
@@ -2275,7 +2396,7 @@ body.portal #sampleBanner{display:none!important}
     if (!window.Conexion || !window.Conexion.ready){ startLocal("No se pudo cargar la conexión con el servidor."); return; }
     const watchdog = setTimeout(() => { if (M.mode === "connecting") startLocal("La conexión en vivo no respondió."); }, 15000);
     let c = null;
-    try { c = await within(window.Conexion.connect(), 12000, null); } catch(e){}
+    try { c = await within(window.Conexion.connect(LIGA), 12000, null); } catch(e){}
     if (M.mode !== "connecting") return;
     clearTimeout(watchdog);
     if (!c){ startLocal("No se pudo conectar con el servidor de la liga."); return; }
@@ -2299,14 +2420,14 @@ body.portal #sampleBanner{display:none!important}
     const fail = e => { if (!ready){ M.mode = "connecting"; startLocal("No se pudo leer la liga: " + ((e && e.message) || "error")); } };
     setTimeout(() => { if (!ready && M.mode === "live"){ ready = true; render(); } }, 8000);
     try {
-      db.doc("liga/estado").onSnapshot(s => {
+      db.doc(STATE_DOC).onSnapshot(s => {
         const d = s.exists ? s.data() : null;
         S = d && d.players ? normalize(d) : null; ready = true;
         render(); autoApply();
       }, fail);
-      db.doc("liga/calendario").onSnapshot(s => { const d = s.exists ? s.data() : null; CAL = Object.assign({ligas:{}}, d || {}); if (ready){ render(); if (view === "stats") renderStats(); } }, () => {});
+      db.doc(CAL_DOC).onSnapshot(s => { const d = s.exists ? s.data() : null; CAL = Object.assign({ligas:{}}, d || {}); if (ready){ render(); if (view === "stats") renderStats(); } }, () => {});
       db.collection("vinculos").onSnapshot(q => { links = {}; linkData = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.pid){ links[d.id] = v.pid; linkData[d.id] = v; } }); if (ready){ render(); autoApply(); } }, () => {});
-      db.collection("historial").onSnapshot(q => { hist = {}; q.docs.forEach(d => { const v = d.data(); if (v) hist[d.id] = Object.assign({id:d.id}, v); }); if (view === "stats") renderStats(); }, () => {});
+      db.collection("historial").onSnapshot(q => { hist = {}; q.docs.forEach(d => { const v = d.data(); if (v && (v.liga || "precon") === LIGA) hist[d.id] = Object.assign({id:d.id}, v); }); if (view === "stats") renderStats(); }, () => {});
       db.collection("inscripciones").onSnapshot(q => { regs = {}; q.docs.forEach(d => { const v = d.data(); if (v) regs[d.id] = v; }); if (ready) render(); }, () => {});
       db.collection("votos").onSnapshot(q => { votes = {}; q.docs.forEach(d => { const v = d.data(); if (v) votes[d.id] = v; }); if (ready){ render(); autoApply(); } }, () => {});
     } catch(e){ fail(e); }
@@ -2314,9 +2435,33 @@ body.portal #sampleBanner{display:none!important}
   }
   document.addEventListener("click", e => { const b = e.target.closest("[data-auth]"); if (b && window.Auth) window.Auth.open(b.dataset.auth); });
   setInterval(tick, 250);
+  // ---------- Menú: pestañas, liga y acciones ----------
+  (function initMenu(){
+    const L = LIGAS[LIGA];
+    $("ligaBadge").textContent = `${L.nombre} · ${L.dia}`;
+    $("brandEyebrow").textContent = `${L.nombre} · ${L.dia} · Cafetería El Desafío`;
+    document.title = `${L.nombre} · El Desafío`;
+    const page = location.pathname.split("/").pop() || "";
+    $("ligaLinks").innerHTML = Object.entries(LIGAS).map(([k, x]) => `<a class="dl ${k === LIGA ? "on" : ""}" href="${page || "./"}?liga=${k}">${x.nombre}<small>${x.dia}${k === "b3" ? " · mazos propios, solo comandante" : " · mazos preconstruidos"}</small></a>`).join("");
+    $("menuTabs").appendChild(document.querySelector(".top .tabs"));
+    const acts = $("menuActions");
+    ["conn", "btnAccount", "lnkOther", "btnDisplay"].forEach(id => { const el = $(id); if (el) acts.appendChild(el); });
+    const other = $("lnkOther"); if (other) other.href = other.getAttribute("href").split("?")[0] + "?liga=" + LIGA;
+    const open = on => { $("menuDrawer").hidden = !on; $("menuBack").hidden = !on; $("btnMenu").setAttribute("aria-expanded", on); if (on) setTimeout(() => $("btnMenuClose").focus(), 30); };
+    $("btnMenu").addEventListener("click", () => open(true));
+    $("btnMenuClose").addEventListener("click", () => open(false));
+    $("menuBack").addEventListener("click", () => open(false));
+    $("menuDrawer").addEventListener("click", e => { if (e.target.closest(".tab, #btnDisplay, #lnkOther")) open(false); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape"){ if (!$("menuDrawer").hidden) open(false); else if (document.body.classList.contains("display")) $("btnDisplay").click(); } });
+    $("btnTvExit").addEventListener("click", () => $("btnDisplay").click());
+    if (B3){
+      $("playersInput").placeholder = "Camila Soto ; Atraxa, Praetors' Voice\nTomás Araya ; Yuriko, the Tiger's Shadow ; tomas@correo.cl";
+      const note = $("playersInput").previousElementSibling; if (note) note.innerHTML = "Una persona por línea: <b>Nombre Apellido ; Comandante ; Correo</b>. Comandante y correo son opcionales; el comandante también lo puede declarar el jugador desde el portal.";
+    }
+  })();
   if (PORTAL){
-    document.title = "Portal de jugadores · El Desafío";
-    $("brandEyebrow").textContent = "Portal de jugadores · Liga Commander";
+    document.title = `Portal · ${LIGAS[LIGA].nombre} · El Desafío`;
+    $("brandEyebrow").textContent = `Portal de jugadores · ${LIGAS[LIGA].nombre} · ${LIGAS[LIGA].dia}`;
     document.querySelector('.tab[data-view="live"]').textContent = "Mi jornada";
     document.querySelector('.tab[data-view="stats"]').textContent = "Estadísticas";
     $("btnDisplay").hidden = true;

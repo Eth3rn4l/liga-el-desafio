@@ -829,7 +829,7 @@ body.display .hdr-right{display:none}
     if (scry.ctl) scry.ctl.abort();
     const ctl = scry.ctl = new AbortController(), enc = encodeURIComponent;
     ul.innerHTML = '<li class="dis">Buscando…</li>'; ul.hidden = false;
-    const terms = q.replace(/["()]/g, " ").trim();
+    const terms = q.replace(/["(),.:;!?]/g, " ").replace(/\s+/g, " ").trim();
     const [a, b] = await Promise.allSettled([
       getJSON("https://api.scryfall.com/cards/search?order=edhrec&unique=cards&include_multilingual=true&q=" + enc(`(is:commander OR t:legendary) ${terms}`), ctl.signal),
       getJSON("https://api.scryfall.com/cards/autocomplete?q=" + enc(terms), ctl.signal)

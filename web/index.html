@@ -44,7 +44,6 @@ button{cursor:pointer}
 .brand-wrap{display:flex;align-items:center;gap:14px;min-width:0}
 .brand-logo{width:64px;height:64px;flex:none;filter:drop-shadow(0 4px 14px rgba(233,180,76,.25))}
 @media (max-width:520px){.brand-logo{width:48px;height:48px}.brand-wrap{gap:10px}}
-body.display .brand-logo{width:88px;height:88px}
 .brand .eyebrow{font-family:var(--f-num);letter-spacing:.22em;font-size:12px;color:var(--muted);text-transform:uppercase}
 .brand h1{margin:4px 0 0;font-family:var(--f-display);font-weight:900;font-size:clamp(24px,4vw,34px);letter-spacing:.01em;text-transform:uppercase}
 .brand h1 span{color:var(--red-hi)}
@@ -151,6 +150,34 @@ input[type=number]{width:100%}
 /* Modo pantalla: oculta controles del organizador */
 body.display .adm{display:none!important}
 body.display .wrap{max-width:none}
+/* ---- Modo pantalla (proyector): reloj + mesas + standing del día, sin datos personales ---- */
+html:has(body.display),body.display{height:100%;overflow:hidden}
+body.display .wrap{height:100vh;display:flex;flex-direction:column;gap:12px;padding:12px 22px 14px;overflow:hidden}
+body.display .top{flex:none}
+body.display .tabs,body.display #conn,body.display #lnkOther,body.display #btnAccount,body.display .banner,body.display #mine,body.display #ficha,body.display #rulesHint,body.display .legend,body.display .mesa-foot,body.display .pending,body.display .jornada-info{display:none!important}
+body.display #btnDisplay{opacity:.18;transition:opacity .2s}
+body.display #btnDisplay:hover,body.display #btnDisplay:focus-visible{opacity:1}
+body.display .clock{flex:none;padding:10px 22px 12px}
+body.display .digits{font-size:clamp(56px,13vh,170px);margin:0}
+body.display .clock-head{margin-bottom:0}
+body.display .brand-logo{width:64px;height:64px}
+body.display .brand h1{font-size:28px}
+body.display .sub{display:none}
+body.display .main{flex:1;min-height:0;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:18px;align-items:stretch}
+body.display .main > section{display:flex;flex-direction:column;min-height:0}
+body.display .sec-head{flex:none}
+body.display #tables{flex:1;min-height:0;overflow:hidden;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));align-content:start;scroll-behavior:smooth}
+body.display .mesa{font-size:1.06em}
+body.display .seat.me{box-shadow:none}
+body.display tbody tr.mine-row td.nm{color:inherit}
+body.display .stand{flex:1;min-height:0;display:flex;flex-direction:column}
+body.display .stand-scroll{flex:1;min-height:0;overflow:hidden;scroll-behavior:smooth}
+body.display .stand table{font-size:1.05em}
+body.display .stand thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+body.display #insc .box:not(.insc-list),body.display #insc .insc-close{display:none!important}
+body.display #insc{flex:1;min-height:0;overflow:hidden}
+.tv-page{display:none;font-family:var(--f-num);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+body.display .tv-page{display:inline}
 
 body:not(.is-admin) .adm{display:none!important}
 .conn{font-family:var(--f-num);font-size:12px;letter-spacing:.14em;text-transform:uppercase;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:var(--muted);display:inline-flex;align-items:center;gap:7px}
@@ -493,6 +520,7 @@ body.portal #sampleBanner{display:none!important}
       <div class="sec-head">
         <h2 id="mesasTitle">Mesas</h2>
         <span class="meta" id="mesasMeta"></span>
+        <span class="tv-page" id="tvMesas"></span>
       </div>
       <div class="tables" id="tables"></div>
       <p class="hint" id="rulesHint"></p>
@@ -502,6 +530,7 @@ body.portal #sampleBanner{display:none!important}
       <div class="sec-head">
         <h2>Standing</h2>
         <span class="meta" id="standMeta"></span>
+        <span class="tv-page" id="tvStand"></span>
       </div>
       <div class="stand">
         <div class="stand-scroll">
@@ -2197,8 +2226,31 @@ body.portal #sampleBanner{display:none!important}
   ["cfgMin","cfgRounds","cfgWin","cfgKill","cfgSurv","cfgCap","cfgPair"].forEach(id => $(id).addEventListener("change", cfgChange));
 
 
+  // En modo pantalla, mesas y standing avanzan solos de a una página para que todo se vea sin tocar nada
+  const TV_MS = 10000;
+  // Avanza hasta el primer elemento (mesa o fila) que no se ve completo, para no cortar mesas a la mitad
+  function tvStep(el, items, label, off){
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    if (max <= 4){ el.scrollTop = 0; el._tvPage = 1; if (label) label.textContent = ""; return; }
+    const top = el.getBoundingClientRect().top, cur = el.scrollTop, bottom = cur + el.clientHeight;
+    const pos = Array.from(items).map(x => x.getBoundingClientRect().top - top + cur);
+    const ends = Array.from(items).map((x, k) => pos[k] + x.getBoundingClientRect().height);
+    let next = 0;
+    if (cur < max - 4){ const k = ends.findIndex(e => e > bottom + 2); next = k < 0 ? max : Math.min(max, Math.max(cur + 1, pos[k] - 4 - (off || 0))); }
+    el.scrollTo({top: next, behavior: "smooth"});
+    el._tvPage = next === 0 ? 1 : (el._tvPage || 1) + 1;
+    const pages = Math.max(el._tvPage, Math.ceil(el.scrollHeight / el.clientHeight));
+    if (label) label.textContent = `Página ${Math.min(el._tvPage, pages)} de ${pages}`;
+  }
+  setInterval(() => {
+    if (!document.body.classList.contains("display")) return;
+    tvStep($("tables"), $("tables").children, $("tvMesas"));
+    tvStep(document.querySelector("#mainGrid .stand-scroll"), document.querySelectorAll("#standBody tr"), $("tvStand"), (document.querySelector("#mainGrid .stand thead") || {offsetHeight:0}).offsetHeight);
+  }, TV_MS);
   $("btnDisplay").addEventListener("click", () => {
     const on = document.body.classList.toggle("display");
+    if (on){ setView("live"); focus = null; ["tables"].forEach(id => $(id).scrollTop = 0); const ss = document.querySelector("#mainGrid .stand-scroll"); if (ss) ss.scrollTop = 0; $("tvMesas").textContent = ""; $("tvStand").textContent = ""; render(); }
     $("btnDisplay").textContent = on ? "Salir de modo pantalla" : "Modo pantalla";
     if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
     if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});

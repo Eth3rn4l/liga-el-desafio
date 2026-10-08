@@ -444,6 +444,11 @@ body.display .hdr-right{display:none}
 .chk-rules input{margin-top:3px;width:18px;height:18px;flex:none;accent-color:var(--red-hi)}
 .chk-rules a{color:var(--fg)}
 .cmd-search + .combo-list li{flex-direction:row;align-items:center}
+.cmd-search + .combo-list li .cn{display:flex;flex-direction:column;gap:1px;min-width:0}
+.cmd-search + .combo-list li small{font-size:11px;color:var(--muted)}
+.cmd-search + .combo-list li.src{font-size:11px;color:var(--muted);justify-content:flex-end}
+.cmd-search + .combo-list li[data-free] b{font-weight:400;font-style:italic}
+.cmd-search + .combo-list{max-height:320px;overflow:auto}
 .tab{border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:999px;font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
 .tab[aria-current="page"]{background:var(--red);color:#fff}
 .tab:hover:not([aria-current="page"]){color:var(--fg)}
@@ -812,28 +817,60 @@ body.display .hdr-right{display:none}
     const i = $(prefix + "Cmd"), err = $(prefix + "Err"), v = (i.value || "").trim();
     if (!v){ err.textContent = "Escribe y elige el comandante."; return null; }
     if (i.dataset.ok !== v && !scry.fail){ err.textContent = "Elige el comandante desde la lista de resultados (así queda bien escrito)."; return null; }
-    return {k:"", c:v, ci:i.dataset.ok === v ? (i.dataset.ci || "") : undefined};
+    return {k:"", c:v, ci:i.dataset.ok === v && i.dataset.ci !== "?" ? (i.dataset.ci || "") : undefined};
   }
+  // Búsqueda en varias fuentes públicas de cartas, en este orden:
+  //  1) Scryfall: comandantes y cualquier carta legendaria (también nombres en otros idiomas)
+  //  2) Scryfall autocompletado: cualquier carta por nombre parcial (por si es nueva o aún no tiene tipo indexado)
+  //  3) magicthegathering.io: cartas legendarias, como respaldo si Scryfall no responde
+  const getJSON = async (url, signal) => { const r = await fetch(url, {signal, headers:{Accept:"application/json"}}); if (r.status === 404) return null; if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); };
+  const liHTML = c => `<li role="option" data-name="${esc(c.name)}" data-ci="${esc(c.ci == null ? "?" : c.ci)}"${c.unk ? ' data-unk="1"' : ""}${c.free ? ' data-free="1"' : ""}><span class="ci">${c.ci == null ? "" : ciPips(c.ci)}</span><span class="cn"><b>${esc(c.name)}</b>${c.sub ? `<small>${esc(c.sub)}</small>` : ""}</span></li>`;
   async function scrySearch(i, ul, q){
-    try {
-      if (scry.ctl) scry.ctl.abort();
-      scry.ctl = new AbortController();
-      const r = await fetch("https://api.scryfall.com/cards/search?order=edhrec&unique=cards&q=" + encodeURIComponent("is:commander legal:commander " + q), {signal:scry.ctl.signal, headers:{Accept:"application/json"}});
-      scry.fail = false;
-      if (r.status === 404){ ul.innerHTML = '<li class="dis">Sin resultados. Revisa el nombre.</li>'; ul.hidden = false; return; }
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const j = await r.json();
-      ul.innerHTML = (j.data || []).slice(0, 12).map(c => `<li role="option" data-name="${esc(c.name)}" data-ci="${(c.color_identity || []).join("")}"><span class="ci">${ciPips((c.color_identity || []).join(""))}</span>${esc(c.name)}</li>`).join("");
-      ul.hidden = false; i.setAttribute("aria-expanded", "true");
-    } catch(e){
-      if (e.name === "AbortError") return;
-      scry.fail = true;
-      ul.innerHTML = '<li class="dis">No se pudo buscar en Scryfall. Escribe el nombre completo y guarda.</li>'; ul.hidden = false;
+    if (scry.ctl) scry.ctl.abort();
+    const ctl = scry.ctl = new AbortController(), enc = encodeURIComponent;
+    ul.innerHTML = '<li class="dis">Buscando…</li>'; ul.hidden = false;
+    const terms = q.replace(/["()]/g, " ").trim();
+    const [a, b] = await Promise.allSettled([
+      getJSON("https://api.scryfall.com/cards/search?order=edhrec&unique=cards&include_multilingual=true&q=" + enc(`(is:commander OR t:legendary) ${terms}`), ctl.signal),
+      getJSON("https://api.scryfall.com/cards/autocomplete?q=" + enc(terms), ctl.signal)
+    ]);
+    if (ctl.signal.aborted) return;
+    const out = [], seen = new Set();
+    if (a.status === "fulfilled" && a.value) (a.value.data || []).forEach(c => {
+      if (seen.has(c.name)) return; seen.add(c.name);
+      const lg = c.legalities && c.legalities.commander;
+      out.push({name:c.name, ci:(c.color_identity || []).join(""), sub:(c.type_line || "") + (lg === "banned" ? " · prohibida en Commander" : lg === "not_legal" ? " · aún no legal" : "")});
+    });
+    if (b.status === "fulfilled" && b.value) (b.value.data || []).forEach(n => { if (!seen.has(n) && out.length < 30){ seen.add(n); out.push({name:n, ci:null, sub:"Verificar tipo al elegir", unk:true}); } });
+    let fuente = "Scryfall";
+    if (a.status === "rejected" && b.status === "rejected"){
+      try {
+        const m = await getJSON("https://api.magicthegathering.io/v1/cards?pageSize=40&supertypes=legendary&name=" + enc(terms), ctl.signal);
+        if (ctl.signal.aborted) return;
+        ((m && m.cards) || []).forEach(c => { if (!seen.has(c.name)){ seen.add(c.name); out.push({name:c.name, ci:(c.colorIdentity || []).join(""), sub:c.type || ""}); } });
+        fuente = "magicthegathering.io";
+      } catch(e){ if (e.name === "AbortError") return; fuente = ""; }
     }
+    scry.fail = !fuente;
+    const list = out.slice(0, 30);
+    list.push({name:q, ci:null, sub:"Usar el nombre tal como lo escribí", free:true});
+    ul.innerHTML = (fuente ? "" : '<li class="dis">No se pudo consultar las bases de cartas. Puedes usar el nombre tal como lo escribiste.</li>') + list.map(liHTML).join("") + (fuente ? `<li class="dis src">Resultados de ${fuente}</li>` : "");
+    ul.hidden = false; i.setAttribute("aria-expanded", "true");
+  }
+  // Al elegir un nombre sin datos (autocompletado o texto libre) se consulta la carta exacta para validar que sea legendaria
+  async function checkPicked(i, name){
+    const err = $(i.id.replace(/Cmd$/, "") + "Err");
+    try {
+      const c = await getJSON("https://api.scryfall.com/cards/named?fuzzy=" + encodeURIComponent(name));
+      if (!c){ if (err) err.textContent = "No encontramos esa carta en Scryfall; se guardará el nombre tal como está escrito."; return; }
+      i.value = c.name; i.dataset.ok = c.name; i.dataset.ci = (c.color_identity || []).join("");
+      const leg = /Legendary/.test(c.type_line || "") || /can be your commander/i.test(c.oracle_text || "");
+      if (err) err.textContent = leg ? "" : `${c.name} no es una carta legendaria (${c.type_line}). Revisa que sea tu comandante.`;
+    } catch(e){ if (err) err.textContent = ""; }
   }
   document.addEventListener("input", e => {
     const i = e.target.closest && e.target.closest(".cmd-search"); if (!i) return;
-    i.dataset.ok = ""; i.dataset.ci = "";
+    i.dataset.ok = ""; i.dataset.ci = "?";
     const ul = $(i.id + "List"), q = i.value.trim();
     clearTimeout(scry.timer);
     if (q.length < 2){ ul.hidden = true; return; }
@@ -846,6 +883,7 @@ body.display .hdr-right{display:none}
     i.value = li.dataset.name; i.dataset.ok = li.dataset.name; i.dataset.ci = li.dataset.ci;
     ul.hidden = true; i.setAttribute("aria-expanded", "false");
     const err = $(i.id.replace(/Cmd$/, "") + "Err"); if (err) err.textContent = "";
+    if (li.dataset.unk || li.dataset.free){ i.dataset.ci = "?"; checkPicked(i, li.dataset.name); }
   });
   document.addEventListener("focusout", e => { const i = e.target.closest && e.target.closest(".cmd-search"); if (i) setTimeout(() => { const ul = $(i.id + "List"); if (ul && document.activeElement !== i) ul.hidden = true; }, 150); });
   const typing = root => { if (comboState && root.contains(comboState.input)) return true; const a = document.activeElement; return a && root.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName); };

@@ -99,6 +99,18 @@ button{cursor:pointer}
 .tag.draw{color:var(--gold);border-color:rgba(233,180,76,.45)}
 .seats{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .seat{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;background:var(--surface-2)}
+.seat[draggable="true"]{cursor:grab}
+.seat.picked{outline:2px solid var(--gold);outline-offset:1px}
+.seat.dragging{opacity:.4}
+.seat.drop-on{outline:2px dashed var(--gold)}
+.seat.dropped .nm{text-decoration:line-through;color:var(--muted)}
+.mesa.drop-target{border-color:var(--gold);box-shadow:0 0 0 2px rgba(233,180,76,.35)}
+.mesa.bucket{border-style:dashed;background:transparent}
+.mesa.bucket .new-table{align-self:flex-start;font-size:12px;padding:6px 10px}
+.seat-empty{list-style:none;font-size:12px;color:var(--muted);padding:6px 2px}
+.tag.drop{color:var(--muted);border-color:var(--line)}
+.tag.late{color:var(--gold);border-color:rgba(233,180,76,.5)}
+.dl-row button.on{border-color:var(--gold);color:var(--gold)}
 .seat .n{font-family:var(--f-num);color:var(--muted);font-size:13px;text-align:center}
 .seat .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .seat .pt{font-family:var(--f-num);font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
@@ -144,6 +156,7 @@ textarea{min-height:220px;resize:vertical;width:100%}
 .row .field{flex:1 1 90px}
 input[type=number]{width:100%}
 .note{font-size:13px;color:var(--muted)}
+.note.warn-t{color:var(--gold)}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px;border:1px solid var(--red);border-radius:10px;background:rgba(155,29,8,.15)}
 .banner{font-size:13px;color:var(--gold);border:1px dashed rgba(233,180,76,.45);border-radius:10px;padding:8px 12px}
 
@@ -314,6 +327,10 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .pen{display:inline-block;margin-left:4px;font-size:11px;color:var(--red-hi);font-family:var(--f-num)}
 .wmark{margin-left:6px;font-size:11px;color:var(--gold);font-family:var(--f-num)}
 .cal-admin{grid-column:1/-1;display:flex;flex-direction:column;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.late-box{grid-column:1/-1;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2)}
+.late-box h3{margin:0;font-family:var(--f-display);font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.03em}
+.late-box .reg-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.late-box .reg-form .wide{grid-column:1/-1}
 .jornada-info{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:12px;background:linear-gradient(135deg,rgba(155,29,8,.28),rgba(155,29,8,.08));border:1px solid rgba(226,71,44,.35)}
 .jornada-info .eyebrow{font-family:var(--f-num);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--red-hi)}
 .jornada-info .big{font-family:var(--f-display);font-weight:900;font-size:clamp(18px,3vw,24px);line-height:1.15}
@@ -582,6 +599,9 @@ body.display .hdr-right{display:none}
         <span class="meta" id="mesasMeta"></span>
         <span class="tv-page" id="tvMesas"></span>
       </div>
+      <p class="note adm" id="moveHint" hidden style="margin:0 0 10px"></p>
+      <div style="display:none">
+      </div>
       <div class="tables" id="tables"></div>
       <p class="hint" id="rulesHint"></p>
     </section>
@@ -668,6 +688,7 @@ body.display .hdr-right{display:none}
     <summary>Panel del organizador</summary>
     <div class="admin-body">
       <div class="jornada-info" id="jornadaInfo"></div>
+      <div class="late-box" id="lateBox" hidden></div>
       <div class="cal-admin" id="calAdmin"></div>
       <div class="field">
         <label for="playersInput">Importar inscritos en bloque</label>
@@ -1079,6 +1100,15 @@ body.display .hdr-right{display:none}
     return `<span class="cmd">${esc(d.c || (deck && deck.cmd) || "")}${deck ? " · " + esc(long ? deckLabel(d.k) : deck.name) : ""}</span>`;
   }
   async function saveReg(prefix){
+    if (prefix === "rgL"){
+      if (!M.admin || !S) return;
+      const r = readReg(prefix, null); if (!r) return;
+      document.activeElement.blur();
+      S.players.push(Object.assign({id:"p" + Date.now().toString(36) + Math.random().toString(36).slice(2,5), name:fullName(r), late:S.cur}, r));
+      commit();
+      setTimeout(() => { const f = $("rgLFirst"); if (f) f.focus(); }, 0);
+      return;
+    }
     if (prefix === "rgA"){
       if (!M.admin) return;
       const cur = editReg ? registrants().find(r => r.id === editReg) : null;
@@ -1186,7 +1216,7 @@ body.display .hdr-right{display:none}
     const done = S.rounds.length === S.cfg.rounds && S.rounds.every(r => r.tables.every(t => t.result));
     const ev = {id: S.archivedId || "actual", liga: LIGA, mes: curMes(), fecha: (S.archivedId && hist[S.archivedId] && hist[S.archivedId].fecha) || S.fecha || lastSaturday(),
       enCurso: !done, ejemplo: !!S.sample, rondas: S.cfg.rounds,
-      jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k || "" : "", ci:d && d.ci || undefined, cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch}; }),
+      jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k || "" : "", ci:d && d.ci || undefined, cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch, drop:isDrop(x.id) || undefined, tarde:isLate(x.id) || undefined}; }),
       sorteo: ((S.sorteo && S.sorteo.ganadores) || []).map(pname)};
     // vs[rival] = [mesas juntos, mesas que ganó el rival, mesas que gané yo]
     const vsOf = {};
@@ -1604,9 +1634,10 @@ body.display .hdr-right{display:none}
     {k:"nuevos", t:"Primera vez en la liga", d:"No aparecen en ninguna fecha guardada"},
     {k:"sinVictoriaMes", t:"Sin mesas ganadas en el mes", d:"No han ganado una mesa este mes, contando hoy"},
     {k:"sinPremioMes", t:"Sin premio de sorteo en el mes", d:"No han ganado un sorteo en otra fecha del mes"},
-    {k:"sinWarn", t:"Sin warnings", d:"No entran jugadores con warnings en esta fecha"}
+    {k:"sinWarn", t:"Sin warnings", d:"No entran jugadores con warnings en esta fecha"},
+    {k:"sinDrop", t:"Sin drops", d:"No entran quienes dejaron la fecha antes de terminar"}
   ];
-  const sorteoFiltros = () => Object.assign({sinTop4:true}, (S && S.sorteo && S.sorteo.filtros) || {});
+  const sorteoFiltros = () => Object.assign({sinTop4:true, sinDrop:true}, (S && S.sorteo && S.sorteo.filtros) || {});
   function sorteoData(){
     if (!S || !S.players.length || S.phase === "inscripcion") return {pool:[], top:[], gan:[], counts:{}, why:{}};
     const st = standings(S), top = st.slice(0, 4).map(x => x.id);
@@ -1626,7 +1657,8 @@ body.display .hdr-right{display:none}
       nuevos: id => !vistos.has(key(id)),
       sinVictoriaMes: id => !ganMes.has(key(id)) && !(byId[id] && byId[id].w > 0),
       sinPremioMes: id => !premioMes.has(key(id)),
-      sinWarn: id => !((S.warnings || {})[id] > 0)
+      sinWarn: id => !((S.warnings || {})[id] > 0),
+      sinDrop: id => !isDrop(id)
     };
     const activos = FILTROS.filter(x => f[x.k]);
     const excl = (S.sorteo && S.sorteo.excluidos) || [];
@@ -1854,7 +1886,7 @@ body.display .hdr-right{display:none}
     return mode === "azar" || idx < (mode === "desafio" ? 2 : 1);
   }
   function buildRound(st, idx){
-    const ids = st.players.map(p => p.id);
+    const ids = st.players.filter(p => (st.dropped || {})[p.id] == null).map(p => p.id);
     const sizes = podSizes(ids.length);
     const met = {};
     st.rounds.slice(0, idx).forEach(r => r.tables.forEach(t => t.seats.forEach(a => t.seats.forEach(b => { if (a !== b) met[a + "|" + b] = (met[a + "|" + b] || 0) + 1; }))));
@@ -1898,7 +1930,7 @@ body.display .hdr-right{display:none}
       pods = search(() => cut(shuffle(ids)), 150);
     } else {
       // Suizo: mesas por orden del standing; se ajusta lo mínimo para no repetir comandante ni rivales
-      const base = cut(standings(st, idx).map(r => r.id));
+      const activos = new Set(ids), base = cut(standings(st, idx).map(r => r.id).filter(id => activos.has(id)));
       base.forEach((p, i) => p.forEach(id => home[id] = i));
       pods = search(t => {
         const c = base.map(p => p.slice());
@@ -1995,7 +2027,7 @@ body.display .hdr-right{display:none}
     return best ? {res:by[best], n:cnt[best], kinds:Object.keys(cnt).length} : null;
   }
   function autoApply(){
-    if (!(M.mode === "live" && M.admin && S)) return;
+    if (!(M.mode === "live" && M.admin && S && S.rounds[S.cur])) return;
     let changed = false;
     S.rounds[S.cur].tables.forEach((t, ti) => {
       if (t.result) return;
@@ -2098,7 +2130,7 @@ body.display .hdr-right{display:none}
     document.body.classList.toggle("insc-phase", !!(S && S.phase === "inscripcion"));
     if (view === "stats") setTimeout(renderStats, 0);
     const wt = document.querySelector('.tab[data-view="warn"]'); if (wt) wt.hidden = !ADMUI();
-    renderCal(); renderJornada();
+    renderCal(); renderJornada(); renderLate();
     if (view === "warn"){ if (!ADMUI()) setView("live"); else setTimeout(renderWarn, 0); }
     if (view === "sorteo") setTimeout(renderSorteo, 0);
     const conn = $("conn");
@@ -2152,18 +2184,28 @@ body.display .hdr-right{display:none}
           const det = [kills(r, id) ? "K" + kills(r, id) : "", !isWin(r, id) && alive(r, id) ? "vivo" : ""].filter(Boolean).join(" · ");
           right = `<span class="pt">${det ? det + " · " : ""}+${points(r, id, c)}</span>`;
         }
-        return `<li class="seat ${cls}${id === myPid ? " me" : ""}"><span class="n">${si + 1}</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${cmdLine(id)}</span>${right}</li>`;
+        const mv = ADMUI() && !r && !document.body.classList.contains("display");
+        return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">${si + 1}</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${cmdLine(id)}</span>${right}</li>`;
       }).join("");
       const pend = pr ? `<span class="pending">Reportado: ${esc(resLabel(pr.res))} · ${pr.n}/${t.seats.length} confirman${pr.kinds > 1 ? " · hay reportes distintos" : ""}</span>` : "";
       const edKey = "adm:" + S.cur + ":" + ti;
       const ed = M.admin && openEd[edKey] ? editorHTML(edKey, t.seats, draftFor(edKey, t.seats, r || (pr && pr.res)), "Guardar resultado") : "";
-      return `<article class="mesa ${r ? "closed" : ""}"><div class="mesa-h"><b>Mesa ${ti + 1}</b>${tag}</div>
+      return `<article class="mesa ${r ? "closed" : ""}" data-t="${ti}"><div class="mesa-h"><b>Mesa ${ti + 1}</b>${tag}</div>
         <ol class="seats">${seats}</ol>${pend}${ed}
         <div class="mesa-foot adm">${pr ? `<button type="button" class="apr" data-t="${ti}" data-op="approve">Aprobar reporte</button>` : ""}<button type="button" data-t="${ti}" data-op="edit">${openEd[edKey] ? "Cerrar" : r ? "Corregir" : "Cargar resultado"}</button>${r ? `<button type="button" data-t="${ti}" data-op="clear">Reabrir</button>` : ""}</div></article>`;
     }).join("");
 
+    if (ADMUI() && !document.body.classList.contains("display")){
+      const seated = new Set(round.tables.flatMap(t => t.seats));
+      const libres = S.players.filter(p => !seated.has(p.id) && !isDrop(p.id));
+      $("tables").insertAdjacentHTML("beforeend", `<article class="mesa bucket" data-t="new"><div class="mesa-h"><b>Sin mesa${libres.length ? " · " + libres.length : ""}</b><span class="tag">Suelta aquí para sacar de la mesa</span></div>
+        <ol class="seats">${libres.map(p => `<li class="seat${moveSel === p.id ? " picked" : ""}" data-pid="${p.id}" draggable="true" title="Arrastra a una mesa"><span class="n">·</span><span class="nm-wrap"><span class="nm">${esc(p.name)}</span>${cmdLine(p.id)}</span><span class="pt">${isLate(p.id) ? "Tardío" : ""}</span></li>`).join("") || '<li class="seat-empty">Nadie sin mesa. Arrastra aquí a un jugador para sacarlo de su mesa.</li>'}</ol>
+        <button type="button" class="btn ghost new-table" data-newtable>+ Nueva mesa con el jugador elegido</button></article>`);
+      $("moveHint").hidden = false;
+      $("moveHint").textContent = moveSel ? `Moviendo a ${pname(moveSel)}: toca otro jugador para intercambiarlos o el título de una mesa para llevarlo ahí. Toca de nuevo su nombre para cancelar.` : "Para mover jugadores: arrástralos a otra mesa o sobre otro jugador para intercambiarlos. En el celular, tócalo y luego toca el destino. Las mesas con resultado se reabren primero.";
+    } else { const mh = $("moveHint"); if (mh) mh.hidden = true; }
     $("standBody").innerHTML = stand.map((x, i) =>
-      `<tr data-p="${x.id}" class="${i === 0 && x.pts > 0 ? "top1" : i < 3 && x.pts > 0 ? "top3" : ""}${x.id === focus ? " sel" : ""}${x.id === myPid ? " mine-row" : ""}"><td class="l pos">${i + 1}</td><td class="l nm">${esc(x.name)}${ADMUI() && x.warn ? `<span class="wmark" title="Warnings en esta fecha">⚠ ${x.warn}</span>` : ""}${cmdLine(x.id)}</td>
+      `<tr data-p="${x.id}" class="${i === 0 && x.pts > 0 ? "top1" : i < 3 && x.pts > 0 ? "top3" : ""}${x.id === focus ? " sel" : ""}${x.id === myPid ? " mine-row" : ""}"><td class="l pos">${i + 1}</td><td class="l nm">${esc(x.name)}${isDrop(x.id) ? ' <span class="tag drop" title="Dejó la fecha: no juega las próximas rondas, conserva sus puntos">Drop</span>' : isLate(x.id) ? ` <span class="tag late" title="Se sumó en la ronda ${S.players.find(p => p.id === x.id).late + 1}">Tardío</span>` : ""}${ADMUI() && x.warn ? `<span class="wmark" title="Warnings en esta fecha">⚠ ${x.warn}</span>` : ""}${cmdLine(x.id)}</td>
        <td class="pts">${x.pts}${ADMUI() && x.pen ? `<span class="pen" title="Penalización por ${WARN_LIMIT} warnings">−${x.pen}</span>` : ""}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td>${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
@@ -2200,6 +2242,14 @@ body.display .hdr-right{display:none}
     $("cfgMin").value = c.min; $("cfgRounds").value = c.rounds; $("cfgWin").value = c.win; $("cfgKill").value = c.kill; $("cfgSurv").value = c.surv; $("cfgCap").value = c.cap; $("cfgPair").value = c.pairing || "suizo";
     $("cfgJoven").value = c.joven || 0; $("cfgBruto").value = c.bruto || 0;
   }
+  function renderLate(){
+    const box = $("lateBox"); if (!box) return;
+    const show = ADMUI() && S && S.phase !== "inscripcion";
+    box.hidden = !show; if (!show || typing(box)) return;
+    const n = S.players.filter(p => p.late != null).length;
+    box.innerHTML = `<h3>Inscripción tardía</h3><p class="note" style="margin:0">Para quien llega con la fecha empezada: entra con 0 puntos y juega desde la próxima ronda. Si hay una mesa de 3 o quieres sentarlo ya, arrástralo desde “Sin mesa” a una mesa de la ronda actual.${n ? ` Tardíos en esta fecha: ${n}.` : ""}</p>${regFormHTML("rgL", null)}`;
+  }
+  $("lateBox").addEventListener("click", e => { if (e.target.closest('[data-reg-save="rgL"]')) saveReg("rgL"); });
   function renderMine(stand, tableOf, myPid){
     const box = $("mine");
     if (M.mode !== "live" || !M.uid){
@@ -2250,12 +2300,20 @@ body.display .hdr-right{display:none}
       <div class="mine-grid"><div class="box"><h3>Tu mesa</h3>${mesa}</div><div class="box">${fichaHTML(myPid, stand)}</div></div>`;
   }
 
+  const isDrop = id => !!(S && S.dropped && S.dropped[id] != null);
+  const isLate = id => { const p = S && S.players.find(x => x.id === id); return !!(p && p.late != null); };
+  function setDrop(id, on){
+    if (!M.admin || !S) return;
+    const d = Object.assign({}, S.dropped || {});
+    if (on) d[id] = S.phase === "inscripcion" ? 0 : S.cur; else delete d[id];
+    S.dropped = d; commit();
+  }
   function renderDecks(){
     const ul = $("decksList"); if (!ul || !S || typing(ul)) return;
     const n = S.players.filter(p => deckOf(p.id)).length;
     $("decksCount").textContent = `${n} de ${S.players.length} declarados`;
     ul.innerHTML = S.players.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p =>
-      `<li><div class="dl-row"><span class="nm-wrap"><b>${esc(p.name)} <span class="code-chip" title="Código para entrar al portal de jugadores">${codeOf(p.id)}</span>${Object.values(links).includes(p.id) ? ' <span class="tag ok">Vinculado</span>' : ""}</b>${cmdLine(p.id, true)}</span><button type="button" data-deck-edit="${p.id}">${editDeck === p.id ? "Cerrar" : "Editar"}</button></div>${editDeck === p.id ? deckFormHTML("adm", deckOf(p.id)) : ""}</li>`).join("");
+      `<li><div class="dl-row"><span class="nm-wrap"><b>${esc(p.name)} <span class="code-chip" title="Código para entrar al portal de jugadores">${codeOf(p.id)}</span>${Object.values(links).includes(p.id) ? ' <span class="tag ok">Vinculado</span>' : ""}</b>${cmdLine(p.id, true)}</span><span style="display:flex;gap:4px;flex:none">${S.phase !== "inscripcion" ? `<button type="button" data-drop="${p.id}" class="${isDrop(p.id) ? "on" : ""}" title="${isDrop(p.id) ? "Volver a incluirlo en las próximas rondas" : "Sacarlo de las próximas rondas; conserva sus puntos"}">${isDrop(p.id) ? "Reincorporar" : "Drop"}</button>` : ""}<button type="button" data-deck-edit="${p.id}">${editDeck === p.id ? "Cerrar" : "Editar"}</button></span></div>${editDeck === p.id ? deckFormHTML("adm", deckOf(p.id)) : ""}</li>`).join("");
   }
   async function renderLinks(){
     const ul = $("linksList"); if (!ul) return;
@@ -2285,6 +2343,69 @@ body.display .hdr-right{display:none}
     try { await M.db.doc("votos/" + M.uid).set({r:S.cur, t:ti, pid:links[M.uid], res}); }
     catch(err){ const el = $("voteErr"); if (el) el.textContent = "No se pudo enviar el reporte. Revisa tu conexión e intenta de nuevo."; }
   });
+  // ----- Mover jugadores entre mesas -----
+  let moveSel = null, dragPid = null;
+  function moveSeat(pid, toT, toPid){
+    if (!M.admin || !S || S.phase === "inscripcion") return;
+    const T = S.rounds[S.cur].tables;
+    const from = T.findIndex(t => t.seats.includes(pid));
+    const msg = t => { const h = $("moveHint"); if (h){ h.textContent = t; h.classList.add("warn-t"); setTimeout(() => h.classList.remove("warn-t"), 2500); } };
+    if (toPid && toPid === pid) return;
+    if (toPid){
+      const to = T.findIndex(t => t.seats.includes(toPid));
+      if ((from >= 0 && T[from].result) || (to >= 0 && T[to].result)) return msg("Una de esas mesas ya tiene resultado: presiona “Reabrir” antes de mover jugadores.");
+      if (to < 0){ toT = "new"; }
+      else if (from < 0){ T[to].seats[T[to].seats.indexOf(toPid)] = pid; }
+      else { const a = T[from].seats.indexOf(pid), b = T[to].seats.indexOf(toPid); T[from].seats[a] = toPid; T[to].seats[b] = pid; }
+      if (to >= 0){ [from, to].forEach(i => { if (i >= 0) delete drafts["adm:" + S.cur + ":" + i]; }); moveSel = null; commit(); return; }
+    }
+    if (toT === "new" && from < 0) return;   // ya está sin mesa
+    if (toT === "newtable"){
+      if (from >= 0 && T[from].result) return msg("Esa mesa ya tiene resultado: presiona “Reabrir” antes de mover jugadores.");
+      if (from >= 0) T[from].seats = T[from].seats.filter(x => x !== pid);
+      T.push({seats:[pid], result:null});
+      S.rounds[S.cur].tables = T.filter(t => t.seats.length || t.result);
+      moveSel = null; commit(); return;
+    }
+    if (toT !== "new" && toT === from) { moveSel = null; render(); return; }
+    if (from >= 0 && T[from].result) return msg("Esa mesa ya tiene resultado: presiona “Reabrir” antes de mover jugadores.");
+    if (toT !== "new" && T[toT].result) return msg("La mesa de destino ya tiene resultado: presiona “Reabrir” primero.");
+    if (toT !== "new" && T[toT].seats.length >= 6) return msg("Esa mesa ya tiene 6 jugadores.");
+    if (from >= 0) T[from].seats = T[from].seats.filter(x => x !== pid);
+    if (toT === "newtable") T.push({seats:[pid], result:null});
+    else if (toT !== "new") T[toT].seats.push(pid);
+    S.rounds[S.cur].tables = T.filter(t => t.seats.length || t.result);
+    Object.keys(drafts).forEach(k => { if (k.startsWith("adm:" + S.cur + ":")) delete drafts[k]; });
+    moveSel = null; commit();
+  }
+  $("tables").addEventListener("dragstart", e => { const li = e.target.closest(".seat[data-pid][draggable]"); if (!li) return; dragPid = li.dataset.pid; li.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", dragPid); } catch(err){} });
+  $("tables").addEventListener("dragend", () => { dragPid = null; document.querySelectorAll(".dragging,.drop-target,.drop-on").forEach(x => x.classList.remove("dragging", "drop-target", "drop-on")); });
+  $("tables").addEventListener("dragover", e => {
+    if (!dragPid) return; const m = e.target.closest(".mesa[data-t]"); if (!m) return;
+    e.preventDefault(); document.querySelectorAll(".drop-target,.drop-on").forEach(x => x.classList.remove("drop-target", "drop-on"));
+    const li = e.target.closest(".seat[data-pid]"); (li && li.dataset.pid !== dragPid && m.dataset.t !== "new" ? li : m).classList.add(li && li.dataset.pid !== dragPid && m.dataset.t !== "new" ? "drop-on" : "drop-target");
+  });
+  $("tables").addEventListener("drop", e => {
+    if (!dragPid) return; const m = e.target.closest(".mesa[data-t]"); if (!m) return; e.preventDefault();
+    const li = e.target.closest(".seat[data-pid]"), pid = dragPid; dragPid = null;
+    if (li && li.dataset.pid !== pid && m.dataset.t !== "new") moveSeat(pid, null, li.dataset.pid);
+    else moveSeat(pid, m.dataset.t === "new" ? "new" : +m.dataset.t);
+  });
+  $("tables").addEventListener("click", e => {
+    if (ADMUI() && S && S.phase !== "inscripcion" && !e.target.closest("button, .ed, input")){
+      if (e.target.closest("[data-newtable]")) return;
+      const li = e.target.closest(".seat[data-pid]"), head = e.target.closest(".mesa-h"), m = e.target.closest(".mesa[data-t]");
+      if (li && (li.getAttribute("draggable") || moveSel)){
+        if (!moveSel){ moveSel = li.dataset.pid; render(); return; }
+        if (moveSel === li.dataset.pid){ moveSel = null; render(); return; }
+        const m2 = li.closest(".mesa[data-t]");
+        if (m2 && m2.dataset.t === "new") { moveSeat(moveSel, "new"); return; }
+        moveSeat(moveSel, null, li.dataset.pid); return;
+      }
+      if (moveSel && head && m){ moveSeat(moveSel, m.dataset.t === "new" ? "new" : +m.dataset.t); return; }
+    }
+  });
+  $("tables").addEventListener("click", e => { if (e.target.closest("[data-newtable]")){ if (!moveSel){ const h = $("moveHint"); if (h) h.textContent = "Primero toca al jugador que quieres llevar a la nueva mesa."; return; } moveSeat(moveSel, "newtable"); } });
   $("tables").addEventListener("click", e => {
     const b = e.target.closest("button[data-op]"); if (!b || !M.admin) return;
     const ti = +b.dataset.t, t = S.rounds[S.cur].tables[ti], key = "adm:" + S.cur + ":" + ti;
@@ -2297,6 +2418,7 @@ body.display .hdr-right{display:none}
     }
   });
   document.addEventListener("click", async e => {
+    const dp = e.target.closest("[data-drop]"); if (dp){ setDrop(dp.dataset.drop, !isDrop(dp.dataset.drop)); return; }
     const ed = e.target.closest("[data-deck-edit]");
     if (ed){ editDeck = editDeck === ed.dataset.deckEdit ? null : ed.dataset.deckEdit; renderDecks(); return; }
     const sv = e.target.closest("[data-deck-save]"); if (!sv) return;

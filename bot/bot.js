@@ -90,7 +90,8 @@ const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 client = new Client({
   authStrategy: new LocalAuth({ dataPath: path.join(DIR, "sesion-whatsapp") }),
-  puppeteer: { headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] }
+  // En un servidor Linux (p. ej. ARM de Oracle) se usa el Chromium del sistema: "chromePath": "/usr/bin/chromium"
+  puppeteer: { headless: true, executablePath: CFG.chromePath || undefined, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] }
 });
 client.on("qr", qr => {
   console.log("\nEscanea este código con el WhatsApp del número del bot:");

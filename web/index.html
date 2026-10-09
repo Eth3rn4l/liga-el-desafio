@@ -528,6 +528,7 @@ body.display .hdr-right{display:none}
 .combo-list li.dis:hover{background:transparent}
 .links.decks li .combo-list{position:static;margin-top:4px}
 .neg{color:#ff6b5e;font-weight:700}
+body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none}
 </style>
 </head>
 <body>
@@ -616,7 +617,7 @@ body.display .hdr-right{display:none}
       <div class="stand">
         <div class="stand-scroll">
           <table>
-            <thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th title="Buchholz: suma de los puntos de los rivales enfrentados">Buch</th><th>Mesa</th></tr></thead>
+            <thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th class="buch" title="Buchholz: suma de los puntos de los rivales enfrentados">Buch</th><th>Mesa</th></tr></thead>
             <tbody id="standBody"></tbody>
           </table>
         </div>
@@ -2212,7 +2213,7 @@ body.display .hdr-right{display:none}
     } else { const mh = $("moveHint"); if (mh) mh.hidden = true; }
     $("standBody").innerHTML = stand.map((x, i) =>
       `<tr data-p="${x.id}" class="${i === 0 && x.pts > 0 ? "top1" : i < 3 && x.pts > 0 ? "top3" : ""}${x.id === focus ? " sel" : ""}${x.id === myPid ? " mine-row" : ""}"><td class="l pos">${i + 1}</td><td class="l nm">${esc(x.name)}${isDrop(x.id) ? ' <span class="tag drop" title="Dejó la fecha: no juega las próximas rondas, conserva sus puntos">Drop</span>' : isLate(x.id) ? ` <span class="tag late" title="Se sumó en la ronda ${S.players.find(p => p.id === x.id).late + 1}">Tardío</span>` : ""}${ADMUI() && x.warn ? `<span class="wmark" title="Warnings en esta fecha">⚠ ${x.warn}</span>` : ""}${cmdLine(x.id)}</td>
-       <td class="pts">${x.pts}${ADMUI() && x.pen ? `<span class="pen" title="Penalización por ${WARN_LIMIT} warnings">−${x.pen}</span>` : ""}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td>${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
+       <td class="pts">${x.pts}${ADMUI() && x.pen ? `<span class="pen" title="Penalización por ${WARN_LIMIT} warnings">−${x.pen}</span>` : ""}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td class="buch">${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
     $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V victorias · K kills · S rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.`;

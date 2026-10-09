@@ -1,0 +1,18 @@
+{
+  "name": "bot-liga-el-desafio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Publica en WhatsApp las mesas, resultados y standing de la Liga Commander El Desafío",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "grupos": "node bot.js --grupos",
+    "prueba": "node bot.js --prueba",
+    "simular": "node bot.js --simular"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.7"
+  }
+}

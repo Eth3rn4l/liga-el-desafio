@@ -68,6 +68,10 @@ button{cursor:pointer}
 .status{font-family:var(--f-num);font-size:14px;letter-spacing:.16em;text-transform:uppercase;padding:5px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
 .status.run{color:var(--ok);border-color:rgba(95,191,122,.5)}
 .status.warn{color:var(--gold);border-color:rgba(233,180,76,.5)}
+.status.insc{color:var(--gold);border-color:rgba(233,180,76,.5)}
+.status.flip{animation:stFlip .45s ease}
+@keyframes stFlip{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.status.flip{animation:none}}
 .status.over{color:#fff;background:var(--red);border-color:var(--red-hi)}
 
 .digits{font-family:var(--f-num);font-weight:600;font-variant-numeric:tabular-nums;text-align:center;font-size:clamp(84px,19vw,230px);line-height:1;margin:14px 0 6px;letter-spacing:.01em}
@@ -2163,8 +2167,14 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (ms <= 0){ label = "Tiempo cumplido"; cls = "over"; sub = "Se termina el turno en curso. Quienes sigan vivos al final suman el punto por sobrevivir."; }
     else if (S.timer.running){ const w = ms <= 10 * 60000; label = w ? "Últimos minutos" : "En juego"; cls = w ? "warn" : "run"; }
     else label = ms === total ? "Por comenzar" : "En pausa";
-    if (roundComplete() && S.cur === S.cfg.rounds - 1){ const cz = isClosed(); label = cz ? "Liga cerrada" : "Liga finalizada"; cls = "run"; sub = cz ? "Gracias por jugar. Resultados finales en el standing." : "Resultados finales en el standing."; }
-    st.textContent = label; st.className = "status " + cls; $("sub").textContent = sub;
+    if (inscOpen()){
+      // Carrusel durante inscripciones: alterna mensajes cada 3 s
+      const n = registrants().length, msgs = ["Inscripciones abiertas", "Por comenzar", n + (n === 1 ? " inscrito" : " inscritos")];
+      label = msgs[Math.floor(Date.now() / 3000) % msgs.length]; cls = "insc"; sub = "";
+    }
+    else if (roundComplete() && S.cur === S.cfg.rounds - 1){ const cz = isClosed(); label = cz ? "Liga cerrada" : "Liga finalizada"; cls = "run"; sub = cz ? "Gracias por jugar. Resultados finales en el standing." : "Resultados finales en el standing."; }
+    if (st.textContent !== label){ st.textContent = label; st.classList.remove("flip"); void st.offsetWidth; st.classList.add("flip"); }
+    st.className = "status " + cls + (st.classList.contains("flip") ? " flip" : ""); $("sub").textContent = sub;
     if (S.timer.running && M.admin){
       const k = "r" + S.cur;
       if (ms <= 10 * 60000 && !alerts[k + "10"]){ alerts[k + "10"] = 1; if (ms > 9 * 60000) beep(1); }
@@ -2210,7 +2220,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       $("sampleBanner").hidden = true;
       $("offlineBanner").hidden = !(M.mode === "local" && M.reason);
       $("btnNext").disabled = true;
-      tick(); $("status").textContent = "Inscripción"; $("status").className = "status";
+      tick();
       return;
     }
     $("insc").hidden = true; $("mainGrid").hidden = false;

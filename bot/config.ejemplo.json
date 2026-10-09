@@ -1,0 +1,11 @@
+{
+  "supabaseUrl": "https://bpmynqjeqylhwbqkhyfy.supabase.co",
+  "supabaseKey": "sb_publishable__OCTaq31L2rbh7tsc204Sg__ADe9iHV",
+  "portal": "https://liga-eldesafio.netlify.app/jugador.html",
+  "grupos": {
+    "precon": "NOMBRE EXACTO DEL GRUPO DE LA LIGA PRECON",
+    "b3": "NOMBRE EXACTO DEL GRUPO DE LA LIGA B3"
+  },
+  "top": 10,
+  "cadaSegundos": 15
+}

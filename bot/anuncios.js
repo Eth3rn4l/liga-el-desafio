@@ -103,7 +103,11 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
   const nm = id => (S.players.find(p => p.id === id) || {}).name || "?";
   S.rounds.forEach((r, ri) => {
     if (!r || !r.tables) return;
-    una(`r${ri}:armada`, () => [`⚔️ *${NOMBRE_LIGA[liga]} · Ronda ${ri + 1} de ${S.cfg.rounds}*`, ...r.tables.map((t, ti) => `*Mesa ${ti + 1}:* ${t.seats.map(nm).join(", ")}`), "¡Suerte a todos!"].join("\n"));
+    // Las mesas se publican al lanzar la ronda (Iniciar ronda), así salen ya con los cambios de último minuto.
+    // Respaldo: si la ronda ya tiene resultados o ya se pasó a otra, se publican igual.
+    const t = S.timer || {}, lanzada = ri === S.cur ? (t.running || (t.left != null && t.left < S.cfg.min * 60000)) : true;
+    if (lanzada || r.tables.some(x => x.result))
+      una(`r${ri}:armada`, () => [`⚔️ *${NOMBRE_LIGA[liga]} · ¡Comienza la ronda ${ri + 1} de ${S.cfg.rounds}!*`, `⏱️ ${S.cfg.min} minutos`, "", ...r.tables.map((t, ti) => `*Mesa ${ti + 1}:* ${t.seats.map(nm).join(", ")}`), "", "¡Suerte a todos!"].join("\n"));
     r.tables.forEach((t, ti) => {
       const k = `r${ri}t${ti}`, prev = m.mesas[k];
       if (!t.result) return;   // mesa reabierta: se espera el nuevo resultado

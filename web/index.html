@@ -2119,7 +2119,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (ms <= 0){ label = "Tiempo cumplido"; cls = "over"; sub = "Se termina el turno en curso. Quienes sigan vivos al final suman el punto por sobrevivir."; }
     else if (S.timer.running){ const w = ms <= 10 * 60000; label = w ? "Últimos minutos" : "En juego"; cls = w ? "warn" : "run"; }
     else label = ms === total ? "Por comenzar" : "En pausa";
-    if (roundComplete() && S.cur === S.cfg.rounds - 1){ label = "Liga finalizada"; cls = "run"; sub = "Resultados finales en el standing."; }
+    if (roundComplete() && S.cur === S.cfg.rounds - 1){ const cz = isClosed(); label = cz ? "Liga cerrada" : "Liga finalizada"; cls = "run"; sub = cz ? "Gracias por jugar. Resultados finales en el standing." : "Resultados finales en el standing."; }
     st.textContent = label; st.className = "status " + cls; $("sub").textContent = sub;
     if (S.timer.running && M.admin){
       const k = "r" + S.cur;
@@ -2230,8 +2230,16 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     renderDecks();
 
     const last = S.cur === c.rounds - 1;
-    $("btnNext").disabled = !roundComplete() || last;
-    $("btnNext").textContent = last ? "Última ronda" : `Armar ronda ${S.cur + 2}`;
+    const nb = $("btnNext"), cerrada = isClosed();
+    if (last){
+      nb.disabled = !roundComplete() || cerrada;
+      nb.textContent = cerrada ? "Liga cerrada ✓" : S.closedSig ? "Actualizar cierre" : "Cerrar liga";
+      nb.classList.toggle("primary", roundComplete() && !cerrada);
+      nb.title = cerrada ? "Fecha cerrada y guardada en el histórico" : roundComplete() ? "Guarda la fecha en el histórico y la da por terminada" : "Disponible cuando se cierre la última mesa";
+    } else {
+      nb.disabled = !roundComplete();
+      nb.textContent = `Armar ronda ${S.cur + 2}`; nb.classList.remove("primary"); nb.title = "";
+    }
     $("sampleBanner").hidden = !S.sample;
     $("offlineBanner").hidden = !(M.mode === "local" && M.reason);
     $("offlineBanner").textContent = M.reason ? M.reason + " Puedes usar el reloj, las mesas y el standing en este equipo; los jugadores no verán los cambios en sus celulares." : "";
@@ -2467,7 +2475,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   $("btnPlus").addEventListener("click", () => adjust(60000));
   $("btnMinus").addEventListener("click", () => adjust(-60000));
   $("btnReset").addEventListener("click", () => { S.timer = {running:false, endAt:0, left:S.cfg.min * 60000}; Object.keys(alerts).forEach(k => delete alerts[k]); commit(); });
-  $("btnNext").addEventListener("click", () => {
+  $("btnNext").addEventListener("click", async () => {
+    if (roundComplete() && S.cur === S.cfg.rounds - 1){ closeLiga(); return; }
     if (!roundComplete() || S.cur >= S.cfg.rounds - 1) return;
     S.cur++; S.rounds[S.cur] = buildRound(S, S.cur); S.rounds.length = S.cur + 1;
     S.timer = {running:false, endAt:0, left:S.cfg.min * 60000};
@@ -2517,6 +2526,19 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     focus = null; editReg = null; showWinner = null;
     Object.keys(drafts).forEach(k => delete drafts[k]); Object.keys(openEd).forEach(k => delete openEd[k]);
   }
+  // Firma de los resultados: si cambian después del cierre, se puede actualizar
+  const resultsSig = () => JSON.stringify(S.rounds.map(r => r.tables.map(t => [t.seats, t.result ? sig(t.result) : null])));
+  const isClosed = () => !!(S && S.closedSig && S.closedSig === resultsSig() && S.archivedId);
+  async function closeLiga(){
+    if (!M.admin && M.mode === "live") return;
+    const upd = !!S.closedSig;
+    if (!confirm(upd ? "Los resultados cambiaron después del cierre. ¿Actualizar la fecha guardada en el histórico?" : "¿Cerrar la liga de hoy? Se guarda la fecha en el histórico con el standing final. Podrás seguir corrigiendo resultados y actualizar el cierre.")) return;
+    const id = await saveFechaToHist();
+    if (!id || id === true){ alert("No se pudo guardar la fecha en el histórico. Revisa tu conexión e intenta de nuevo."); return; }
+    S.archivedId = id; S.closedSig = resultsSig(); S.closedAt = Date.now();
+    if (S.timer.running) S.timer = {running:false, endAt:0, left:Math.max(0, S.timer.endAt - Date.now())};
+    commit(); window.scrollTo({top:0, behavior:"smooth"});
+  }
   // Guarda la fecha actual en el histórico (si tiene resultados) antes de abrir otra
   async function saveFechaToHist(){
     const ev = currentEvent(); if (!ev) return true;
@@ -2525,7 +2547,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (M.mode === "live"){
       try { await M.db.doc("historial/" + id).set(JSON.parse(JSON.stringify(doc))); } catch(e){ return false; }
     } else { hist[id] = doc; try { localStorage.setItem(HKEY, JSON.stringify(hist)); } catch(e){} }
-    return true;
+    return id;
   }
   const hideConfirms = () => ["confirmLoad", "confirmDelFecha", "confirmDelLiga"].forEach(id => $(id).hidden = true);
   $("btnLoad").addEventListener("click", () => {

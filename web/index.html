@@ -802,8 +802,46 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     Object.values(linkData).forEach(v => { if (v.pid === pid && v.deck && (v.deck.k || v.deck.c) && (!best || (v.deck.ts || 0) > (best.ts || 0))) best = v.deck; });
     return best;
   }
+  const TOP_PUBLICO = 10;   // cuántos ve el público en el standing del mes (el organizador lo cambia)
   const CI_NAMES = {"":"Incoloro", W:"Blanco", U:"Azul", B:"Negro", R:"Rojo", G:"Verde", WU:"Azorius", UB:"Dimir", BR:"Rakdos", RG:"Gruul", WG:"Selesnya", WB:"Orzhov", UR:"Izzet", BG:"Golgari", WR:"Boros", UG:"Simic",
     WUB:"Esper", UBR:"Grixis", BRG:"Jund", WRG:"Naya", WUG:"Bant", WBG:"Abzan", WUR:"Jeskai", UBG:"Sultai", WBR:"Mardu", URG:"Temur", UBRG:"Sin blanco", WBRG:"Sin azul", WURG:"Sin negro", WUBG:"Sin rojo", WUBR:"Sin verde", WUBRG:"5 colores"};
+  // Caché de identidades de color por nombre de comandante (Scryfall)
+  const CI_CK = "__ci_cache";
+  let CI_CACHE = {}; try { CI_CACHE = JSON.parse(localStorage.getItem(CI_CK) || "{}"); } catch(e){}
+  const ciFor = (name, ci) => ci != null ? ci : (name ? CI_CACHE[fold(name).trim()] : undefined);
+  const ciAsked = new Set();
+  async function resolveCIs(names){
+    const want = [...new Set(names.filter(Boolean).map(n => n.trim()))].filter(n => CI_CACHE[fold(n).trim()] == null && !ciAsked.has(fold(n).trim()));
+    if (!want.length) return false;
+    want.forEach(n => ciAsked.add(fold(n).trim()));
+    let got = false;
+    const put = (n, card) => { const ci = (card.color_identity || []).join(""); CI_CACHE[fold(n).trim()] = ci; CI_CACHE[fold(card.name).trim()] = ci; if (card.name.includes(" // ")) CI_CACHE[fold(card.name.split(" // ")[0]).trim()] = ci; got = true; };
+    try {
+      for (let i = 0; i < want.length; i += 75){
+        const chunk = want.slice(i, i + 75);
+        const r = await fetch("https://api.scryfall.com/cards/collection", {method:"POST", headers:{"Content-Type":"application/json", Accept:"application/json"}, body:JSON.stringify({identifiers:chunk.map(name => ({name}))})});
+        if (!r.ok) continue;
+        const j = await r.json();
+        (j.data || []).forEach(c => { const n = chunk.find(x => fold(x).trim() === fold(c.name).trim() || fold(x).trim() === fold(c.name.split(" // ")[0]).trim()) || c.name; put(n, c); });
+        for (const nf of (j.not_found || []).slice(0, 15)){
+          try { const c = await getJSON("https://api.scryfall.com/cards/named?fuzzy=" + encodeURIComponent(nf.name)); if (c && c.name) put(nf.name, c); } catch(e){}
+          await new Promise(res => setTimeout(res, 110));
+        }
+      }
+    } catch(e){}
+    if (got){ try { localStorage.setItem(CI_CK, JSON.stringify(CI_CACHE)); } catch(e){} }
+    return got;
+  }
+  // El organizador completa la identidad de color de los inscritos que no la tienen (p. ej. inscripción masiva)
+  let ciFixing = false;
+  async function fixMissingCI(){
+    if (!B3 || ciFixing || !S || !(M.admin || M.mode === "local")) return;
+    const miss = S.players.filter(p => p.deck && p.deck.c && p.deck.ci == null && CI_CACHE[fold(p.deck.c).trim()] == null && !ciAsked.has(fold(p.deck.c).trim()));
+    const fill = () => { let ch = false; S.players.forEach(p => { if (p.deck && p.deck.c && p.deck.ci == null){ const ci = CI_CACHE[fold(p.deck.c).trim()]; if (ci != null){ p.deck.ci = ci; ch = true; } } }); return ch; };
+    if (!miss.length){ if (fill()) commit(); return; }
+    ciFixing = true; await resolveCIs(miss.map(p => p.deck.c)); ciFixing = false;
+    if (fill()) commit();
+  }
   const ciKey = ci => "WUBRG".split("").filter(c => (ci || "").includes(c)).join("");
   const ciPips = ci => ciKey(ci).split("").map(c => `<i class="pip-${c}" aria-hidden="true"></i>`).join("");
   function cmdLine(pid, long){
@@ -1218,7 +1256,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const done = S.rounds.length === S.cfg.rounds && S.rounds.every(r => r.tables.every(t => t.result));
     const ev = {id: S.archivedId || "actual", liga: LIGA, mes: curMes(), fecha: (S.archivedId && hist[S.archivedId] && hist[S.archivedId].fecha) || S.fecha || lastSaturday(),
       enCurso: !done, ejemplo: !!S.sample, rondas: S.cfg.rounds,
-      jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k || "" : "", ci:d && d.ci || undefined, cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch, neg:x.neg || undefined, drop:isDrop(x.id) || undefined, tarde:isLate(x.id) || undefined}; }),
+      jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k || "" : "", ci:d ? ciFor(d.c, d.ci) : undefined, cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch, neg:x.neg || undefined, drop:isDrop(x.id) || undefined, tarde:isLate(x.id) || undefined}; }),
       sorteo: ((S.sorteo && S.sorteo.ganadores) || []).map(pname)};
     // vs[rival] = [mesas juntos, mesas que ganó el rival, mesas que gané yo]
     const vsOf = {};
@@ -1280,6 +1318,10 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       p.pts = p.base + p.bono;
     });
     const stand = Object.values(P).sort((a, b) => b.pts - a.pts || b.kills - a.kills || b.buch - a.buch || b.w - a.w || a.nombre.localeCompare(b.nombre));
+    // Los jugadores ven solo el top N (para no desmotivar); el organizador ve a todos
+    const topN = CAL.topPublico == null ? TOP_PUBLICO : CAL.topPublico;
+    const standVis = ADMUI() || !topN ? stand : stand.slice(0, topN);
+    const topSel = ADMUI() ? `<div class="field" style="margin:0"><label for="topPubSel">Jugadores ven</label><select id="topPubSel">${[10, 15, 20, 0].map(n => `<option value="${n}" ${n === topN ? "selected" : ""}>${n ? "Top " + n : "Todos"}</option>`).join("")}</select></div>` : "";
     // Rankings (histórico o mes)
     const rk = rankScope === "all" ? evs : inMonth;
     const D = {}, C = {};
@@ -1296,9 +1338,10 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       name:n, sub:`${x.decks.size} ${x.decks.size === 1 ? "mazo distinto" : "mazos distintos"}`, v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"}`, tip:`${x.uses} inscripciones con mazos de ${n}`}));
     const edWin = Object.entries(ED).filter(([, x]) => x.w > 0).sort((a, b) => b[1].w - a[1].w || (b[1].w / b[1].pj) - (a[1].w / a[1].pj)).slice(0, 10).map(([n, x]) => ({
       name:n, sub:`${Math.round(x.w / Math.max(1, x.pj) * 100)}% de mesas ganadas`, v:x.w, val:`${x.w} V · ${x.pj} PJ`, tip:`${x.w} mesas ganadas en ${x.pj} partidas`}));
-    const CU = {}, CO = {};
+    const CU = {}, CO = {}, ciMiss = [];
     rk.forEach(e => e.jugadores.forEach(j => { if (j.cmd){ const x = CU[j.cmd] = CU[j.cmd] || {uses:0, w:0, ci:j.ci}; x.uses++; x.w += j.w; }
-      if (j.ci != null){ const ck = ciKey(j.ci), y = CO[ck] = CO[ck] || {uses:0, w:0}; y.uses++; y.w += j.w; } }));
+      const jci = ciFor(j.cmd, j.ci); if (jci != null){ const ck = ciKey(jci), y = CO[ck] = CO[ck] || {uses:0, w:0}; y.uses++; y.w += j.w; } else if (B3 && j.cmd) ciMiss.push(j.cmd); }));
+    if (ciMiss.length) resolveCIs(ciMiss).then(ok => { if (ok && view === "stats") renderStats(); });
     const cmdUse = Object.entries(CU).sort((a, b) => b[1].uses - a[1].uses || b[1].w - a[1].w).slice(0, 10).map(([n, x]) => ({name:n, sub:"", v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"} · ${x.w} V`, tip:`${x.uses} inscripciones, ${x.w} mesas ganadas`}));
     const colUse = Object.entries(CO).sort((a, b) => b[1].uses - a[1].uses).slice(0, 10).map(([ck, x]) => ({name:CI_NAMES[ck] || ck, sub:ck || "C", v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"} · ${x.w} V`, tip:`${x.uses} inscripciones, ${x.w} mesas ganadas`}));
     const cmdRows = Object.entries(C).filter(([, c]) => c.kills > 0).sort((a, b) => b[1].kills - a[1].kills || a[1].pj - b[1].pj).slice(0, 10).map(([n, c]) => ({
@@ -1334,11 +1377,11 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       })() : ""}
       ${evs.length && ADMUI() ? `<div class="summary"><span><b>${inMonth.length}</b>${inMonth.length === 1 ? "jornada" : "jornadas"}</span><span><b>${stand.length}</b>jugadores</span><span><b>${totK}</b>kills</span></div>` : ""}
       ${!evs.length ? '<div class="empty"><b>Aún no hay jornadas</b>Cuando se registren resultados en la liga, aquí aparecerán el standing del mes y los rankings de mazos y comandantes.</div>' : `
-      <div class="card"><h3>Standing ${statMonth === "all" ? "histórico" : "de " + monthLabel(statMonth).toLowerCase()}</h3><p class="card-sub">Suma de puntos de todas las jornadas del período, más el <b>bono de variedad: +${BONO_PTS} pts</b> para quien juegue al menos ${BONO_MAZOS} ${B3 ? "comandantes" : "mazos"} distintos entre las ${statMonth === "all" ? "fechas" : ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES) + " fechas"} del mes. ${statMonth === cm ? "El bono del mes en curso queda firme al cierre del mes." : ""} Desempate: kills, Buchholz y victorias.</p>
-        <div class="stand-scroll"><table><thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th title="Puntos negativos: penalizaciones y warnings">Neg</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${stand.map((p, i) => {
+      <div class="card"><div class="sec-head" style="margin:0"><h3>Standing ${statMonth === "all" ? "histórico" : "de " + monthLabel(statMonth).toLowerCase()}${standVis.length < stand.length ? " · Top " + standVis.length : ""}</h3>${topSel}</div><p class="card-sub">Suma de puntos de todas las jornadas del período, más el <b>bono de variedad: +${BONO_PTS} pts</b> para quien juegue al menos ${BONO_MAZOS} ${B3 ? "comandantes" : "mazos"} distintos entre las ${statMonth === "all" ? "fechas" : ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES) + " fechas"} del mes. ${statMonth === cm ? "El bono del mes en curso queda firme al cierre del mes." : ""} Desempate: kills, Buchholz y victorias.</p>
+        <div class="stand-scroll"><table><thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th title="Puntos negativos: penalizaciones y warnings">Neg</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${standVis.map((p, i) => {
           const top = Object.entries(p.decks).sort((a, b) => b[1] - a[1])[0];
           const pk = fold(p.nombre).trim();
-          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${ADMUI() && editPlayer === pk ? " sel" : ""}" ${ADMUI() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${ADMUI() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td class="l" style="color:var(--muted)">${top ? esc(DECK[top[0]] ? DECK[top[0]].name : top[0].replace(/^c:/, "")) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${ADMUI() ? '<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números.</p>' : ""}</div>
+          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${ADMUI() && editPlayer === pk ? " sel" : ""}" ${ADMUI() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${ADMUI() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td class="l" style="color:var(--muted)">${top ? esc(DECK[top[0]] ? DECK[top[0]].name : top[0].replace(/^c:/, "")) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${ADMUI() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú ves a los ${stand.length}.` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
       ${ADMUI() && editPlayer ? editStatsHTML(evsAll, statMonth) : ""}
       <div class="stats-grid">
         ${B3 ? `<div class="card"><div class="sec-head" style="margin:0"><h3>Comandantes más jugados</h3>${seg}</div>${bars(cmdUse)}</div>` : `<div class="card"><div class="sec-head" style="margin:0"><h3>Mazos más usados</h3>${seg}</div>${bars(deckRows)}</div>`}
@@ -1821,7 +1864,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   });
   window.addEventListener("resize", () => { if (view === "sorteo" && !spinning) renderSorteo(); });
   document.querySelector(".tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if (b) setView(b.dataset.view); });
-  $("stats").addEventListener("change", e => { if (e.target.id === "monthSel"){ statMonth = e.target.value; statMonthUser = true; e.target.blur(); renderStats(); } });
+  $("stats").addEventListener("change", e => { if (e.target.id === "topPubSel" && M.admin){ CAL.topPublico = +e.target.value; saveCal(); return; } if (e.target.id === "monthSel"){ statMonth = e.target.value; statMonthUser = true; e.target.blur(); renderStats(); } });
   $("stats").addEventListener("click", e => {
     if (ADMUI()){
       if (e.target.closest("[data-edit-close]")){ editPlayer = null; editMsg = {}; renderStats(); return; }
@@ -2162,7 +2205,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (inscOpen()){
       $("mainGrid").hidden = true; $("mine").hidden = true; $("insc").hidden = false;
       $("pips").innerHTML = `<span class="lbl">Inscripciones abiertas · ${c.rounds} rondas de ${c.min} min</span>`;
-      renderInsc(); renderLinks(); renderDecks(); fillCfg();
+      renderInsc(); renderLinks(); renderDecks(); fillCfg(); fixMissingCI();
       $("sampleBanner").hidden = true;
       $("offlineBanner").hidden = !(M.mode === "local" && M.reason);
       $("btnNext").disabled = true;
@@ -2213,7 +2256,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     } else { const mh = $("moveHint"); if (mh) mh.hidden = true; }
     $("standBody").innerHTML = stand.map((x, i) =>
       `<tr data-p="${x.id}" class="${i === 0 && x.pts > 0 ? "top1" : i < 3 && x.pts > 0 ? "top3" : ""}${x.id === focus ? " sel" : ""}${x.id === myPid ? " mine-row" : ""}"><td class="l pos">${i + 1}</td><td class="l nm">${esc(x.name)}${isDrop(x.id) ? ' <span class="tag drop" title="Dejó la fecha: no juega las próximas rondas, conserva sus puntos">Drop</span>' : isLate(x.id) ? ` <span class="tag late" title="Se sumó en la ronda ${S.players.find(p => p.id === x.id).late + 1}">Tardío</span>` : ""}${ADMUI() && x.warn ? `<span class="wmark" title="Warnings en esta fecha">⚠ ${x.warn}</span>` : ""}${cmdLine(x.id)}</td>
-       <td class="pts">${x.pts}${ADMUI() && x.pen ? `<span class="pen" title="Penalización por ${WARN_LIMIT} warnings">−${x.pen}</span>` : ""}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td class="buch">${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
+       <td class="pts">${x.pts}${(n => n ? `<span class="pen" title="Puntos negativos de la fecha${ADMUI() && x.pen ? " (incluye " + x.pen + " por " + WARN_LIMIT + " warnings)" : ""}">−${n}</span>` : "")(ADMUI() ? x.neg : x.neg - x.pen)}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td class="buch">${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
     $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V victorias · K kills · S rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.`;
@@ -2224,7 +2267,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (focus && S.players.some(p => p.id === focus)){ ficha.hidden = false; ficha.innerHTML = `<h3>${esc(pname(focus))}</h3>` + fichaHTML(focus, stand); }
     else ficha.hidden = true;
 
-    autoLink();
+    autoLink(); fixMissingCI();
     renderMine(stand, tableOf, myPid);
     renderLinks();
     renderDecks();

@@ -884,6 +884,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   //  1) Scryfall: comandantes y cualquier carta legendaria (también nombres en otros idiomas)
   //  2) Scryfall autocompletado: cualquier carta por nombre parcial (por si es nueva o aún no tiene tipo indexado)
   //  3) magicthegathering.io: cartas legendarias, como respaldo si Scryfall no responde
+  const errDetail = e => { const m = e && (e.message || String(e)); return m ? " Detalle: " + m : ""; };
   const getJSON = async (url, signal) => { const r = await fetch(url, {signal, headers:{Accept:"application/json"}}); if (r.status === 404) return null; if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); };
   const liHTML = c => `<li role="option" data-name="${esc(c.name)}" data-ci="${esc(c.ci == null ? "?" : c.ci)}"${c.unk ? ' data-unk="1"' : ""}${c.free ? ' data-free="1"' : ""}><span class="ci">${c.ci == null ? "" : ciPips(c.ci)}</span><span class="cn"><b>${esc(c.name)}</b>${c.sub ? `<small>${esc(c.sub)}</small>` : ""}</span></li>`;
   async function scrySearch(i, ul, q){
@@ -1163,7 +1164,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const r = readReg(prefix, "u:" + M.uid); if (!r) return;
     document.activeElement.blur();
     try { await M.db.doc("inscripciones/" + M.uid).set(r); editReg = null; }
-    catch(e){ $(prefix + "Err").textContent = "No se pudo inscribir. Revisa tu conexión e intenta de nuevo."; }
+    catch(e){ $(prefix + "Err").textContent = "No se pudo inscribir. Revisa tu conexión e intenta de nuevo." + errDetail(e); }
   }
   // Vincula cuentas con jugadores inscritos por el organizador cuando el nombre y apellido coinciden exactamente
   async function autoLinkByName(){
@@ -2399,7 +2400,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const res = norm(d);
     if (isAdm){ if (!M.admin) return; t.result = res; delete openEd[key]; delete drafts[key]; commit(); return; }
     try { await M.db.doc("votos/" + M.uid).set({r:S.cur, t:ti, pid:links[M.uid], res}); }
-    catch(err){ const el = $("voteErr"); if (el) el.textContent = "No se pudo enviar el reporte. Revisa tu conexión e intenta de nuevo."; }
+    catch(err){ const el = $("voteErr"); if (el) el.textContent = "No se pudo enviar el reporte. Revisa tu conexión e intenta de nuevo." + errDetail(err); }
   });
   // ----- Mover jugadores entre mesas -----
   let moveSel = null, dragPid = null;
@@ -2487,7 +2488,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       p.deck = deck; editDeck = null; document.activeElement.blur(); commit(); return;
     }
     try { document.activeElement.blur(); await M.db.doc("vinculos/" + M.uid).set({pid: links[M.uid], deck}); }
-    catch(err){ $("meErr").textContent = "No se pudo guardar. Revisa tu conexión e intenta de nuevo."; }
+    catch(err){ $("meErr").textContent = "No se pudo guardar. Revisa tu conexión e intenta de nuevo." + errDetail(err); }
   });
   $("standBody").addEventListener("click", e => {
     const tr = e.target.closest("tr[data-p]"); if (!tr) return;
@@ -2499,7 +2500,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       const code = ($("claimCode").value || "").trim().toUpperCase();
       if (code !== codeOf(pid)){ $("claimErr").textContent = "El código no coincide con ese nombre. Revísalo o pídeselo al organizador."; return; }
       try { await M.db.doc("vinculos/" + M.uid).set({pid}); }
-      catch(err){ $("claimErr").textContent = "No se pudo vincular. Revisa tu conexión e intenta de nuevo."; }
+      catch(err){ $("claimErr").textContent = "No se pudo vincular. Revisa tu conexión e intenta de nuevo." + errDetail(err); }
       return;
     }
     if (e.target.id === "btnUnclaim"){ try { await M.db.doc("vinculos/" + M.uid).delete(); } catch(err){} }

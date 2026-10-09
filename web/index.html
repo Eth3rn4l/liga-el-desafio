@@ -527,6 +527,7 @@ body.display .hdr-right{display:none}
 .combo-list li.dis{cursor:default;opacity:.7}
 .combo-list li.dis:hover{background:transparent}
 .links.decks li .combo-list{position:static;margin-top:4px}
+.neg{color:#ff6b5e;font-weight:700}
 </style>
 </head>
 <body>
@@ -1216,7 +1217,7 @@ body.display .hdr-right{display:none}
     const done = S.rounds.length === S.cfg.rounds && S.rounds.every(r => r.tables.every(t => t.result));
     const ev = {id: S.archivedId || "actual", liga: LIGA, mes: curMes(), fecha: (S.archivedId && hist[S.archivedId] && hist[S.archivedId].fecha) || S.fecha || lastSaturday(),
       enCurso: !done, ejemplo: !!S.sample, rondas: S.cfg.rounds,
-      jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k || "" : "", ci:d && d.ci || undefined, cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch, drop:isDrop(x.id) || undefined, tarde:isLate(x.id) || undefined}; }),
+      jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k || "" : "", ci:d && d.ci || undefined, cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch, neg:x.neg || undefined, drop:isDrop(x.id) || undefined, tarde:isLate(x.id) || undefined}; }),
       sorteo: ((S.sorteo && S.sorteo.ganadores) || []).map(pname)};
     // vs[rival] = [mesas juntos, mesas que ganó el rival, mesas que gané yo]
     const vsOf = {};
@@ -1266,8 +1267,8 @@ body.display .hdr-right{display:none}
     // Standing del período
     const P = {};
     inMonth.forEach(e => e.jugadores.forEach(j => {
-      const key = fold(j.nombre).trim(); const p = P[key] = P[key] || {nombre:j.nombre, fechas:0, base:0, w:0, kills:0, s:0, pj:0, buch:0, decks:{}, porMes:{}};
-      p.fechas++; p.base += j.pts; p.w += j.w; p.kills += j.kills; p.s += j.s; p.pj += j.pj; p.buch += j.buch || 0;
+      const key = fold(j.nombre).trim(); const p = P[key] = P[key] || {nombre:j.nombre, fechas:0, base:0, w:0, kills:0, s:0, pj:0, buch:0, neg:0, decks:{}, porMes:{}};
+      p.fechas++; p.base += j.pts; p.w += j.w; p.kills += j.kills; p.s += j.s; p.pj += j.pj; p.buch += j.buch || 0; p.neg += j.neg || 0;
       const dk = j.k || (j.cmd ? "c:" + j.cmd : ""); if (dk){ p.decks[dk] = (p.decks[dk] || 0) + 1; const ym = mesDe(e); (p.porMes[ym] = p.porMes[ym] || new Set()).add(dk); }
     }));
     // Bono de variedad: +BONO_PTS por cada mes en que el jugador usó al menos BONO_MAZOS mazos distintos
@@ -1301,6 +1302,8 @@ body.display .hdr-right{display:none}
     const colUse = Object.entries(CO).sort((a, b) => b[1].uses - a[1].uses).slice(0, 10).map(([ck, x]) => ({name:CI_NAMES[ck] || ck, sub:ck || "C", v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"} · ${x.w} V`, tip:`${x.uses} inscripciones, ${x.w} mesas ganadas`}));
     const cmdRows = Object.entries(C).filter(([, c]) => c.kills > 0).sort((a, b) => b[1].kills - a[1].kills || a[1].pj - b[1].pj).slice(0, 10).map(([n, c]) => ({
       name:n, sub:"", v:c.kills, val:`${c.kills} ${c.kills === 1 ? "kill" : "kills"} · ${c.pj} PJ`, tip:`${c.kills} kills en ${c.pj} partidas`}));
+    const NG = {}; rk.forEach(e => e.jugadores.forEach(j => { if (j.neg > 0){ const x = NG[j.nombre] = NG[j.nombre] || {neg:0, f:0}; x.neg += j.neg; x.f++; } }));
+    const negRows = Object.entries(NG).sort((a, b) => b[1].neg - a[1].neg).slice(0, 10).map(([n, x]) => ({name:n, sub:"", v:x.neg, val:`−${x.neg} pts · ${x.f} ${x.f === 1 ? "fecha" : "fechas"}`, tip:`${x.neg} puntos negativos en ${x.f} ${x.f === 1 ? "fecha" : "fechas"}`}));
     const seg = `<div class="seg" role="group" aria-label="Período de los rankings"><button type="button" data-scope="all" aria-pressed="${rankScope === "all"}">Histórico</button><button type="button" data-scope="month" aria-pressed="${rankScope === "month"}">${statMonth === "all" ? "Período" : "Mes"}</button></div>`;
     const totK = inMonth.reduce((s, e) => s + e.jugadores.reduce((t, j) => t + j.kills, 0), 0);
     const hasEx = evsAll.some(e => e.ejemplo);
@@ -1331,14 +1334,15 @@ body.display .hdr-right{display:none}
       ${evs.length && ADMUI() ? `<div class="summary"><span><b>${inMonth.length}</b>${inMonth.length === 1 ? "jornada" : "jornadas"}</span><span><b>${stand.length}</b>jugadores</span><span><b>${totK}</b>kills</span></div>` : ""}
       ${!evs.length ? '<div class="empty"><b>Aún no hay jornadas</b>Cuando se registren resultados en la liga, aquí aparecerán el standing del mes y los rankings de mazos y comandantes.</div>' : `
       <div class="card"><h3>Standing ${statMonth === "all" ? "histórico" : "de " + monthLabel(statMonth).toLowerCase()}</h3><p class="card-sub">Suma de puntos de todas las jornadas del período, más el <b>bono de variedad: +${BONO_PTS} pts</b> para quien juegue al menos ${BONO_MAZOS} ${B3 ? "comandantes" : "mazos"} distintos entre las ${statMonth === "all" ? "fechas" : ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES) + " fechas"} del mes. ${statMonth === cm ? "El bono del mes en curso queda firme al cierre del mes." : ""} Desempate: kills, Buchholz y victorias.</p>
-        <div class="stand-scroll"><table><thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${stand.map((p, i) => {
+        <div class="stand-scroll"><table><thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th title="Puntos negativos: penalizaciones y warnings">Neg</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${stand.map((p, i) => {
           const top = Object.entries(p.decks).sort((a, b) => b[1] - a[1])[0];
           const pk = fold(p.nombre).trim();
-          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${ADMUI() && editPlayer === pk ? " sel" : ""}" ${ADMUI() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${ADMUI() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td class="l" style="color:var(--muted)">${top ? esc(DECK[top[0]] ? DECK[top[0]].name : top[0].replace(/^c:/, "")) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${ADMUI() ? '<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números.</p>' : ""}</div>
+          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${ADMUI() && editPlayer === pk ? " sel" : ""}" ${ADMUI() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${ADMUI() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td class="l" style="color:var(--muted)">${top ? esc(DECK[top[0]] ? DECK[top[0]].name : top[0].replace(/^c:/, "")) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${ADMUI() ? '<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números.</p>' : ""}</div>
       ${ADMUI() && editPlayer ? editStatsHTML(evsAll, statMonth) : ""}
       <div class="stats-grid">
         ${B3 ? `<div class="card"><div class="sec-head" style="margin:0"><h3>Comandantes más jugados</h3>${seg}</div>${bars(cmdUse)}</div>` : `<div class="card"><div class="sec-head" style="margin:0"><h3>Mazos más usados</h3>${seg}</div>${bars(deckRows)}</div>`}
         <div class="card"><div class="sec-head" style="margin:0"><h3>Comandantes con más kills</h3>${seg}</div>${bars(cmdRows)}</div>
+        <div class="card"><div class="sec-head" style="margin:0"><h3>Más puntos negativos</h3>${seg}</div>${negRows.length ? bars(negRows) : '<p class="msg" style="margin:0">Nadie ha perdido puntos en este período.</p>'}</div>
         ${B3 ? `<div class="card"><div class="sec-head" style="margin:0"><h3>Colores más jugados</h3>${seg}</div>${bars(colUse)}</div>` : `<div class="card"><div class="sec-head" style="margin:0"><h3>Ediciones más jugadas</h3>${seg}</div>${bars(edUse)}</div>
         <div class="card"><div class="sec-head" style="margin:0"><h3>Ediciones que más ganan</h3>${seg}</div>${bars(edWin)}</div>`}
       </div>`}
@@ -1354,13 +1358,13 @@ body.display .hdr-right{display:none}
     const live = S && (currentEvent() || {}).id;
     return `<div class="card edit-stats" id="editStats"><div class="sec-head" style="margin:0"><h3>Corregir estadísticas · ${esc(nombre)}</h3><button class="btn ghost" type="button" data-edit-close>Cerrar</button></div>
       <p class="card-sub">Cambia los números de una fecha guardada y presiona Guardar. El standing y las estadísticas se recalculan solos. Queda registro de quién corrigió y cuándo.</p>
-      <div class="stand-scroll"><table class="edit-tbl"><thead><tr><th class="l">Fecha</th><th>Pts</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th class="l">Motivo (opcional)</th><th></th></tr></thead><tbody>${list.map(e => {
+      <div class="stand-scroll"><table class="edit-tbl"><thead><tr><th class="l">Fecha</th><th>Pts</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th title="Puntos negativos (solo informativo: los Pts ya los descuentan)">Neg</th><th class="l">Motivo (opcional)</th><th></th></tr></thead><tbody>${list.map(e => {
         const j = e.jugadores.find(j => fold(j.nombre).trim() === editPlayer);
         const enVivo = e.enCurso || e.id === "actual" || e.id === live;
         const ult = (e.editado || []).filter(x => fold(x.nombre).trim() === editPlayer).slice(-1)[0];
         const num = (f, v, max) => `<input type="number" inputmode="numeric" data-ef="${f}" value="${v}" min="${f === "pts" ? -20 : 0}" max="${max}" ${enVivo ? "disabled" : ""} aria-label="${f}">`;
         return `<tr data-ev="${esc(e.id)}"><td class="l">${fmtDate(e.fecha)}${ult ? `<span class="why">Corregido ${new Date(ult.at).toLocaleDateString("es-CL")}${ult.motivo ? " · " + esc(ult.motivo) : ""}</span>` : ""}</td>
-          <td>${num("pts", j.pts, 60)}</td><td>${num("w", j.w, 8)}</td><td>${num("kills", j.kills, 40)}</td><td>${num("s", j.s, 8)}</td><td>${num("pj", j.pj, 8)}</td>
+          <td>${num("pts", j.pts, 60)}</td><td>${num("w", j.w, 8)}</td><td>${num("kills", j.kills, 40)}</td><td>${num("s", j.s, 8)}</td><td>${num("pj", j.pj, 8)}</td><td>${num("neg", j.neg || 0, 40)}</td>
           <td class="l">${enVivo ? '<span class="note">En curso: corrige el resultado en su mesa, en “Liga en vivo”.</span>' : `<input type="text" data-ef="motivo" maxlength="80" placeholder="Ej.: mal reporte mesa 3">`}</td>
           <td>${enVivo ? "" : `<button class="btn primary" type="button" data-edit-save="${esc(e.id)}">Guardar</button>`}<span class="${editMsg[e.id] && editMsg[e.id].ok ? "ok-t" : "err"}" style="display:block;font-size:12px">${editMsg[e.id] ? esc(editMsg[e.id].t) : ""}</span></td></tr>`; }).join("")}</tbody></table></div></div>`;
   }
@@ -1370,10 +1374,10 @@ body.display .hdr-right{display:none}
     const j = (doc.jugadores || []).find(j => fold(j.nombre).trim() === editPlayer); if (!j) return;
     const get = f => tr.querySelector(`[data-ef="${f}"]`);
     const vals = {}; let bad = "";
-    [["pts", -20, 60], ["w", 0, 8], ["kills", 0, 40], ["s", 0, 8], ["pj", 0, 8]].forEach(([f, lo, hi]) => { const v = parseInt(get(f).value, 10); if (isNaN(v) || v < lo || v > hi) bad = bad || `Revisa el valor de ${f === "pts" ? "puntos" : f === "w" ? "victorias" : f === "kills" ? "kills" : f === "s" ? "sobrevivió" : "partidas"}.`; vals[f] = v; });
+    [["pts", -20, 60], ["w", 0, 8], ["kills", 0, 40], ["s", 0, 8], ["pj", 0, 8], ["neg", 0, 40]].forEach(([f, lo, hi]) => { const v = parseInt(get(f).value, 10); if (isNaN(v) || v < lo || v > hi) bad = bad || `Revisa el valor de ${f === "pts" ? "puntos" : f === "w" ? "victorias" : f === "kills" ? "kills" : f === "s" ? "sobrevivió" : f === "neg" ? "puntos negativos" : "partidas"}.`; vals[f] = v; });
     if (!bad && vals.w + vals.s > vals.pj) bad = "Victorias + sobrevivió no puede ser mayor que las partidas jugadas.";
     if (bad){ editMsg[id] = {t:bad}; renderStats(); return; }
-    const antes = {pts:j.pts, w:j.w, kills:j.kills, s:j.s, pj:j.pj};
+    const antes = {pts:j.pts, w:j.w, kills:j.kills, s:j.s, pj:j.pj, neg:j.neg || 0};
     if (Object.keys(vals).every(k => vals[k] === antes[k])){ editMsg[id] = {t:"Sin cambios.", ok:true}; renderStats(); return; }
     Object.assign(j, vals);
     doc.editado = (doc.editado || []).concat([{at:Date.now(), por:M.email || "organizador", nombre:j.nombre, antes, despues:vals, motivo:(get("motivo").value || "").trim().slice(0, 80)}]);
@@ -1405,7 +1409,7 @@ body.display .hdr-right{display:none}
     if (!me || (!linked && !PORTAL)) return PORTAL ? '<div class="card"><h3>Mis estadísticas</h3><p class="msg">Entra con tu cuenta para ver tu año en la liga.</p></div>' : "";
     const key = fold(me.name).trim();
     const mine = evs.map(e => ({e, j: e.jugadores.find(j => fold(j.nombre).trim() === key)})).filter(x => x.j);
-    const tot = mine.reduce((a, {j}) => ({pts:a.pts + j.pts, w:a.w + j.w, k:a.k + j.kills, pj:a.pj + j.pj}), {pts:0, w:0, k:0, pj:0});
+    const tot = mine.reduce((a, {j}) => ({pts:a.pts + j.pts, w:a.w + j.w, k:a.k + j.kills, pj:a.pj + j.pj, neg:a.neg + (j.neg || 0)}), {pts:0, w:0, k:0, pj:0, neg:0});
     const monthDecks = new Set(mine.filter(x => mesDe(x.e) === cm).map(x => x.j.k || (x.j.cmd ? "c:" + x.j.cmd : "")).filter(Boolean));
     // posición en el standing del mes (con bono)
     const P = {};
@@ -1429,10 +1433,11 @@ body.display .hdr-right{display:none}
         <div class="kpi"><b>${mine.length}</b><span>Fechas jugadas</span></div>
         <div class="kpi"><b>${tot.w}</b><span>Victorias</span></div>
         <div class="kpi"><b>${tot.k}</b><span>Kills</span></div>
+        <div class="kpi"><b class="${tot.neg ? "neg" : ""}">${tot.neg ? "−" + tot.neg : 0}</b><span>Puntos negativos</span></div>
         <div class="kpi"><b class="${monthDecks.size >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(monthDecks.size, BONO_MAZOS)}/${BONO_MAZOS}</b><span>${B3 ? "Comandantes" : "Mazos"} este mes (bono +${BONO_PTS})</span></div>
       </div>
       <div class="mine-grid">
-        <div class="box"><h3>Últimas fechas</h3><ul class="hist">${mine.slice(0, 6).map(({e, j}) => `<li><span class="r">${fmtDate(e.fecha)}</span><span class="vs">${DECK[j.k] ? esc(DECK[j.k].name) : "–"} · ${j.w} V · ${j.kills} K</span><span class="res ${j.pts >= 6 ? "w" : ""}">${j.pts} pts${e.enCurso ? " · en curso" : ""}</span></li>`).join("") || '<li><span class="vs">Todavía no hay fechas registradas.</span></li>'}</ul></div>
+        <div class="box"><h3>Últimas fechas</h3><ul class="hist">${mine.slice(0, 6).map(({e, j}) => `<li><span class="r">${fmtDate(e.fecha)}</span><span class="vs">${DECK[j.k] ? esc(DECK[j.k].name) : "–"} · ${j.w} V · ${j.kills} K</span><span class="res ${j.pts >= 6 ? "w" : ""}">${j.pts} pts${j.neg ? ` (−${j.neg})` : ""}${e.enCurso ? " · en curso" : ""}</span></li>`).join("") || '<li><span class="vs">Todavía no hay fechas registradas.</span></li>'}</ul></div>
         <div class="box"><h3>Tus favoritos</h3>${B3 ? "" : `<p class="msg" style="margin:0">Mazo más jugado: <b>${topDeck && DECK[topDeck[0]] ? esc(DECK[topDeck[0]].name) + " (" + topDeck[1] + ")" : "–"}</b></p>`}<p class="msg" style="margin:0">Comandante con más kills: <b>${topCmd ? esc(topCmd[0]) + " (" + topCmd[1] + ")" : "–"}</b></p>${B3 ? (() => { const cc = {}; mine.forEach(({j}) => { if (j.cmd) cc[j.cmd] = (cc[j.cmd] || 0) + 1; }); const t = Object.entries(cc).sort((a, b) => b[1] - a[1])[0]; return `<p class="msg" style="margin:0">Comandante más jugado: <b>${t ? esc(t[0]) + " (" + t[1] + ")" : "–"}</b></p>`; })() : ""}<p class="msg" style="margin:0" ${B3 ? "hidden" : ""}>Edición favorita: <b>${topEd ? esc(topEd[0]) + " (" + topEd[1][0] + (topEd[1][0] === 1 ? " vez" : " veces") + ")" : "–"}</b></p><p class="msg" style="margin:0">Mesas ganadas: <b>${tot.w} de ${tot.pj} (${pct}%)</b></p></div>
         <div class="box"><h3>Tus rivales</h3>${rv.length ? `<p class="msg" style="margin:0">Más enfrentado: <b>${esc(masVisto[0])}</b> (${masVisto[1][0]} ${masVisto[1][0] === 1 ? "mesa" : "mesas"})</p>
           <p class="msg" style="margin:0">Tu némesis: <b>${nemesis ? esc(nemesis[0]) : "–"}</b>${nemesis ? ` (te ganó ${nemesis[1][1]} ${nemesis[1][1] === 1 ? "mesa" : "mesas"})` : ""}</p>
@@ -1951,19 +1956,19 @@ body.display .hdr-right{display:none}
   function standings(st, upto){
     upto = upto == null ? st.rounds.length : upto;
     const c = st.cfg, rec = {};
-    st.players.forEach((p, i) => rec[p.id] = {id:p.id, name:p.name, pts:0, w:0, k:0, s:0, pj:0, opps:[], ord:i});
+    st.players.forEach((p, i) => rec[p.id] = {id:p.id, name:p.name, pts:0, w:0, k:0, s:0, pj:0, neg:0, opps:[], ord:i});
     st.rounds.slice(0, upto).forEach(r => r.tables.forEach(t => {
       if (!t.result) return;
       t.seats.forEach(id => {
         const x = rec[id]; if (!x) return;
-        x.pj++; x.pts += points(t.result, id, c); x.k += kills(t.result, id);
+        x.pj++; x.pts += points(t.result, id, c); x.k += kills(t.result, id); if (!dq(t.result, id)) x.neg += brute(t.result, id) * (c.bruto || 0);
         if (isWin(t.result, id)) x.w++; else if (alive(t.result, id)) x.s++;
         t.seats.forEach(o => { if (o !== id) x.opps.push(o); });
       });
     }));
     const list = Object.values(rec);
     const W = st.warnings || {};
-    list.forEach(x => { x.warn = W[x.id] || 0; x.pen = x.warn >= WARN_LIMIT ? WARN_PEN : 0; x.pts -= x.pen; });
+    list.forEach(x => { x.warn = W[x.id] || 0; x.pen = x.warn >= WARN_LIMIT ? WARN_PEN : 0; x.pts -= x.pen; x.neg += x.pen; });
     list.forEach(x => { x.buch = x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0); });
     list.sort((a, b) => b.pts - a.pts || b.k - a.k || b.buch - a.buch || a.ord - b.ord);
     return list;
@@ -1979,6 +1984,7 @@ body.display .hdr-right{display:none}
         <div class="kpi"><b>${me.pts}</b><span>Puntos</span></div>
         <div class="kpi"><b>${me.w}</b><span>Victorias</span></div>
         <div class="kpi"><b>${me.k}</b><span>Kills</span></div>
+        <div class="kpi"><b class="${me.neg ? "neg" : ""}">${me.neg ? "−" + me.neg : 0}</b><span>Puntos negativos</span></div>
         <div class="kpi"><b>${me.buch}</b><span>Buchholz</span></div>
       </div>
       <h3>Historial</h3>
@@ -1987,7 +1993,7 @@ body.display .hdr-right{display:none}
         let tag = '<span class="res">En juego</span>';
         if (r){
           const det = isWin(r, pid) ? "Ganó" : [kills(r, pid) ? kills(r, pid) + " kill" + (kills(r, pid) > 1 ? "s" : "") : "", alive(r, pid) ? "vivo" : ""].filter(Boolean).join(" · ") || "Eliminado";
-          tag = `<span class="res ${isWin(r, pid) ? "w" : alive(r, pid) ? "d" : ""}">+${points(r, pid, S.cfg)} · ${det}</span>`;
+          tag = `<span class="res ${isWin(r, pid) ? "w" : alive(r, pid) ? "d" : ""}">${(v => v < 0 ? "−" + -v : "+" + v)(points(r, pid, S.cfg))} · ${det}${brute(r, pid) && !dq(r, pid) ? ` · −${brute(r, pid) * (S.cfg.bruto || 0)} bruto` : ""}</span>`;
         }
         return `<li><span class="r">R${ri + 1} · M${ti + 1}</span><span class="vs">vs ${vs}</span>${tag}</li>`;
       }).join("")}</ul>

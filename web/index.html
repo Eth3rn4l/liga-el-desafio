@@ -814,11 +814,18 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   let CI_CACHE = {}; try { CI_CACHE = JSON.parse(localStorage.getItem(CI_CK) || "{}"); } catch(e){}
   const ciFor = (name, ci) => ci != null ? ci : (name ? CI_CACHE[fold(name).trim()] : undefined);
   const ciAsked = new Set();
+  const ciTag = ci => ci != null ? `<span class="ci">${ciPips(ci)}</span>` : "";
+  let ciPre = false;
+  function precargarCI(){
+    const names = (S ? S.players.map(p => p.deck && (p.deck.c || (DECK[p.deck.k] && DECK[p.deck.k].cmd))) : []);
+    if (!B3 && !ciPre){ ciPre = true; Object.values(DECK).forEach(d => names.push(...d.legs)); }
+    resolveCIs(names.filter(Boolean)).then(ok => { if (ok){ render(); if (view === "stats") renderStats(); } });
+  }
   async function resolveCIs(names){
-    const want = [...new Set(names.filter(Boolean).map(n => n.trim()))].filter(n => CI_CACHE[fold(n).trim()] == null && !ciAsked.has(fold(n).trim()));
+    const want = [...new Set(names.filter(Boolean).map(n => n.trim()))].filter(n => !(fold(n).trim() in CI_CACHE) && !ciAsked.has(fold(n).trim()));
     if (!want.length) return false;
     want.forEach(n => ciAsked.add(fold(n).trim()));
-    let got = false;
+    let got = false, fuzzy = 0;
     const put = (n, card) => { const ci = (card.color_identity || []).join(""); CI_CACHE[fold(n).trim()] = ci; CI_CACHE[fold(card.name).trim()] = ci; if (card.name.includes(" // ")) CI_CACHE[fold(card.name.split(" // ")[0]).trim()] = ci; got = true; };
     try {
       for (let i = 0; i < want.length; i += 75){
@@ -827,8 +834,10 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         if (!r.ok) continue;
         const j = await r.json();
         (j.data || []).forEach(c => { const n = chunk.find(x => fold(x).trim() === fold(c.name).trim() || fold(x).trim() === fold(c.name.split(" // ")[0]).trim()) || c.name; put(n, c); });
-        for (const nf of (j.not_found || []).slice(0, 15)){
-          try { const c = await getJSON("https://api.scryfall.com/cards/named?fuzzy=" + encodeURIComponent(nf.name)); if (c && c.name) put(nf.name, c); } catch(e){}
+        const miss = (j.not_found || []).map(x => x.name);
+        for (const n of miss){
+          if (fuzzy++ >= 20) break;
+          try { const c = await getJSON("https://api.scryfall.com/cards/named?fuzzy=" + encodeURIComponent(n)); if (c && c.name) put(n, c); else if (c === null){ CI_CACHE[fold(n).trim()] = null; got = true; } } catch(e){}
           await new Promise(res => setTimeout(res, 110));
         }
       }
@@ -851,9 +860,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function cmdLine(pid, long){
     const d = deckOf(pid);
     if (!d) return `<span class="cmd none">${B3 ? "Sin comandante declarado" : "Sin mazo declarado"}</span>`;
-    if (B3 || !d.k) return `<span class="cmd">${d.ci != null ? `<span class="ci">${ciPips(d.ci)}</span>` : ""}${esc(d.c || "")}</span>`;
+    if (B3 || !d.k) return `<span class="cmd">${ciTag(ciFor(d.c, d.ci))}${esc(d.c || "")}</span>`;
     const deck = DECK[d.k];
-    return `<span class="cmd" title="${esc(deckLabel(d.k))}">${esc(d.c || (deck && deck.cmd) || "")}${deck ? " · " + esc(long ? deckLabel(d.k) : deck.name) : ""}</span>`;
+    return `<span class="cmd" title="${esc(deckLabel(d.k))}">${ciTag(ciFor(d.c || (deck && deck.cmd)))}${esc(d.c || (deck && deck.cmd) || "")}${deck ? " · " + esc(long ? deckLabel(d.k) : deck.name) : ""}</span>`;
   }
   function deckFormHTML(prefix, d){
     if (B3) return `<div class="deck-form" id="${prefix}Form">
@@ -985,12 +994,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const hit = txt => q.every(w => fold(txt).includes(w));
     if (/Deck$/.test(input.id)){
       return PRECONS.filter(([set, name, cmd, legs]) => hit(name + " " + set + " " + (legs || [cmd]).join(" ")))
-        .map(([set, name, cmd]) => ({value:name + " — " + set, main:name, sub:set + " · " + cmd}));
+        .map(([set, name, cmd]) => ({value:name + " — " + set, main:name, sub:set + " · " + cmd, ci:ciFor(cmd)}));
     }
     const k = DECK_BY_LABEL[($(input.id.replace("Cmd", "Deck")) || {}).value || ""];
     if (!k) return [{value:"", main:"Elige primero el mazo", sub:"", disabled:true}];
     const d = DECK[k], typed = (query || "").trim();
-    const opts = d.legs.filter(l => !typed || hit(l)).map(l => ({value:l, main:l, sub: l === d.cmd ? "Comandante de portada" : "Legendaria del mazo"}));
+    const opts = d.legs.filter(l => !typed || hit(l)).map(l => ({value:l, main:l, sub: l === d.cmd ? "Comandante de portada" : "Legendaria del mazo", ci:ciFor(l)}));
     if (typed && !d.legs.some(l => fold(l) === fold(typed))) opts.push({value:typed, main:`Usar “${typed}”`, sub:"Escribir otra carta a mano"});
     return opts;
   }
@@ -1001,7 +1010,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const opts = comboOptions(input, showAll || isDeckPicked ? "" : input.value);
     comboState = {input, opts, idx: opts.findIndex(o => !o.disabled)};
     list._opts = opts;
-    list.innerHTML = opts.length ? opts.map((o, i) => `<li role="option" id="${input.id}Opt${i}" data-i="${i}" class="${o.disabled ? "dis" : ""}${o.value === input.value ? " cur" : ""}" aria-selected="false"><b>${esc(o.main)}</b>${o.sub ? `<span>${esc(o.sub)}</span>` : ""}</li>`).join("")
+    list.innerHTML = opts.length ? opts.map((o, i) => `<li role="option" id="${input.id}Opt${i}" data-i="${i}" class="${o.disabled ? "dis" : ""}${o.value === input.value ? " cur" : ""}" aria-selected="false"><b>${ciTag(o.ci)}${esc(o.main)}</b>${o.sub ? `<span>${esc(o.sub)}</span>` : ""}</li>`).join("")
       : '<li class="dis"><b>Sin resultados</b><span>Ese mazo no está en la lista de precons permitidos</span></li>';
     list.hidden = false; input.setAttribute("aria-expanded", "true");
     comboMark();
@@ -1140,9 +1149,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   function cmdLineDeck(d, long){
     if (!d || !(d.k || d.c)) return `<span class="cmd none">${B3 ? "Sin comandante declarado" : "Sin mazo declarado"}</span>`;
-    if (B3 || !d.k) return `<span class="cmd">${d.ci != null ? `<span class="ci">${ciPips(d.ci)}</span>` : ""}${esc(d.c || "")}</span>`;
+    if (B3 || !d.k) return `<span class="cmd">${ciTag(ciFor(d.c, d.ci))}${esc(d.c || "")}</span>`;
     const deck = DECK[d.k];
-    return `<span class="cmd">${esc(d.c || (deck && deck.cmd) || "")}${deck ? " · " + esc(long ? deckLabel(d.k) : deck.name) : ""}</span>`;
+    return `<span class="cmd">${ciTag(ciFor(d.c || (deck && deck.cmd)))}${esc(d.c || (deck && deck.cmd) || "")}${deck ? " · " + esc(long ? deckLabel(d.k) : deck.name) : ""}</span>`;
   }
   async function saveReg(prefix){
     if (prefix === "rgL"){
@@ -2216,7 +2225,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (inscOpen()){
       $("mainGrid").hidden = true; $("mine").hidden = true; $("insc").hidden = false;
       $("pips").innerHTML = `<span class="lbl">Inscripciones abiertas · ${c.rounds} rondas de ${c.min} min</span>`;
-      renderInsc(); renderLinks(); renderDecks(); fillCfg(); fixMissingCI();
+      renderInsc(); renderLinks(); renderDecks(); fillCfg(); fixMissingCI(); precargarCI();
       $("sampleBanner").hidden = true;
       $("offlineBanner").hidden = !(M.mode === "local" && M.reason);
       $("btnNext").disabled = true;
@@ -2278,7 +2287,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (focus && S.players.some(p => p.id === focus)){ ficha.hidden = false; ficha.innerHTML = `<h3>${esc(pname(focus))}</h3>` + fichaHTML(focus, stand); }
     else ficha.hidden = true;
 
-    autoLink(); fixMissingCI();
+    autoLink(); fixMissingCI(); precargarCI();
     renderMine(stand, tableOf, myPid);
     renderLinks();
     renderDecks();

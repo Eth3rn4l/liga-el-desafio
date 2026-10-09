@@ -88,8 +88,10 @@ if (SIMULAR) { iniciar(); return; }
 // ---------- WhatsApp ----------
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
+const NUMERO = String(CFG.numeroBot || "").replace(/\D/g, "");   // ej. 56912345678: vincula con código en vez de QR
 client = new Client({
   authStrategy: new LocalAuth({ dataPath: path.join(DIR, "sesion-whatsapp") }),
+  ...(NUMERO ? { pairWithPhoneNumber: { phoneNumber: NUMERO, showNotification: true } } : {}),
   // En un servidor Linux (p. ej. ARM de Oracle) se usa el Chromium del sistema: "chromePath": "/usr/bin/chromium"
   puppeteer: { headless: true, executablePath: CFG.chromePath || undefined, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] }
 });
@@ -97,6 +99,10 @@ client.on("qr", qr => {
   console.log("\nEscanea este código con el WhatsApp del número del bot:");
   console.log("WhatsApp → Dispositivos vinculados → Vincular un dispositivo\n");
   qrcode.generate(qr, { small: true });
+});
+client.on("code", code => {
+  console.log("\nCódigo para vincular el WhatsApp del bot: " + code);
+  console.log("En el celular del bot: WhatsApp → Dispositivos vinculados → Vincular un dispositivo → Vincular con número de teléfono, y escribe el código.\n");
 });
 client.on("authenticated", () => console.log(`${hora()} Sesión de WhatsApp guardada.`));
 client.on("auth_failure", m => console.error("No se pudo iniciar sesión en WhatsApp:", m));

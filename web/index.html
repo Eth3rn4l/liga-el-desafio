@@ -288,6 +288,7 @@ body:not(.liga-b3) .b3-only{display:none!important}
 .ed-extras{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:4px 0 12px}
 .ed-box{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .ed-box h4{margin:0;font-size:14px}
+.ed-aviso{margin:6px 0 0;padding:8px 10px;border-radius:10px;background:rgba(233,180,76,.12);color:var(--gold);font-size:13px}
 .ed-box input:not([type=checkbox]){background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
 .ed-box .row input{width:auto}
 .cmd.oculto{color:var(--muted);opacity:.85;font-style:italic}
@@ -2357,7 +2358,11 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         </div></div>`;
     }).join("");
     const err = validate(d, seats);
+    // Aviso (no bloquea): hay eliminados sin kill asignada, típico al marcar solo "Ganó"
+    const muertos = seats.length - d.a.length, sumK = seats.reduce((s_, p) => s_ + kills(d, p), 0);
+    const aviso = !err && sumK < muertos ? `Hay ${muertos} ${muertos === 1 ? "eliminado" : "eliminados"} y ${sumK === 0 ? "ninguna kill anotada" : "solo " + sumK + (sumK === 1 ? " kill anotada" : " kills anotadas")}. Si alguien los eliminó, súmale sus kills con “+” (cuentan para el desempate y las estadísticas).` : "";
     return `<div class="ed" data-key="${key}">${rows}
+      ${aviso ? `<p class="ed-aviso">${esc(aviso)}</p>` : ""}
       <div class="ed-foot"><span class="err">${esc(err)}</span><button type="button" class="btn primary" data-act="send" ${err ? "disabled" : ""}>${label}</button></div></div>`;
   }
   function edAction(key, act, p, seats){

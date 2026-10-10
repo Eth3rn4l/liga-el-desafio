@@ -314,6 +314,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     historial:     {key:"id",      shape:"data"},
     votos:         {key:"user_id", shape:"data"},
     inscripciones: {key:"user_id", shape:"data"},
+    contactos:     {key:"id",      shape:"data"},   // correos de jugadores: solo organizadores
     vinculos:      {key:"user_id", shape:"cols", scoped:true}
   };
   T.votos.scoped = true; T.inscripciones.scoped = true;

@@ -285,6 +285,11 @@ body:not(.liga-b3) .b3-only{display:none!important}
 .nm-wrap .nm{min-width:0}
 .cmd{display:block;font-size:12px;font-weight:400;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .cmd.none{color:var(--gold);opacity:.75}
+.ed-extras{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:4px 0 12px}
+.ed-box{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.ed-box h4{margin:0;font-size:14px}
+.ed-box input:not([type=checkbox]){background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+.ed-box .row input{width:auto}
 .cmd.oculto{color:var(--muted);opacity:.85;font-style:italic}
 td.nm .cmd{max-width:220px}
 .deck-line{margin:0}
@@ -1226,7 +1231,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const adminForm = ADMUI() ? `<div class="box"><h3>${editReg ? "Editar inscrito" : "Inscribir participante"}</h3>${regFormHTML("rgA", editReg ? list.find(r => r.id === editReg) : null)}</div>` : "";
     box.innerHTML = `<div class="sec-head"><h2>Inscripciones</h2><span class="meta">${n} inscritos${n >= 3 ? ` · ${sz.length} ${sz.length === 1 ? "mesa" : "mesas"} (${sz.filter(x => x === 4).length} de 4${sz.includes(3) ? ", " + sz.filter(x => x === 3).length + " de 3" : ""})` : ""}</span></div>
       <div class="insc-grid">${adminForm}${self}
-        <div class="box insc-list"><h3>Participantes</h3>${n ? `<ol class="reg-list">${list.map((r, i) => `<li><span class="n">${i + 1}</span><span class="nm-wrap"><span class="nm">${esc(fullName(r))}</span>${verTodo() || (M.uid && (r.id === "u:" + M.uid || links[M.uid] === r.id)) ? cmdLineDeck(r.deck, true) : (r.deck && (r.deck.k || r.deck.c) ? OCULTO : cmdLineDeck(r.deck, true))}${ADMUI() && r.email ? `<span class="cmd">${esc(r.email)}</span>` : ""}</span>${ADMUI() ? `<span class="reg-act">${r.src === "admin" ? `<button type="button" data-reg-edit="${esc(r.id)}">Editar</button>` : '<span class="tag">Por cuenta</span>'}<button type="button" data-reg-del="${esc(r.id)}">Quitar</button></span>` : ""}</li>`).join("")}</ol>` : '<p class="msg">Todavía no hay inscritos.</p>'}</div>
+        <div class="box insc-list"><h3>Participantes</h3>${n ? `<ol class="reg-list">${list.map((r, i) => `<li><span class="n">${i + 1}</span><span class="nm-wrap"><span class="nm">${esc(fullName(r))}</span>${verTodo() || (M.uid && (r.id === "u:" + M.uid || links[M.uid] === r.id)) ? cmdLineDeck(r.deck, true) : (r.deck && (r.deck.k || r.deck.c) ? OCULTO : cmdLineDeck(r.deck, true))}${ADMUI() && (r.email || correoDe(fullName(r))) ? `<span class="cmd">${esc(r.email || correoDe(fullName(r)))}</span>` : ""}</span>${ADMUI() ? `<span class="reg-act">${r.src === "admin" ? `<button type="button" data-reg-edit="${esc(r.id)}">Editar</button>` : '<span class="tag">Por cuenta</span>'}<button type="button" data-reg-del="${esc(r.id)}">Quitar</button></span>` : ""}</li>`).join("")}</ol>` : '<p class="msg">Todavía no hay inscritos.</p>'}</div>
       </div>
       ${ADMUI() ? `<div class="row insc-close"><button class="btn primary" id="btnCloseInsc" type="button" ${n < 3 ? "disabled" : ""}>Cerrar inscripciones y armar ronda 1</button><span class="note">${n < 3 ? "Se necesitan al menos 3 participantes." : "Después de cerrar, las mesas de la ronda 1 se sortean al azar."}</span></div>` : ""}`;
   }
@@ -1304,6 +1309,25 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   const BONO_MAZOS = 3, BONO_PTS = 3;
   const CKEY = "liga-commander-desafio-cal" + (B3 ? "-b3" : "");
   let CAL = {ligas:{}};          // {ligas: {"2026-10": {mes, fechas:["2026-10-10", ...]}}}
+  // Correos de jugadores: tabla "contactos", visible solo para organizadores (clave = nombre normalizado)
+  let contactos = {}, emailMoviendo = false;
+  const claveNombre = n => fold(n || "").trim();
+  const correoDe = nombre => (contactos[claveNombre(nombre)] || {}).email || "";
+  // Los correos escritos por el organizador salen del estado público y se guardan en la tabla privada
+  async function moverCorreos(){
+    if (emailMoviendo || M.mode !== "live" || !M.admin || !S || !M.db) return;
+    const con = S.players.filter(p => p.email);
+    if (!con.length) return;
+    emailMoviendo = true;
+    try {
+      for (const p of con){
+        await M.db.doc("contactos/" + claveNombre(p.name)).set({nombre:p.name, email:p.email, actualizado:Date.now()});
+        contactos[claveNombre(p.name)] = {nombre:p.name, email:p.email};
+      }
+      con.forEach(p => delete p.email); commit();
+    } catch(e){ /* si la tabla aún no existe, el correo queda donde estaba */ }
+    emailMoviendo = false;
+  }
   let archWarned = false, hist = {}, view = "live", statMonth = null, statMonthUser = false, rankScope = "month", delAsk = null;
   const iso = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   const today = () => iso(new Date());
@@ -1516,7 +1540,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       ${ADMUI() && (evs.length || archive) ? `<div class="card"><h3>Jornadas guardadas</h3>${archive}${evs.length ? `<ul class="ev-list">${evList}</ul>` : ""}</div>` : ""}`;
   }
   // ---------- Corrección de estadísticas (solo organizadores) ----------
-  let editPlayer = null, editMsg = {};
+  let editPlayer = null, editMsg = {}, editFecha = null, editDeckMsg = null, editMailMsg = null;
   function editStatsHTML(evsAll, mes){
     const list = (mes === "all" ? evsAll : evsAll.filter(e => mesDe(e) === mes)).filter(e => e.jugadores.some(j => fold(j.nombre).trim() === editPlayer)).sort((a, b) => a.fecha.localeCompare(b.fecha));
     const nombre = (() => { for (const e of list){ const j = e.jugadores.find(j => fold(j.nombre).trim() === editPlayer); if (j) return j.nombre; } return ""; })();
@@ -1524,6 +1548,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const live = S && (currentEvent() || {}).id;
     return `<div class="card edit-stats" id="editStats"><div class="sec-head" style="margin:0"><h3>Corregir estadísticas · ${esc(nombre)}</h3><button class="btn ghost" type="button" data-edit-close>Cerrar</button></div>
       <p class="card-sub">Cambia los números de una fecha guardada y presiona Guardar. El standing y las estadísticas se recalculan solos. Queda registro de quién corrigió y cuándo.</p>
+      ${editExtrasHTML(list, live, nombre)}
       <div class="stand-scroll"><table class="edit-tbl"><thead><tr><th class="l">Fecha</th><th>Pts</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th title="Puntos negativos (solo informativo: los Pts ya los descuentan)">Neg</th><th class="l">Motivo (opcional)</th><th></th></tr></thead><tbody>${list.map(e => {
         const j = e.jugadores.find(j => fold(j.nombre).trim() === editPlayer);
         const enVivo = e.enCurso || e.id === "actual" || e.id === live;
@@ -1533,6 +1558,60 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <td>${num("pts", j.pts, 60)}</td><td>${num("w", j.w, 8)}</td><td>${num("kills", j.kills, 40)}</td><td>${num("s", j.s, 8)}</td><td>${num("pj", j.pj, 8)}</td><td>${num("neg", j.neg || 0, 40)}</td>
           <td class="l">${enVivo ? '<span class="note">En curso: corrige el resultado en su mesa, en “Liga en vivo”.</span>' : `<input type="text" data-ef="motivo" maxlength="80" placeholder="Ej.: mal reporte mesa 3">`}</td>
           <td>${enVivo ? "" : `<button class="btn primary" type="button" data-edit-save="${esc(e.id)}">Guardar</button>`}<span class="${editMsg[e.id] && editMsg[e.id].ok ? "ok-t" : "err"}" style="display:block;font-size:12px">${editMsg[e.id] ? esc(editMsg[e.id].t) : ""}</span></td></tr>`; }).join("")}</tbody></table></div></div>`;
+  }
+  function editExtrasHTML(list, live, nombre){
+    const guardadas = list.filter(e => !(e.enCurso || e.id === "actual" || e.id === live) && hist[e.id]);
+    if (!guardadas.find(e => e.id === editFecha)) editFecha = guardadas.length ? guardadas[guardadas.length - 1].id : null;
+    const ev = guardadas.find(e => e.id === editFecha), j = ev && ev.jugadores.find(x => claveNombre(x.nombre) === editPlayer);
+    const mail = correoDe(nombre);
+    const correo = M.mode === "live" ? `<div class="ed-box"><h4>Correo del jugador</h4><p class="note" style="margin:0">Solo lo ven los organizadores.</p>
+        <div class="row"><input type="email" id="esEmail" inputmode="email" autocomplete="off" placeholder="nombre@correo.cl" value="${esc(mail)}" style="flex:1;min-width:200px"><button class="btn primary" type="button" data-email-save>Guardar correo</button></div>
+        <span class="${editMailMsg && editMailMsg.ok ? "ok-t" : "err"}" style="font-size:12px">${editMailMsg ? esc(editMailMsg.t) : ""}</span></div>` : "";
+    const [c1] = splitCmd(j && j.cmd);
+    const mazo = guardadas.length ? `<div class="ed-box"><h4>${B3 ? "Comandante" : "Mazo y comandante"} de una fecha</h4>
+        <div class="field"><label for="esFecha">Fecha</label><select id="esFecha">${guardadas.map(e => `<option value="${esc(e.id)}" ${e.id === editFecha ? "selected" : ""}>${fmtDate(e.fecha)}</option>`).join("")}</select></div>
+        ${B3 ? `<div class="field"><label for="esCmd">Comandante</label>${cmdSearchHTML("esCmd", (j && j.cmd) || "", j && j.ci)}</div>` :
+          `<div class="field"><label for="esDeck">Mazo preconstruido</label>${comboHTML("esDeck", j && j.k && DECK[j.k] ? deckLabel(j.k) : "", "Busca por mazo, set o comandante")}</div>
+           <div class="field"><label for="esCmd">Comandante</label>${comboHTML("esCmd", (j && j.cmd) || c1 || "", "Elige primero el mazo")}</div>`}
+        <div class="row"><button class="btn primary" type="button" data-deck-hist-save>Guardar ${B3 ? "comandante" : "mazo"}</button><span class="${editDeckMsg && editDeckMsg.ok ? "ok-t" : "err"}" id="esErr" style="font-size:12px">${editDeckMsg ? esc(editDeckMsg.t) : ""}</span></div>
+        <p class="note" style="margin:0">Para dos comandantes (partner) escríbelos separados por “ + ”.</p></div>` : "";
+    return correo || mazo ? `<div class="ed-extras">${correo}${mazo}</div>` : "";
+  }
+  async function saveEmailEdit(){
+    const nombre = (() => { for (const e of Object.values(hist)){ const j = (e.jugadores || []).find(x => claveNombre(x.nombre) === editPlayer); if (j) return j.nombre; } const p = S && S.players.find(x => claveNombre(x.name) === editPlayer); return p ? p.name : editPlayer; })();
+    const v = ($("esEmail").value || "").trim().toLowerCase();
+    if (v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ editMailMsg = {t:"El correo no tiene un formato válido."}; renderStats(); return; }
+    try {
+      if (v) await M.db.doc("contactos/" + editPlayer).set({nombre, email:v, actualizado:Date.now()});
+      else await M.db.doc("contactos/" + editPlayer).delete();
+      if (v) contactos[editPlayer] = {nombre, email:v}; else delete contactos[editPlayer];
+      editMailMsg = {t: v ? "Correo guardado ✓" : "Correo eliminado ✓", ok:true};
+    } catch(e){ editMailMsg = {t:"No se pudo guardar el correo. ¿Corriste el SQL de contactos en Supabase?" + errDetail(e)}; }
+    renderStats();
+  }
+  async function saveDeckHistEdit(){
+    const id = editFecha; if (!M.admin || !id || !hist[id]) return;
+    const doc = JSON.parse(JSON.stringify(hist[id]));
+    const j = (doc.jugadores || []).find(x => claveNombre(x.nombre) === editPlayer); if (!j) return;
+    let nuevo;
+    if (B3){
+      const r = readCmd("es"); if (!r) return;
+      nuevo = {k:"", cmd:r.c, ci:r.ci != null ? r.ci : ciFor(r.c)};
+    } else {
+      const k = DECK_BY_LABEL[($("esDeck").value || "").trim()], c = ($("esCmd").value || "").trim();
+      if (!k){ editDeckMsg = {t:"Elige el mazo desde el desplegable."}; renderStats(); return; }
+      if (!c){ editDeckMsg = {t:"Elige el comandante."}; renderStats(); return; }
+      nuevo = {k, cmd:c, ci:ciFor(c)};
+    }
+    const antes = {k:j.k || "", cmd:j.cmd || ""};
+    if (antes.k === nuevo.k && antes.cmd === nuevo.cmd){ editDeckMsg = {t:"Sin cambios.", ok:true}; renderStats(); return; }
+    j.k = nuevo.k; j.cmd = nuevo.cmd; if (nuevo.ci != null) j.ci = nuevo.ci; else delete j.ci;
+    doc.editado = (doc.editado || []).concat([{at:Date.now(), por:M.email || "organizador", nombre:j.nombre, antes, despues:{k:j.k, cmd:j.cmd}, motivo:"Cambio de mazo"}]);
+    if (M.mode === "live"){
+      try { await M.db.doc("historial/" + id).set(doc); } catch(e){ editDeckMsg = {t:"No se pudo guardar. Intenta de nuevo."}; renderStats(); return; }
+    } else { try { localStorage.setItem(HKEY, JSON.stringify(Object.assign({}, hist, {[id]: doc}))); } catch(e){} }
+    hist[id] = Object.assign({id}, doc);
+    editDeckMsg = {t:"Guardado ✓", ok:true}; renderStats();
   }
   async function saveStatsEdit(id, tr){
     if (!M.admin || !hist[id]) return;
@@ -1986,13 +2065,15 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   });
   window.addEventListener("resize", () => { if (view === "sorteo" && !spinning) renderSorteo(); });
   document.querySelector(".tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if (b) setView(b.dataset.view); });
-  $("stats").addEventListener("change", e => { if (e.target.id === "topPubSel" && M.admin){ CAL.topPublico = +e.target.value; saveCal(); return; } if (e.target.id === "monthSel"){ statMonth = e.target.value; statMonthUser = true; e.target.blur(); renderStats(); } });
+  $("stats").addEventListener("change", e => { if (e.target.id === "esFecha"){ editFecha = e.target.value; editDeckMsg = null; e.target.blur(); renderStats(); return; } if (e.target.id === "topPubSel" && M.admin){ CAL.topPublico = +e.target.value; saveCal(); return; } if (e.target.id === "monthSel"){ statMonth = e.target.value; statMonthUser = true; e.target.blur(); renderStats(); } });
   $("stats").addEventListener("click", e => {
     if (ADMUI()){
       if (e.target.closest("[data-edit-close]")){ editPlayer = null; editMsg = {}; renderStats(); return; }
       const sv = e.target.closest("[data-edit-save]"); if (sv){ saveStatsEdit(sv.dataset.editSave, sv.closest("tr")); return; }
+      if (e.target.closest("[data-email-save]")){ document.activeElement.blur(); saveEmailEdit(); return; }
+      if (e.target.closest("[data-deck-hist-save]")){ document.activeElement.blur(); saveDeckHistEdit(); return; }
       const row = e.target.closest("[data-edit-player]");
-      if (row){ editPlayer = editPlayer === row.dataset.editPlayer ? null : row.dataset.editPlayer; editMsg = {}; renderStats(); setTimeout(() => { const c = $("editStats"); if (c) c.scrollIntoView({behavior:"smooth", block:"nearest"}); }, 30); return; }
+      if (row){ editPlayer = editPlayer === row.dataset.editPlayer ? null : row.dataset.editPlayer; editMsg = {}; editFecha = null; editDeckMsg = null; editMailMsg = null; renderStats(); setTimeout(() => { const c = $("editStats"); if (c) c.scrollIntoView({behavior:"smooth", block:"nearest"}); }, 30); return; }
     }
     const sc = e.target.closest("[data-scope]"); if (sc){ rankScope = sc.dataset.scope; renderStats(); return; }
     if (e.target.id === "btnArchive"){ archiveEvent(); return; }
@@ -2372,7 +2453,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (inscOpen()){
       $("mainGrid").hidden = true; $("mine").hidden = true; $("insc").hidden = false;
       $("pips").innerHTML = `<span class="lbl">Inscripciones abiertas · ${c.rounds} rondas de ${c.min} min</span>`;
-      renderInsc(); renderLinks(); renderDecks(); fillCfg(); fixMissingCI(); precargarCI();
+      renderInsc(); renderLinks(); renderDecks(); fillCfg(); fixMissingCI(); precargarCI(); moverCorreos();
       $("sampleBanner").hidden = true;
       $("offlineBanner").hidden = !(M.mode === "local" && M.reason);
       $("btnNext").disabled = true;
@@ -2434,7 +2515,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (focus && S.players.some(p => p.id === focus)){ ficha.hidden = false; ficha.innerHTML = `<h3>${esc(pname(focus))}</h3>` + fichaHTML(focus, stand); }
     else ficha.hidden = true;
 
-    autoLink(); fixMissingCI(); precargarCI();
+    autoLink(); fixMissingCI(); precargarCI(); moverCorreos();
     renderMine(stand, tableOf, myPid);
     renderLinks();
     renderDecks();
@@ -2916,6 +2997,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       db.collection("vinculos").onSnapshot(q => { links = {}; linkData = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.pid){ links[d.id] = v.pid; linkData[d.id] = v; } }); if (ready){ render(); autoApply(); } }, () => {});
       db.collection("historial").onSnapshot(q => { hist = {}; q.docs.forEach(d => { const v = d.data(); if (v && (v.liga || "precon") === LIGA) hist[d.id] = Object.assign({id:d.id}, v); }); if (view === "stats") renderStats(); }, () => {});
       db.collection("inscripciones").onSnapshot(q => { regs = {}; q.docs.forEach(d => { const v = d.data(); if (v) regs[d.id] = v; }); if (ready) render(); }, () => {});
+      if (c.admin) db.collection("contactos").onSnapshot(q => { contactos = {}; q.docs.forEach(d => { const v = d.data(); if (v) contactos[d.id] = v; }); if (ready){ render(); if (view === "stats") renderStats(); } }, () => {});
       db.collection("votos").onSnapshot(q => { votes = {}; q.docs.forEach(d => { const v = d.data(); if (v) votes[d.id] = v; }); if (ready){ render(); autoApply(); } }, () => {});
     } catch(e){ fail(e); }
     render();

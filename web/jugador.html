@@ -288,6 +288,10 @@ body:not(.liga-b3) .b3-only{display:none!important}
 .ed-extras{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:4px 0 12px}
 .ed-box{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .ed-box h4{margin:0;font-size:14px}
+button.pip{cursor:pointer;font:inherit}
+button.pip.done:hover{border-color:var(--gold)}
+.pip.viendo{outline:2px solid var(--gold);outline-offset:2px}
+.banner.ronda-ant{display:flex;flex-wrap:wrap;gap:10px;align-items:center;grid-column:1/-1}
 .ed-aviso{margin:6px 0 0;padding:8px 10px;border-radius:10px;background:rgba(233,180,76,.12);color:var(--gold);font-size:13px}
 .ed-box input:not([type=checkbox]){background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
 .ed-box .row input{width:auto}
@@ -2284,7 +2288,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         const r = t.result, vs = t.seats.filter(s => s !== pid).map(s => esc(pname(s))).join(", ");
         let tag = '<span class="res">En juego</span>';
         if (r){
-          const det = isWin(r, pid) ? "Ganó" : [kills(r, pid) ? kills(r, pid) + " kill" + (kills(r, pid) > 1 ? "s" : "") : "", alive(r, pid) ? "vivo" : ""].filter(Boolean).join(" · ") || "Eliminado";
+          const kk = kills(r, pid) ? kills(r, pid) + " kill" + (kills(r, pid) > 1 ? "s" : "") : "";
+          const det = isWin(r, pid) ? ["Ganó", kk].filter(Boolean).join(" · ") : [kk, alive(r, pid) ? "vivo" : ""].filter(Boolean).join(" · ") || "Eliminado";
           tag = `<span class="res ${isWin(r, pid) ? "w" : alive(r, pid) ? "d" : ""}">${(v => v < 0 ? "−" + -v : "+" + v)(points(r, pid, S.cfg))} · ${det}${brute(r, pid) && !dq(r, pid) ? ` · −${brute(r, pid) * (S.cfg.bruto || 0)} bruto` : ""}</span>`;
         }
         return `<li><span class="r">R${ri + 1} · M${ti + 1}</span><span class="vs">vs ${vs}</span>${tag}</li>`;
@@ -2471,19 +2476,22 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       return;
     }
     $("insc").hidden = true; $("mainGrid").hidden = false;
+    const vr = VR();
     $("pips").innerHTML = '<span class="lbl">Ronda</span>' + Array.from({length:c.rounds}, (_, i) =>
-      `<span class="pip ${i < S.cur ? "done" : i === S.cur ? "now" : ""}">${i + 1}</span>`).join("") +
+      ADMUI() && i <= S.cur && S.rounds[i] && !document.body.classList.contains("display")
+        ? `<button type="button" class="pip ${i < S.cur ? "done" : "now"}${i === vr && vr !== S.cur ? " viendo" : ""}" data-vround="${i}" title="${i === S.cur ? "Ronda actual" : "Ver y corregir la ronda " + (i + 1)}">${i + 1}</button>`
+        : `<span class="pip ${i < S.cur ? "done" : i === S.cur ? "now" : ""}">${i + 1}</span>`).join("") +
       `<span class="lbl" style="margin-left:6px">de ${c.rounds} · ${c.min} min · ${(() => { const ev = currentEvent() || {id:"actual", fecha:S.fecha || lastSaturday(), mes:curMes()}; const list = realHist(S.archivedId).concat([ev]); const fn = fechaInfo(ev, list); return fn.extra ? "Fecha extra · no suma al mes" : "Fecha " + fn.n + " de " + fn.total + " · " + monthLabel(curMes()); })()}</span>`;
 
-    const round = S.rounds[S.cur], stand = standings(S);
+    const actual = S.rounds[S.cur], round = S.rounds[vr], pasada = vr !== S.cur, stand = standings(S);
     const tot = {}; stand.forEach(x => tot[x.id] = x.pts);
-    const tableOf = {}; round.tables.forEach((t, i) => t.seats.forEach(id => tableOf[id] = i));
+    const tableOf = {}; actual.tables.forEach((t, i) => t.seats.forEach(id => tableOf[id] = i));
     const myPid = M.uid ? links[M.uid] : null;
 
-    $("mesasTitle").textContent = "Mesas · Ronda " + (S.cur + 1);
+    $("mesasTitle").textContent = "Mesas · Ronda " + (vr + 1) + (pasada ? " (anterior)" : "");
     $("mesasMeta").textContent = `${round.tables.filter(t => t.result).length}/${round.tables.length} cerradas · ${S.players.length} jugadores`;
-    $("tables").innerHTML = round.tables.map((t, ti) => {
-      const r = t.result, pr = !r && proposal(ti);
+    $("tables").innerHTML = (pasada ? `<div class="banner ronda-ant">Estás viendo la <b>ronda ${vr + 1}</b>. Puedes corregir sus resultados con “Corregir”: el standing se recalcula, pero las mesas de las rondas siguientes no cambian. <button type="button" class="btn ghost" data-vround="${S.cur}">Volver a la ronda ${S.cur + 1}</button></div>` : "") + round.tables.map((t, ti) => {
+      const r = t.result, pr = !pasada && !r && proposal(ti);
       const tag = r ? `<span class="tag ${r.w ? "ok" : "draw"}">${r.w ? "Terminada" : "Por tiempo"}</span>` : `<span class="tag">${t.seats.length} jugadores</span>`;
       const seats = t.seats.map((id, si) => {
         let right = `<span class="pt">${tot[id]} pts</span>`, cls = "";
@@ -2492,18 +2500,18 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           const det = [kills(r, id) ? "K" + kills(r, id) : "", !isWin(r, id) && alive(r, id) ? "vivo" : ""].filter(Boolean).join(" · ");
           right = `<span class="pt">${det ? det + " · " : ""}+${points(r, id, c)}</span>`;
         }
-        const mv = ADMUI() && !r && !document.body.classList.contains("display");
+        const mv = ADMUI() && !r && !pasada && !document.body.classList.contains("display");
         return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">${si + 1}</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${cmdLine(id)}</span>${right}</li>`;
       }).join("");
       const pend = pr ? `<span class="pending">Reportado: ${esc(resLabel(pr.res))} · ${pr.n}/${t.seats.length} confirman${pr.kinds > 1 ? " · hay reportes distintos" : ""}</span>` : "";
-      const edKey = "adm:" + S.cur + ":" + ti;
+      const edKey = "adm:" + vr + ":" + ti;
       const ed = M.admin && openEd[edKey] ? editorHTML(edKey, t.seats, draftFor(edKey, t.seats, r || (pr && pr.res)), "Guardar resultado") : "";
       return `<article class="mesa ${r ? "closed" : ""}" data-t="${ti}"><div class="mesa-h"><b>Mesa ${ti + 1}</b>${tag}</div>
         <ol class="seats">${seats}</ol>${pend}${ed}
-        <div class="mesa-foot adm">${pr ? `<button type="button" class="apr" data-t="${ti}" data-op="approve">Aprobar reporte</button>` : ""}<button type="button" data-t="${ti}" data-op="edit">${openEd[edKey] ? "Cerrar" : r ? "Corregir" : "Cargar resultado"}</button>${r ? `<button type="button" data-t="${ti}" data-op="clear">Reabrir</button>` : ""}</div></article>`;
+        <div class="mesa-foot adm">${pr ? `<button type="button" class="apr" data-t="${ti}" data-op="approve">Aprobar reporte</button>` : ""}<button type="button" data-t="${ti}" data-op="edit">${openEd[edKey] ? "Cerrar" : r ? "Corregir" : "Cargar resultado"}</button>${r && !pasada ? `<button type="button" data-t="${ti}" data-op="clear">Reabrir</button>` : ""}</div></article>`;
     }).join("");
 
-    if (ADMUI() && !document.body.classList.contains("display")){
+    if (ADMUI() && !pasada && !document.body.classList.contains("display")){
       const seated = new Set(round.tables.flatMap(t => t.seats));
       const libres = S.players.filter(p => !seated.has(p.id) && !isDrop(p.id));
       $("tables").insertAdjacentHTML("beforeend", `<article class="mesa bucket" data-t="new"><div class="mesa-h"><b>Sin mesa${libres.length ? " · " + libres.length : ""}</b><span class="tag">Suelta aquí para sacar de la mesa</span></div>
@@ -2650,8 +2658,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const b = e.target.closest(".ed [data-act]"); if (!b) return;
     const key = b.closest(".ed").dataset.key, act = b.dataset.act;
     const isAdm = key.startsWith("adm:");
+    const ri = isAdm ? +key.split(":")[1] : S.cur;
     const ti = isAdm ? +key.split(":")[2] : S.rounds[S.cur].tables.findIndex(x => x.seats.includes(links[M.uid]));
-    const t = S.rounds[S.cur].tables[ti]; if (!t) return;
+    const t = S.rounds[ri] && S.rounds[ri].tables[ti]; if (!t) return;
     if (act !== "send"){ edAction(key, act, b.dataset.p, t.seats); render(); return; }
     const d = drafts[key]; if (validate(d, t.seats)) return;
     const res = norm(d);
@@ -2659,8 +2668,11 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     try { await M.db.doc("votos/" + M.uid).set({r:S.cur, t:ti, pid:links[M.uid], res}); }
     catch(err){ const el = $("voteErr"); if (el) el.textContent = "No se pudo enviar el reporte. Revisa tu conexión e intenta de nuevo." + errDetail(err); }
   });
+  document.addEventListener("click", e => { const b = e.target.closest("[data-vround]"); if (!b || !ADMUI()) return; const i = +b.dataset.vround; vRound = i >= S.cur ? null : i; moveSel = null; render(); });
   // ----- Mover jugadores entre mesas -----
   let moveSel = null, dragPid = null;
+  let vRound = null;
+  const VR = () => (ADMUI() && S && vRound != null && vRound < S.cur && S.rounds[vRound]) ? vRound : S.cur;
   function moveSeat(pid, toT, toPid){
     if (!M.admin || !S || S.phase === "inscripcion") return;
     const T = S.rounds[S.cur].tables;
@@ -2724,7 +2736,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   $("tables").addEventListener("click", e => { if (e.target.closest("[data-newtable]")){ if (!moveSel){ const h = $("moveHint"); if (h) h.textContent = "Primero toca al jugador que quieres llevar a la nueva mesa."; return; } moveSeat(moveSel, "newtable"); } });
   $("tables").addEventListener("click", e => {
     const b = e.target.closest("button[data-op]"); if (!b || !M.admin) return;
-    const ti = +b.dataset.t, t = S.rounds[S.cur].tables[ti], key = "adm:" + S.cur + ":" + ti;
+    const vr = VR(), ti = +b.dataset.t, t = S.rounds[vr].tables[ti], key = "adm:" + vr + ":" + ti;
+    if (vr !== S.cur && b.dataset.op !== "edit") return;
     if (b.dataset.op === "edit"){ if (openEd[key]) delete openEd[key]; else { openEd[key] = 1; delete drafts[key]; } render(); return; }
     if (b.dataset.op === "approve"){ const pr = proposal(ti); if (pr){ t.result = pr.res; commit(); } return; }
     if (b.dataset.op === "clear"){

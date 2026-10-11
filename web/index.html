@@ -400,6 +400,15 @@ body.portal #sampleBanner{display:none!important}
 .hub img{width:86%;height:86%;object-fit:contain}
 .hub{position:absolute;inset:0;margin:auto;width:22%;height:22%;border-radius:50%;background:var(--bg);border:3px solid var(--gold);display:grid;place-items:center;text-align:center;font-family:var(--f-display);font-weight:900;font-size:clamp(10px,2.2vw,15px);line-height:1.05;text-transform:uppercase;color:var(--fg)}
 .wheel-actions{display:flex;flex-direction:column;align-items:center;gap:6px}
+.spin-row{display:flex;gap:8px;align-items:center}
+.snd-btn{padding:10px 14px;font-size:18px;line-height:1}
+.pointer{transform-origin:50% 0;z-index:2}
+.pointer.hit{animation:hit .14s ease-out}
+@keyframes hit{0%{transform:translateX(-50%) rotate(0)}40%{transform:translateX(-50%) rotate(-14deg)}100%{transform:translateX(-50%) rotate(0)}}
+.wheel-box.girando canvas{box-shadow:0 0 0 6px var(--surface-2),0 0 0 8px var(--gold),0 0 50px rgba(233,180,76,.45),0 18px 60px rgba(0,0,0,.6);transition:box-shadow .4s}
+#spinMsg{font-family:var(--f-display);font-weight:800;font-size:clamp(18px,3vw,26px);text-transform:uppercase;letter-spacing:.04em;min-height:1.3em;color:var(--gold)}
+canvas.confeti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999}
+@media (prefers-reduced-motion:reduce){.pointer.hit{animation:none}}
 .spin-btn{font-size:16px;padding:12px 28px}
 .winner-card{width:100%;max-width:600px;text-align:center;border:1px solid var(--gold);border-radius:16px;padding:18px;background:radial-gradient(120% 120% at 50% 0%,rgba(233,180,76,.18),transparent 60%),var(--surface);animation:pop .5s ease-out}
 .winner-card .eyebrow{font-family:var(--f-num);letter-spacing:.2em;font-size:12px;color:var(--gold);text-transform:uppercase}
@@ -698,7 +707,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <div class="hub" aria-hidden="true"><img src="logo-256.png" alt=""></div>
         </div>
         <div class="wheel-actions">
-          <button class="btn primary spin-btn" id="btnSpin" type="button">Girar la ruleta</button>
+          <div class="spin-row"><button class="btn primary spin-btn" id="btnSpin" type="button">Girar la ruleta</button><button class="btn ghost snd-btn" id="btnSnd" type="button" aria-pressed="true" title="Sonido de la ruleta">🔊</button></div>
           <span class="msg" id="spinMsg"></span>
         </div>
         <div class="winner-card" id="winnerCard" hidden aria-live="polite"></div>
@@ -1952,34 +1961,101 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       g.fillText(t, r - 16, 0); g.restore();
     }
   }
+  // ---------- Efectos de la ruleta: sonido, puntero, confeti ----------
+  let ruletaAudio = null;
+  const sonidoOn = () => { try { return localStorage.getItem("sorteo_sonido") !== "0"; } catch(e){ return true; } };
+  function audioCtx(){ try { ruletaAudio = ruletaAudio || new (window.AudioContext || window.webkitAudioContext)(); if (ruletaAudio.state === "suspended") ruletaAudio.resume(); return ruletaAudio; } catch(e){ return null; } }
+  let ultimoTick = 0;
+  function ruletaTick(lento){
+    if (!sonidoOn()) return;
+    const now = performance.now(); if (now - ultimoTick < 35) return; ultimoTick = now;
+    const a = audioCtx(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime;
+    o.type = "triangle"; o.frequency.setValueAtTime(lento ? 1100 : 1500, t0); o.frequency.exponentialRampToValueAtTime(600, t0 + 0.04);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(lento ? 0.35 : 0.18, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+    o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + 0.07);
+  }
+  function fanfarria(){
+    if (!sonidoOn()) return;
+    const a = audioCtx(); if (!a) return;
+    [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5].forEach((f, i) => {
+      const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + i * (i < 4 ? 0.12 : 0.18), d = i === 5 ? 0.9 : 0.16;
+      o.type = "square"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + d + 0.02);
+    });
+  }
+  function golpePuntero(){
+    const p = document.querySelector(".wheel-box .pointer"); if (!p) return;
+    p.classList.remove("hit"); void p.offsetWidth; p.classList.add("hit");
+  }
+  function confeti(){
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const c = document.createElement("canvas"); c.className = "confeti";
+    document.body.appendChild(c);
+    const dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+    c.width = W * dpr; c.height = H * dpr; const g = c.getContext("2d"); g.scale(dpr, dpr);
+    const box = $("wheel").getBoundingClientRect(), cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+    const cols = ["#e9b44c", "#ffffff", "#c8321a", "#f7d27a", "#ff6b4a"];
+    const ps = Array.from({length: 180}, () => { const a = Math.random() * Math.PI * 2, v = 6 + Math.random() * 10;
+      return {x:cx, y:cy, vx:Math.cos(a) * v, vy:Math.sin(a) * v - 6, w:6 + Math.random() * 6, h:3 + Math.random() * 4, r:Math.random() * 6, vr:(Math.random() - .5) * .4, c:cols[Math.floor(Math.random() * cols.length)]}; });
+    const t0 = performance.now();
+    const fr = now => {
+      const t = now - t0; g.clearRect(0, 0, W, H);
+      ps.forEach(p => { p.vy += 0.32; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.globalAlpha = Math.max(0, 1 - t / 3800); g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore(); });
+      if (t < 3800) requestAnimationFrame(fr); else c.remove();
+    };
+    requestAnimationFrame(fr);
+  }
+  // Giro con suspenso: amague hacia atrás, arranque fuerte, frenado largo, se pasa un poco y vuelve al ganador
   function animateSpin(sp){
     const list = sp.list, n = list.length, i = list.indexOf(sp.winner);
     if (i < 0 || !n){ seenSpin = sp.id; renderSorteo(); return; }
     const seg = Math.PI * 2 / n, TWO = Math.PI * 2;
     const jitter = ((sp.j || 0.5) - 0.5) * seg * 0.7;
     const target = -(i + 0.5) * seg + jitter;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const start = wheelRot, base = start - (start % TWO);
     let end = base + target; while (end < start) end += TWO;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    end += (reduce ? 1 : 6) * TWO;
-    const dur = reduce ? 1200 : 6000, t0 = performance.now();
+    end += (reduce ? 1 : 9) * TWO;
+    // se pasa entre 0,35 y 0,6 de un segmento (determinado por el giro, igual en todas las pantallas) y vuelve
+    const over = reduce ? 0 : seg * (0.35 + ((sp.j || 0.5) * 7 % 1) * 0.25);
+    const WIND = reduce ? 0 : 750, MAIN = reduce ? 1200 : 11500, SETTLE = reduce ? 0 : 1300, back = 0.22;
+    const t0 = performance.now();
     spinning = {list, winner: sp.winner};
-    $("winnerCard").hidden = true; $("btnSpin").disabled = true; $("spinMsg").textContent = "Girando…";
-    const ease = x => 1 - Math.pow(1 - x, 4);
+    $("winnerCard").hidden = true; $("btnSpin").disabled = true; $("spinMsg").textContent = "Preparando…";
+    document.querySelector(".wheel-box").classList.add("girando");
+    const easeOut = x => 1 - Math.pow(1 - x, 5), easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+    const bajo = rot => { const a = ((-rot % TWO) + TWO) % TWO; return Math.floor(a / seg) % n; };
+    let prev = bajo(start);
     const frame = now => {
-      const x = Math.min(1, (now - t0) / dur);
-      wheelRot = start + (end - start) * ease(x); drawWheel(list);
-      if (x < 1) requestAnimationFrame(frame);
+      const t = now - t0;
+      let rot, fase;
+      if (t < WIND){ rot = start - back * easeInOut(t / WIND); fase = 0; }
+      else if (t < WIND + MAIN){ const x = (t - WIND) / MAIN; rot = (start - back) + (end + over - (start - back)) * easeOut(x); fase = 1; }
+      else if (t < WIND + MAIN + SETTLE){ const x = (t - WIND - MAIN) / SETTLE; rot = end + over - over * easeInOut(x); fase = 2; }
+      else { rot = end; fase = 3; }
+      wheelRot = rot; drawWheel(list);
+      const cur = bajo(rot);
+      if (cur !== prev && fase > 0){ prev = cur; const lento = fase === 2 || (t - WIND) / MAIN > 0.7; ruletaTick(lento); golpePuntero(); }
+      if (fase === 1 || fase === 2) $("spinMsg").textContent = shortName(list[cur]) + (fase === 2 || (t - WIND) / MAIN > 0.85 ? "…" : "");
+      if (fase < 3) requestAnimationFrame(frame);
       else {
+        document.querySelector(".wheel-box").classList.remove("girando");
         spinning = null; seenSpin = sp.id; showWinner = sp.winner; wheelRot = wheelRot % TWO;
-        holding = {list, winner: sp.winner}; drawWheel(list, sp.winner); renderSorteo();
+        holding = {list, winner: sp.winner};
+        fanfarria(); confeti();
+        // el segmento ganador parpadea
+        let k = 0; const blink = setInterval(() => { drawWheel(list, k++ % 2 ? null : sp.winner); if (k > 7){ clearInterval(blink); drawWheel(list, sp.winner); } }, 220);
+        renderSorteo();
         setTimeout(() => {
           holding = null;
           // al sacar al ganador, se gira levemente para que el puntero quede en el mismo lugar
           const rest = list.filter(id => id !== sp.winner);
           if (rest.length) wheelRot = -((i * rest.length / n) + 0.5) * (Math.PI * 2 / rest.length);
           renderSorteo();
-        }, 3200);
+        }, 6500);
       }
     };
     requestAnimationFrame(frame);
@@ -2036,7 +2112,10 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     S.sorteo = {ganadores: gan.concat([winner]), filtros: f, motivo, spin: {id: "s" + Date.now().toString(36), winner, list: pool, at: Date.now(), j: rnd[1] / 4294967296}};
     commit();
   }
-  $("btnSpin").addEventListener("click", spin);
+  $("btnSpin").addEventListener("click", () => { audioCtx(); spin(); });
+  const pintarSnd = () => { const b = $("btnSnd"); if (b){ b.textContent = sonidoOn() ? "🔊" : "🔇"; b.setAttribute("aria-pressed", sonidoOn()); b.title = sonidoOn() ? "Silenciar la ruleta" : "Activar el sonido de la ruleta"; } };
+  $("btnSnd").addEventListener("click", () => { try { localStorage.setItem("sorteo_sonido", sonidoOn() ? "0" : "1"); } catch(e){} if (sonidoOn()) { audioCtx(); ruletaTick(true); } pintarSnd(); });
+  pintarSnd();
   $("btnResetSorteo").addEventListener("click", () => $("confirmReset").hidden = false);
   $("btnResetNo").addEventListener("click", () => $("confirmReset").hidden = true);
   $("btnResetYes").addEventListener("click", () => { $("confirmReset").hidden = true; showWinner = null; if (S){ S.sorteo = {ganadores: [], excluidos: [], filtros: sorteoFiltros()}; commit(); } });

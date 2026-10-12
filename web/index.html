@@ -478,7 +478,10 @@ canvas.confeti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:no
 body.display .tv-bar{display:flex}
 .tv-bar .btn{opacity:.15;transition:opacity .2s}
 .tv-bar .btn:hover,.tv-bar .btn:focus-visible{opacity:1}
-body.display.view-sorteo #btnTvSorteo{opacity:.6}
+/* Modo pantalla · estadísticas y reglas: se desplazan dentro de la pantalla */
+body.display.view-stats #stats,body.display.view-reglas #reglas{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}
+body.display.view-stats #stats::-webkit-scrollbar,body.display.view-reglas #reglas::-webkit-scrollbar{display:none}
+body.display.view-sorteo #btnTvSorteo,body.display.view-stats #btnTvSorteo,body.display.view-reglas #btnTvSorteo{opacity:.6}
 .tv-exit{display:none}
 /* Modo pantalla · sorteo: solo la ruleta y el botón de girar */
 body.display.view-sorteo .sorteo-side,body.display.view-sorteo #sorteoSub,body.display.view-sorteo .clock{display:none!important}
@@ -1471,6 +1474,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const max = Math.max(...rows.map(r => r.v), 1);
     return `<ol class="bars">${rows.map((r, i) => `<li title="${esc(r.tip)}"><span class="rk">${i + 1}</span><div class="lbl"><div style="min-width:0">${r.icon ? `<span class="ci">${r.icon}</span>` : ""}<b>${esc(r.name)}</b>${r.sub ? `<em>${esc(r.sub)}</em>` : ""}</div><span>${esc(r.val)}</span></div><div class="track"><div class="fill" style="width:${Math.max(3, r.v / max * 100)}%"></div></div></li>`).join("")}</ol>`;
   }
+  // En modo pantalla las estadísticas se ven como las ve el público (sin edición y con el top limitado)
+  const STADM = () => ADMUI() && !document.body.classList.contains("display");
   function renderStats(){
     const box = $("stats"); if (!box || view !== "stats" || typing(box)) return;
     const evsAll = allEvents(); cuentaList = evsAll; const evs = evsAll.filter(cuenta);
@@ -1495,8 +1500,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const stand = Object.values(P).sort((a, b) => b.pts - a.pts || b.kills - a.kills || b.buch - a.buch || b.w - a.w || a.nombre.localeCompare(b.nombre));
     // Los jugadores ven solo el top N (para no desmotivar); el organizador ve a todos
     const topN = CAL.topPublico == null ? TOP_PUBLICO : CAL.topPublico;
-    const standVis = ADMUI() || !topN ? stand : stand.slice(0, topN);
-    const topSel = ADMUI() ? `<div class="field" style="margin:0"><label for="topPubSel">Jugadores ven</label><select id="topPubSel">${[10, 15, 20, 0].map(n => `<option value="${n}" ${n === topN ? "selected" : ""}>${n ? "Top " + n : "Todos"}</option>`).join("")}</select></div>` : "";
+    const standVis = STADM() || !topN ? stand : stand.slice(0, topN);
+    const topSel = STADM() ? `<div class="field" style="margin:0"><label for="topPubSel">Jugadores ven</label><select id="topPubSel">${[10, 15, 20, 0].map(n => `<option value="${n}" ${n === topN ? "selected" : ""}>${n ? "Top " + n : "Todos"}</option>`).join("")}</select></div>` : "";
     // Rankings (histórico o mes)
     const rk = rankScope === "all" ? evs : inMonth;
     const D = {}, C = {};
@@ -1530,9 +1535,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const seg = `<div class="seg" role="group" aria-label="Período de los rankings"><button type="button" data-scope="month" aria-pressed="${rankScope === "month"}">${statMonth === "all" ? "Período" : "Mes"}</button><button type="button" data-scope="all" aria-pressed="${rankScope === "all"}">Histórico</button></div>`;
     const totK = inMonth.reduce((s, e) => s + e.jugadores.reduce((t, j) => t + j.kills, 0), 0);
     const hasEx = evsAll.some(e => e.ejemplo);
-    const evList = evsAll.map(e => `<li><span><b>${(() => { const fn = fechaInfo(e, evsAll); return (fn.extra ? "Fecha extra (no suma) · " : "Fecha " + fn.n + " de " + fn.total + " · ") + (mesDe(e) !== e.fecha.slice(0, 7) ? monthLabel(mesDe(e)) + " · " : ""); })()}${fmtDate(e.fecha)}</b> · ${e.jugadores.length} jugadores${e.enCurso ? ' · <span class="tag">En curso</span>' : ""}${e.ejemplo ? ' · <span class="tag draw">Ejemplo</span>' : ""}</span>${ADMUI() && !e.enCurso && e.id !== "actual" ? (delAsk === e.id ? `<span style="display:flex;gap:6px"><button type="button" class="danger" data-ev-del-yes="${esc(e.id)}">Sí, quitar</button><button type="button" data-ev-del-no>Cancelar</button></span>` : `<button type="button" data-ev-del="${esc(e.id)}">Quitar</button>`) : ""}</li>`).join("");
+    const evList = evsAll.map(e => `<li><span><b>${(() => { const fn = fechaInfo(e, evsAll); return (fn.extra ? "Fecha extra (no suma) · " : "Fecha " + fn.n + " de " + fn.total + " · ") + (mesDe(e) !== e.fecha.slice(0, 7) ? monthLabel(mesDe(e)) + " · " : ""); })()}${fmtDate(e.fecha)}</b> · ${e.jugadores.length} jugadores${e.enCurso ? ' · <span class="tag">En curso</span>' : ""}${e.ejemplo ? ' · <span class="tag draw">Ejemplo</span>' : ""}</span>${STADM() && !e.enCurso && e.id !== "actual" ? (delAsk === e.id ? `<span style="display:flex;gap:6px"><button type="button" class="danger" data-ev-del-yes="${esc(e.id)}">Sí, quitar</button><button type="button" data-ev-del-no>Cancelar</button></span>` : `<button type="button" data-ev-del="${esc(e.id)}">Quitar</button>`) : ""}</li>`).join("");
     const cur = currentEvent();
-    const archive = ADMUI() && cur ? `<div class="archive"><div class="field"><label for="archDate">Día de la jornada</label><input type="date" id="archDate" value="${esc(cur.fecha)}"></div><button class="btn primary" type="button" id="btnArchive">${S.archivedId ? "Actualizar en el histórico" : "Guardar jornada en el histórico"}</button><span class="err" id="archErr"></span></div><p class="note" style="margin:0">${cur.enCurso ? "La jornada sigue en curso: ya cuenta en las estadísticas; guárdala al terminar para que quede fija." : S.archivedId ? "Ya está guardada. Si corriges un resultado, presiona Actualizar." : "Guárdala para que quede en el histórico antes de empezar una nueva liga."}</p>` : "";
+    const archive = STADM() && cur ? `<div class="archive"><div class="field"><label for="archDate">Día de la jornada</label><input type="date" id="archDate" value="${esc(cur.fecha)}"></div><button class="btn primary" type="button" id="btnArchive">${S.archivedId ? "Actualizar en el histórico" : "Guardar jornada en el histórico"}</button><span class="err" id="archErr"></span></div><p class="note" style="margin:0">${cur.enCurso ? "La jornada sigue en curso: ya cuenta en las estadísticas; guárdala al terminar para que quede fija." : S.archivedId ? "Ya está guardada. Si corriges un resultado, presiona Actualizar." : "Guárdala para que quede en el histórico antes de empezar una nueva liga."}</p>` : "";
     const myCard = myStatsHTML(evs, cm);   // evs ya excluye las fechas extra
     box.innerHTML = myCard + `<div class="stats-head"><div><h2>Estadísticas de la liga</h2><div class="sub2">Standing mensual, mazos más jugados y comandantes con más kills.</div></div>
         <div class="field"><label for="monthSel">Período</label><select id="monthSel">${months.map(m => `<option value="${m}" ${m === statMonth ? "selected" : ""}>${monthLabel(m)}</option>`).join("")}<option value="all" ${statMonth === "all" ? "selected" : ""}>Todo el histórico</option></select></div></div>
@@ -1545,23 +1550,23 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           const hoy = today(), byF = {}; del.forEach(e => byF[e.fecha] = e);
           const extra = del.filter(e => !cal.fechas.includes(e.fecha));
           return `<div class="sats" aria-label="Fechas del mes">${cal.fechas.map((f, i) => { const e = byF[f];
-            if (e) return `<div class="sat ${e.enCurso ? "live" : "done"}"><span class="sat-n">Fecha ${i + 1}</span><b>${dia(e)}</b><span class="sat-s">${e.enCurso ? "En curso" : ADMUI() ? e.jugadores.length + " jugadores" : "Jugada"}</span></div>`;
+            if (e) return `<div class="sat ${e.enCurso ? "live" : "done"}"><span class="sat-n">Fecha ${i + 1}</span><b>${dia(e)}</b><span class="sat-s">${e.enCurso ? "En curso" : STADM() ? e.jugadores.length + " jugadores" : "Jugada"}</span></div>`;
             return `<div class="sat ${f < hoy ? "miss" : "next"}"><span class="sat-n">Fecha ${i + 1}</span><b>${diaCorto(f, statMonth)}</b><span class="sat-s">${f < hoy ? "Sin registro" : "Por jugar"}</span></div>`; }).join("")}${extra.map(e => `<div class="sat extra"><span class="sat-n">Fuera de calendario</span><b>${dia(e)}</b><span class="sat-s">No suma al mes</span></div>`).join("")}</div>`;
         }
         const slots = Array.from({length: Math.max(FECHAS_MES, del.length)}, (_, i) => del[i] || null);
         return `<div class="sats" aria-label="Fechas del mes">${slots.map((e, i) => {
           if (i >= FECHAS_MES) return `<div class="sat extra"><span class="sat-n">Fecha extra</span><b>${dia(e)}</b><span class="sat-s">No suma al mes</span></div>`;
           if (!e) return `<div class="sat next"><span class="sat-n">Fecha ${i + 1}</span><b>–</b><span class="sat-s">${statMonth < curMes() ? "Sin registro" : "Por jugar"}</span></div>`;
-          return `<div class="sat ${e.enCurso ? "live" : "done"}"><span class="sat-n">Fecha ${i + 1}</span><b>${dia(e)}</b><span class="sat-s">${e.enCurso ? "En curso" : ADMUI() ? e.jugadores.length + " jugadores" : "Jugada"}</span></div>`; }).join("")}</div>`;
+          return `<div class="sat ${e.enCurso ? "live" : "done"}"><span class="sat-n">Fecha ${i + 1}</span><b>${dia(e)}</b><span class="sat-s">${e.enCurso ? "En curso" : STADM() ? e.jugadores.length + " jugadores" : "Jugada"}</span></div>`; }).join("")}</div>`;
       })() : ""}
-      ${evs.length && ADMUI() ? `<div class="summary"><span><b>${inMonth.length}</b>${inMonth.length === 1 ? "jornada" : "jornadas"}</span><span><b>${stand.length}</b>jugadores</span><span><b>${totK}</b>kills</span></div>` : ""}
+      ${evs.length && STADM() ? `<div class="summary"><span><b>${inMonth.length}</b>${inMonth.length === 1 ? "jornada" : "jornadas"}</span><span><b>${stand.length}</b>jugadores</span><span><b>${totK}</b>kills</span></div>` : ""}
       ${!evs.length ? '<div class="empty"><b>Aún no hay jornadas</b>Cuando se registren resultados en la liga, aquí aparecerán el standing del mes y los rankings de mazos y comandantes.</div>' : `
       <div class="card"><div class="sec-head" style="margin:0"><h3>Standing ${statMonth === "all" ? "histórico" : "de " + monthLabel(statMonth).toLowerCase()}${standVis.length < stand.length ? " · Top " + standVis.length : ""}</h3>${topSel}</div><p class="card-sub">Suma de puntos de todas las jornadas del período, más el <b>bono de variedad: +${BONO_PTS} pts</b> para quien juegue al menos ${BONO_MAZOS} ${B3 ? "comandantes" : "mazos"} distintos entre las ${statMonth === "all" ? "fechas" : ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES) + " fechas"} del mes. ${statMonth === cm ? "El bono del mes en curso queda firme al cierre del mes." : ""} Desempate: kills, Buchholz y victorias.</p>
         <div class="stand-scroll"><table><thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th title="Puntos negativos: penalizaciones y warnings">Neg</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${standVis.map((p, i) => {
           const top = Object.entries(p.decks).sort((a, b) => b[1] - a[1])[0];
           const pk = fold(p.nombre).trim();
-          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${ADMUI() && editPlayer === pk ? " sel" : ""}" ${ADMUI() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${ADMUI() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td class="l" style="color:var(--muted)">${top ? (DECK[top[0]] ? `<span class="deck-set">${setIcon(DECK[top[0]].set)}${esc(DECK[top[0]].name)}</span>` : `<span class="deck-set">${(c => c != null ? `<span class="ci">${ciPips(c)}</span>` : "")(ciFor(top[0].replace(/^c:/, "")))}${esc(top[0].replace(/^c:/, ""))}</span>`) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${ADMUI() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú ves a los ${stand.length}.` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
-      ${ADMUI() && editPlayer ? editStatsHTML(evsAll, statMonth) : ""}
+          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${STADM() && editPlayer === pk ? " sel" : ""}" ${STADM() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${STADM() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td class="l" style="color:var(--muted)">${top ? (DECK[top[0]] ? `<span class="deck-set">${setIcon(DECK[top[0]].set)}${esc(DECK[top[0]].name)}</span>` : `<span class="deck-set">${(c => c != null ? `<span class="ci">${ciPips(c)}</span>` : "")(ciFor(top[0].replace(/^c:/, "")))}${esc(top[0].replace(/^c:/, ""))}</span>`) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${STADM() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú ves a los ${stand.length}.` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
+      ${STADM() && editPlayer ? editStatsHTML(evsAll, statMonth) : ""}
       <div class="stats-grid">
         <div class="card"><div class="sec-head" style="margin:0"><h3>Jugadores con más kills</h3>${seg}</div><p class="card-sub" style="margin:0"><b>${killsTot}</b> kills en total ${rankScope === "all" ? "en el histórico" : "en el " + (statMonth === "all" ? "período" : "mes")}</p>${bars(playerKills)}</div>
         ${B3 ? `<div class="card"><div class="sec-head" style="margin:0"><h3>Comandantes más jugados</h3>${seg}</div>${bars(cmdUse)}</div>` : `<div class="card"><div class="sec-head" style="margin:0"><h3>Mazos más usados</h3>${seg}</div>${bars(deckRows)}</div>`}
@@ -1571,8 +1576,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       </div>
         <div class="card neg-card"><div class="sec-head" style="margin:0"><h3>Más puntos negativos</h3>${seg}</div>${negRows.length ? bars(negRows) : '<p class="msg" style="margin:0">Nadie ha perdido puntos en este período.</p>'}</div>
       `}
-      ${ADMUI() && evs.length ? adminResumenHTML(evsAll, statMonth) : ""}
-      ${ADMUI() && (evs.length || archive) ? `<div class="card"><h3>Jornadas guardadas</h3>${archive}${evs.length ? `<ul class="ev-list">${evList}</ul>` : ""}</div>` : ""}`;
+      ${STADM() && evs.length ? adminResumenHTML(evsAll, statMonth) : ""}
+      ${STADM() && (evs.length || archive) ? `<div class="card"><h3>Jornadas guardadas</h3>${archive}${evs.length ? `<ul class="ev-list">${evList}</ul>` : ""}</div>` : ""}`;
   }
   // ---------- Corrección de estadísticas (solo organizadores) ----------
   let editPlayer = null, editMsg = {}, editFecha = null, editDeckMsg = null, editMailMsg = null;
@@ -1891,6 +1896,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     S.warnings = W; commit();
   });
   $("warn").addEventListener("input", e => { if (e.target.id === "warnSearch"){ warnQ = e.target.value; const pos = e.target.selectionStart; e.target.blur(); renderWarn(); const i = $("warnSearch"); if (i){ i.focus(); i.setSelectionRange(pos, pos); } } });
+  // Botón del modo pantalla: desde la liga en vivo va al sorteo; desde cualquier otra pestaña vuelve a la liga en vivo
+  const tvLabel = () => { const b = $("btnTvSorteo"); if (b) b.textContent = view === "live" ? "🎡 Sorteo" : "⏱ Liga en vivo"; };
   function setView(v){
     if (v === "warn" && !ADMUI()) v = "live";
     if (v === "reglas" && !B3) v = "live";
@@ -3060,14 +3067,14 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }, TV_MS);
   $("btnDisplay").addEventListener("click", () => {
     const on = document.body.classList.toggle("display");
-    $("btnTvSorteo").textContent = "🎡 Sorteo";
-    if (on){ setView("live"); focus = null; ["tables"].forEach(id => $(id).scrollTop = 0); const ss = document.querySelector("#mainGrid .stand-scroll"); if (ss) ss.scrollTop = 0; $("tvMesas").textContent = ""; $("tvStand").textContent = ""; render(); }
+    if (on){ setView(view === "warn" ? "live" : view); tvLabel(); focus = null; ["tables"].forEach(id => $(id).scrollTop = 0); const ss = document.querySelector("#mainGrid .stand-scroll"); if (ss) ss.scrollTop = 0; $("tvMesas").textContent = ""; $("tvStand").textContent = ""; render(); }
+    if (!on) setView(view);
     $("btnDisplay").textContent = on ? "Salir de modo pantalla" : "Modo pantalla";
     if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
     if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   });
   document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement && document.body.classList.contains("display")){ document.body.classList.remove("display"); $("btnDisplay").textContent = "Modo pantalla"; }
+    if (!document.fullscreenElement && document.body.classList.contains("display")){ document.body.classList.remove("display"); setView(view); $("btnDisplay").textContent = "Modo pantalla"; }
   });
 
   /* ---------- Inicio ---------- */
@@ -3148,7 +3155,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     document.addEventListener("keydown", e => { if (e.key === "Escape"){ if (!$("menuDrawer").hidden) open(false); else if (document.body.classList.contains("display")) $("btnDisplay").click(); } });
     $("btnTvExit").addEventListener("click", () => $("btnDisplay").click());
     // Modo pantalla: alternar entre la liga en vivo y la ruleta del sorteo
-    $("btnTvSorteo").addEventListener("click", () => { setView(view === "sorteo" ? "live" : "sorteo"); $("btnTvSorteo").textContent = view === "sorteo" ? "⏱ Liga en vivo" : "🎡 Sorteo"; });
+    $("btnTvSorteo").addEventListener("click", () => { setView(view === "live" ? "sorteo" : "live"); tvLabel(); });
     if (B3){
       $("playersInput").placeholder = "Camila Soto ; Atraxa, Praetors' Voice\nTomás Araya ; Yuriko, the Tiger's Shadow ; tomas@correo.cl";
       const note = $("playersInput").previousElementSibling; if (note) note.innerHTML = "Una persona por línea: <b>Nombre Apellido ; Comandante ; Correo</b>. Comandante y correo son opcionales; el comandante también lo puede declarar el jugador desde el portal.";

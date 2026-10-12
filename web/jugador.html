@@ -2019,9 +2019,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const start = wheelRot, base = start - (start % TWO);
     let end = base + target; while (end < start) end += TWO;
     end += (reduce ? 1 : 9) * TWO;
-    // se pasa entre 0,35 y 0,6 de un segmento (determinado por el giro, igual en todas las pantallas) y vuelve
-    const over = reduce ? 0 : seg * (0.35 + ((sp.j || 0.5) * 7 % 1) * 0.25);
-    const WIND = reduce ? 0 : 750, MAIN = reduce ? 1200 : 11500, SETTLE = reduce ? 0 : 1300, back = 0.22;
+    // "Se pasa y vuelve" ocurre solo a veces: lo decide el azar al girar (sp.ov) y es igual en todas las pantallas
+    const over = reduce ? 0 : seg * (sp.ov || 0);
+    const WIND = reduce ? 0 : 750, MAIN = reduce ? 1200 : 11500, SETTLE = over ? 1300 : 0, back = 0.22;
     const t0 = performance.now();
     spinning = {list, winner: sp.winner};
     $("winnerCard").hidden = true; $("btnSpin").disabled = true; $("spinMsg").textContent = "Preparando…";
@@ -2106,10 +2106,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function spin(){
     if (!M.admin || spinning) return;
     const {pool, gan, f, activos} = sorteoData(); if (!pool.length) return;
-    const rnd = new Uint32Array(2); crypto.getRandomValues(rnd);
+    const rnd = new Uint32Array(4); crypto.getRandomValues(rnd);
     const winner = pool[rnd[0] % pool.length];
     const motivo = Object.assign({}, (S.sorteo && S.sorteo.motivo) || {}, {[winner]: activos.length ? activos.map(x => x.t).join(" · ") : "Sorteo general"});
-    S.sorteo = {ganadores: gan.concat([winner]), filtros: f, motivo, spin: {id: "s" + Date.now().toString(36), winner, list: pool, at: Date.now(), j: rnd[1] / 4294967296}};
+    S.sorteo = {ganadores: gan.concat([winner]), filtros: f, motivo, spin: {id: "s" + Date.now().toString(36), winner, list: pool, at: Date.now(), j: rnd[1] / 4294967296,
+      // 50 % de las veces la ruleta se pasa del ganador (entre 0,3 y 0,7 de un gajo) y vuelve
+      ov: rnd[2] / 4294967296 < 0.5 ? +(0.3 + rnd[3] / 4294967296 * 0.4).toFixed(3) : 0}};
     commit();
   }
   $("btnSpin").addEventListener("click", () => { audioCtx(); spin(); });

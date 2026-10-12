@@ -2110,8 +2110,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const winner = pool[rnd[0] % pool.length];
     const motivo = Object.assign({}, (S.sorteo && S.sorteo.motivo) || {}, {[winner]: activos.length ? activos.map(x => x.t).join(" · ") : "Sorteo general"});
     S.sorteo = {ganadores: gan.concat([winner]), filtros: f, motivo, spin: {id: "s" + Date.now().toString(36), winner, list: pool, at: Date.now(), j: rnd[1] / 4294967296,
-      // 50 % de las veces la ruleta se pasa del ganador (entre 0,3 y 0,7 de un gajo) y vuelve
-      ov: rnd[2] / 4294967296 < 0.5 ? +(0.3 + rnd[3] / 4294967296 * 0.4).toFixed(3) : 0}};
+      // 20 % de las veces la ruleta se pasa del ganador (entre 0,3 y 0,7 de un gajo) y vuelve
+      ov: rnd[2] / 4294967296 < 0.2 ? +(0.3 + rnd[3] / 4294967296 * 0.4).toFixed(3) : 0}};
     commit();
   }
   $("btnSpin").addEventListener("click", () => { audioCtx(); spin(); });

@@ -474,7 +474,22 @@ canvas.confeti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:no
 .drawer .dl{display:flex;flex-direction:column;gap:2px;color:var(--fg);text-decoration:none;font-family:var(--f-display);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .drawer .dl small{font-family:var(--f-body);font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:12px}
 .drawer #conn{align-self:flex-start}
-.tv-exit{position:fixed;top:10px;right:12px;z-index:130;display:none;opacity:.15}
+.tv-bar{position:fixed;top:10px;right:12px;z-index:130;display:none;gap:8px}
+body.display .tv-bar{display:flex}
+.tv-bar .btn{opacity:.15;transition:opacity .2s}
+.tv-bar .btn:hover,.tv-bar .btn:focus-visible{opacity:1}
+body.display.view-sorteo #btnTvSorteo{opacity:.6}
+.tv-exit{display:none}
+/* Modo pantalla · sorteo: solo la ruleta y el botón de girar */
+body.display.view-sorteo .sorteo-side,body.display.view-sorteo #sorteoSub,body.display.view-sorteo .clock{display:none!important}
+body.display #sorteo{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;overflow:hidden}
+body.display #sorteo .stats-head{justify-content:center;text-align:center;margin:0}
+body.display #sorteo .sorteo-grid{grid-template-columns:minmax(0,1fr);flex:1;min-height:0;width:100%;place-items:start center}
+body.display #sorteo .wheel-wrap{width:100%;gap:12px}
+body.display #sorteo .wheel-box{width:min(100%,calc(100vh - 290px))}
+body.display #sorteo .wheel-wrap{position:relative}
+body.display #sorteo .winner-card{position:absolute;left:0;right:0;margin:auto;top:52%;max-width:min(720px,92%);z-index:5;box-shadow:0 20px 80px rgba(0,0,0,.75);background:radial-gradient(120% 120% at 50% 0%,rgba(233,180,76,.25),transparent 60%),var(--surface)}
+body.display #sorteo .winner-card .wn{font-size:clamp(40px,7vw,72px)}
 .tv-exit:hover,.tv-exit:focus-visible{opacity:1}
 body.display .tv-exit{display:inline-flex}
 body.display .hdr-right{display:none}
@@ -581,7 +596,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   <div class="drawer-sec"><span class="lbl">Secciones</span><div id="menuTabs"></div></div>
   <div class="drawer-sec"><span class="lbl">Cuenta y vistas</span><div id="menuActions"></div></div>
 </aside>
-<button class="btn ghost tv-exit" id="btnTvExit" type="button">Salir de modo pantalla</button>
+<div class="tv-bar"><button class="btn ghost" id="btnTvSorteo" type="button">🎡 Sorteo</button><button class="btn ghost tv-exit" id="btnTvExit" type="button">Salir de modo pantalla</button></div>
 <div class="wrap">
   <header class="top">
     <div class="brand-wrap">
@@ -3045,6 +3060,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }, TV_MS);
   $("btnDisplay").addEventListener("click", () => {
     const on = document.body.classList.toggle("display");
+    $("btnTvSorteo").textContent = "🎡 Sorteo";
     if (on){ setView("live"); focus = null; ["tables"].forEach(id => $(id).scrollTop = 0); const ss = document.querySelector("#mainGrid .stand-scroll"); if (ss) ss.scrollTop = 0; $("tvMesas").textContent = ""; $("tvStand").textContent = ""; render(); }
     $("btnDisplay").textContent = on ? "Salir de modo pantalla" : "Modo pantalla";
     if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
@@ -3131,6 +3147,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     $("menuDrawer").addEventListener("click", e => { if (e.target.closest(".tab, #btnDisplay, #lnkOther")) open(false); });
     document.addEventListener("keydown", e => { if (e.key === "Escape"){ if (!$("menuDrawer").hidden) open(false); else if (document.body.classList.contains("display")) $("btnDisplay").click(); } });
     $("btnTvExit").addEventListener("click", () => $("btnDisplay").click());
+    // Modo pantalla: alternar entre la liga en vivo y la ruleta del sorteo
+    $("btnTvSorteo").addEventListener("click", () => { setView(view === "sorteo" ? "live" : "sorteo"); $("btnTvSorteo").textContent = view === "sorteo" ? "⏱ Liga en vivo" : "🎡 Sorteo"; });
     if (B3){
       $("playersInput").placeholder = "Camila Soto ; Atraxa, Praetors' Voice\nTomás Araya ; Yuriko, the Tiger's Shadow ; tomas@correo.cl";
       const note = $("playersInput").previousElementSibling; if (note) note.innerHTML = "Una persona por línea: <b>Nombre Apellido ; Comandante ; Correo</b>. Comandante y correo son opcionales; el comandante también lo puede declarar el jugador desde el portal.";

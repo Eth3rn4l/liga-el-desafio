@@ -266,6 +266,7 @@ tbody tr.mine-row td.nm{color:var(--red-hi)}
 .tg:disabled{opacity:.35;cursor:not-allowed}
 body:not(.liga-b3) .b3-only{display:none!important}
 .reglas{display:flex;flex-direction:column;gap:16px;max-width:860px}
+#reglasPrecon,#reglas>.b3-only{display:contents}
 .reglas .card p,.reglas .card li{line-height:1.55;color:var(--fg)}
 .reglas .card ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .reglas dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 16px;align-items:baseline}
@@ -618,7 +619,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <button type="button" class="tab" data-view="stats">Estadísticas</button>
       <button type="button" class="tab" data-view="sorteo">Sorteo</button>
       <button type="button" class="tab" data-view="warn" hidden>Warnings</button>
-      <button type="button" class="tab b3-only" data-view="reglas">Reglas B3</button>
+      <button type="button" class="tab" data-view="reglas">Reglas</button>
     </nav>
     <div class="top-actions">
       <span class="conn" id="conn">Conectando</span>
@@ -689,6 +690,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   <section id="stats" class="stats" hidden></section>
   <section id="warn" class="stats" hidden></section>
   <section id="reglas" class="reglas" hidden>
+    <div id="reglasPrecon"></div>
+    <div class="b3-only">
     <div class="stats-head"><div><h2>Reglas · Liga Bracket 3</h2><div class="sub2">El Desafío Cafetería · vigentes desde la primera fecha de la liga de octubre de 2026, para ligas y eventos stand alone.</div></div></div>
     <div class="card"><h3>Sistema de puntos</h3>
       <dl>
@@ -715,6 +718,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <li><b>Control y bloqueo de mesa:</b> un estado de juego en que las acciones de los oponentes no tienen impacto significativo y, viendo solo el estado visible de la partida, no tienen líneas razonables para impedir la victoria.</li>
       <li><b>Destrucción masiva de maná (MLD):</b> cualquier efecto, de una carta o una combinación, que afecte a la vez a 4 o más tierras: destruirlas, exiliarlas, devolverlas a la mano o la biblioteca, obligar a sacrificarlas, cambiar su controlador, girarlas en el mantenimiento o impedir que se enderecen, transformarlas en otra tierra básica, alterar el maná que producen o enviarlas al cementerio por acciones basadas en estado.</li>
     </ul><p class="src">Basado en las bases de la comunidad Landfall TV (actualización de agosto de 2026); el sistema de puntos es propio de la cafetería.</p></div>
+    <div class="card"><h3>Warnings</h3><p style="margin:0">Por cada <b>2 warnings</b> en una misma fecha, el jugador pierde <b>1 punto</b> del día. Los warnings se reinician en cada fecha.</p></div>
+    </div>
   </section>
   <section id="sorteo" class="sorteo" hidden>
     <div class="stats-head"><div><h2>Sorteo de la jornada</h2><div class="sub2" id="sorteoSub"></div></div></div>
@@ -832,7 +837,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   const STATE_DOC = B3 ? "liga/estado_b3" : "liga/estado", CAL_DOC = B3 ? "liga/calendario_b3" : "liga/calendario";
   const LKEY = "liga-commander-desafio-v2" + (B3 ? "-b3" : "");
   const SAMPLE = ["Matías R.","Camila S.","Benjamín T.","Javiera P.","Tomás A.","Fernanda M.","Ignacio V.","Catalina H.","Joaquín L.","Valentina C.","Diego B.","Antonia F.","Nicolás G.","Isidora N.","Sebastián O.","Martina Q.","Felipe U.","Constanza E.","Cristóbal D.","Josefa Z.","Vicente K.","Florencia W.","Maximiliano Y.","Trinidad I.","Agustín J.","Emilia X.","Lucas P.","Sofía R.","Gaspar M.","Amanda T.","Pablo S.","Renata C."];
-  const WARN_LIMIT = 2, WARN_PEN = 2;   // 2 warnings en una misma fecha = -2 puntos del día
+  const WARN_LIMIT = 2, WARN_PEN = 1;   // cada 2 warnings en una misma fecha = -1 punto del día
+  const warnPen = n => Math.floor((n || 0) / WARN_LIMIT) * WARN_PEN;
   // joven: "Muy joven para morir" (+ al eliminado antes de terminar su 6.º turno) · bruto: "Demasiado bruto para jugar" (− por cada eliminación temprana)
   const DEFCFG = {min:70, rounds:3, win:3, kill:1, surv:1, cap:3, pairing:"suizo", joven: B3 ? 1 : 0, bruto: B3 ? 2 : 0};
   const PAIRINGS = {suizo:"Suizo · ronda 1 al azar, luego por standing", desafio:"Suizo Desafío · rondas 1 y 2 al azar, luego por standing", azar:"Al azar · todas las rondas"};
@@ -1880,12 +1886,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const q = fold(warnQ).trim();
     const list = S.players.slice().sort((a, b) => (W[b.id] || 0) - (W[a.id] || 0) || a.name.localeCompare(b.name)).filter(p => !q || fold(p.name).includes(q));
     const conW = S.players.filter(p => W[p.id] > 0).length, pen = S.players.filter(p => (W[p.id] || 0) >= WARN_LIMIT).length;
-    box.innerHTML = `<div class="stats-head"><div><h2>Warnings de la fecha</h2><div class="sub2">Solo lo ven los organizadores. Con <b>${WARN_LIMIT} warnings</b> en la misma fecha, el jugador pierde <b>${WARN_PEN} puntos</b> del día automáticamente. Se reinician en cada fecha nueva.</div></div></div>
+    box.innerHTML = `<div class="stats-head"><div><h2>Warnings de la fecha</h2><div class="sub2">Solo lo ven los organizadores. Por cada <b>${WARN_LIMIT} warnings</b> en la misma fecha, el jugador pierde <b>${WARN_PEN} punto</b> del día automáticamente (2 warnings = −1, 4 warnings = −2…). Se reinician en cada fecha nueva.</div></div></div>
       <div class="summary"><span><b>${conW}</b>${conW === 1 ? "jugador con warning" : "jugadores con warnings"}</span><span><b>${pen}</b>${pen === 1 ? "penalizado" : "penalizados"}</span><span><b>${S.phase === "inscripcion" ? "–" : "R" + (S.cur + 1)}</b>ronda actual</span></div>
       <div class="card"><input class="warn-search" id="warnSearch" type="search" placeholder="Buscar jugador" value="${esc(warnQ)}" autocomplete="off">
       <ul class="warn-list">${list.map(p => { const n = W[p.id] || 0, x = byId[p.id];
         return `<li class="${n >= WARN_LIMIT ? "w2" : n ? "w1" : ""}"><span><span class="nm">${esc(p.name)}</span><span class="sub">${x ? x.pts + " pts" : ""}${tableOf[p.id] != null ? " · Mesa " + (tableOf[p.id] + 1) : ""}</span></span>
-          ${n >= WARN_LIMIT ? `<span class="warn-tag w2">−${WARN_PEN} pts</span>` : n ? '<span class="warn-tag w1">1 warning</span>' : "<span></span>"}
+          ${n >= WARN_LIMIT ? `<span class="warn-tag w2">−${warnPen(n)} ${warnPen(n) === 1 ? "pt" : "pts"}</span>` : n ? '<span class="warn-tag w1">1 warning</span>' : "<span></span>"}
           <span class="warn-ctl"><button type="button" data-warn="${esc(p.id)}" data-d="-1" ${n ? "" : "disabled"} aria-label="Quitar warning a ${esc(p.name)}">−</button><b>${n}</b><button type="button" data-warn="${esc(p.id)}" data-d="1" aria-label="Agregar warning a ${esc(p.name)}">+</button></span></li>`; }).join("") || '<li><span class="sub">Nadie coincide con la búsqueda.</span></li>'}</ul></div>`;
   }
   $("warn").addEventListener("click", e => {
@@ -1900,7 +1906,6 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   const tvLabel = () => { const b = $("btnTvSorteo"); if (b) b.textContent = view === "live" ? "🎡 Sorteo" : "⏱ Liga en vivo"; };
   function setView(v){
     if (v === "warn" && !ADMUI()) v = "live";
-    if (v === "reglas" && !B3) v = "live";
     view = v;
     document.body.classList.toggle("view-stats", v === "stats");
     document.body.classList.toggle("view-sorteo", v === "sorteo");
@@ -1914,6 +1919,33 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (v === "stats") renderStats();
     if (v === "sorteo") renderSorteo();
     if (v === "warn") renderWarn();
+    if (v === "reglas") renderReglas();
+  }
+  // Reglas de la Liga Precon: se arman con la configuración vigente de la fecha (rondas, minutos y puntos)
+  function renderReglas(){
+    const box = $("reglasPrecon"); if (!box) return;
+    if (B3){ box.innerHTML = ""; return; }
+    const c = Object.assign({}, DEFCFG, (S && S.cfg) || {});
+    const emparejo = {suizo:"La ronda 1 se arma al azar y las siguientes por standing (sistema suizo).", desafio:"Las rondas 1 y 2 se arman al azar y las siguientes por standing (sistema suizo).", azar:"Todas las rondas se arman al azar."}[c.pairing || "suizo"] || "";
+    box.innerHTML = `<div class="stats-head"><div><h2>Reglas · Liga Precon</h2><div class="sub2">El Desafío Cafetería · ${LIGAS.precon.dia} · se juega con mazos preconstruidos de Commander.</div></div></div>
+    <div class="card"><h3>Sistema de puntos</h3>
+      <dl>
+        <dt>+${c.win}</dt><dd><b>Ganar la mesa</b>El ganador recibe ${c.win} puntos.</dd>
+        <dt>+${c.kill}</dt><dd><b>Eliminar a un jugador</b>Por cada jugador eliminado.</dd>
+        <dt>+${c.surv}</dt><dd><b>Sobrevivir a la mesa</b>Seguir vivo al terminar el tiempo.</dd>
+      </dl>
+      <p class="note" style="margin:0">Máximo ${c.cap} puntos por jugador en cada mesa.</p>
+    </div>
+    <div class="card"><h3>Bono de variedad</h3><p style="margin:0">Quien juegue al menos <b>${BONO_MAZOS} mazos distintos</b> entre las ${FECHAS_MES} fechas del mes suma <b>+${BONO_PTS} puntos</b> en el standing mensual. El bono del mes en curso queda firme al cierre del mes.</p></div>
+    <div class="card"><h3>Jornada y mesas</h3><ul>
+      <li><b>${c.rounds} rondas</b> de <b>${c.min} minutos</b>.</li>
+      <li>${emparejo}</li>
+      <li>Mesas de 4 jugadores; si los inscritos no son múltiplo de 4, se forman mesas de 3.</li>
+      <li>Nunca se juntan dos comandantes iguales en una mesa y se evita repetir rivales.</li>
+      <li>Al inscribirte eliges tu precon del catálogo. Los mazos de todos se muestran cuando empieza la ronda 1.</li>
+    </ul></div>
+    <div class="card"><h3>Desempate</h3><p style="margin:0">Puntos, luego kills y luego Buchholz (suma de los puntos de los rivales enfrentados).</p></div>
+    <div class="card"><h3>Warnings</h3><p style="margin:0">Por cada <b>${WARN_LIMIT} warnings</b> en una misma fecha, el jugador pierde <b>${WARN_PEN} punto</b> del día. Los warnings se reinician en cada fecha.</p></div>`;
   }
 
   /* ---------- Sorteo: ruleta con los inscritos fuera del top 4 ---------- */
@@ -2369,7 +2401,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     }));
     const list = Object.values(rec);
     const W = st.warnings || {};
-    list.forEach(x => { x.warn = W[x.id] || 0; x.pen = x.warn >= WARN_LIMIT ? WARN_PEN : 0; x.pts -= x.pen; x.neg += x.pen; });
+    list.forEach(x => { x.warn = W[x.id] || 0; x.pen = warnPen(x.warn); x.pts -= x.pen; x.neg += x.pen; });
     list.forEach(x => { x.buch = x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0); });
     list.sort((a, b) => b.pts - a.pts || b.k - a.k || b.buch - a.buch || a.ord - b.ord);
     return list;
@@ -2627,7 +2659,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     } else { const mh = $("moveHint"); if (mh) mh.hidden = true; }
     $("standBody").innerHTML = stand.map((x, i) =>
       `<tr data-p="${x.id}" class="${i === 0 && x.pts > 0 ? "top1" : i < 3 && x.pts > 0 ? "top3" : ""}${x.id === focus ? " sel" : ""}${x.id === myPid ? " mine-row" : ""}"><td class="l pos">${i + 1}</td><td class="l nm">${esc(x.name)}${isDrop(x.id) ? ' <span class="tag drop" title="Dejó la fecha: no juega las próximas rondas, conserva sus puntos">Drop</span>' : isLate(x.id) ? ` <span class="tag late" title="Se sumó en la ronda ${S.players.find(p => p.id === x.id).late + 1}">Tardío</span>` : ""}${ADMUI() && x.warn ? `<span class="wmark" title="Warnings en esta fecha">⚠ ${x.warn}</span>` : ""}${cmdLine(x.id)}</td>
-       <td class="pts">${x.pts}${(n => n ? `<span class="pen" title="Puntos negativos de la fecha${ADMUI() && x.pen ? " (incluye " + x.pen + " por " + WARN_LIMIT + " warnings)" : ""}">−${n}</span>` : "")(ADMUI() ? x.neg : x.neg - x.pen)}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td class="buch">${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
+       <td class="pts">${x.pts}${(n => n ? `<span class="pen" title="Puntos negativos de la fecha${ADMUI() && x.pen ? " (incluye " + x.pen + " por warnings)" : ""}">−${n}</span>` : "")(ADMUI() ? x.neg : x.neg - x.pen)}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td class="buch">${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
     $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V victorias · K kills · S rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.`;

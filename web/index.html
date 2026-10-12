@@ -292,6 +292,7 @@ button.pip{cursor:pointer;font:inherit}
 button.pip.done:hover{border-color:var(--gold)}
 .pip.viendo{outline:2px solid var(--gold);outline-offset:2px}
 .banner.ronda-ant{display:flex;flex-wrap:wrap;gap:10px;align-items:center;grid-column:1/-1}
+body:not(.is-admin) .ban-wrap{display:none!important}
 .ed-aviso{margin:6px 0 0;padding:8px 10px;border-radius:10px;background:rgba(233,180,76,.12);color:var(--gold);font-size:13px}
 .ed-box input:not([type=checkbox]){background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
 .ed-box .row input{width:auto}
@@ -2132,6 +2133,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // Botón de broma: solo deja "banear" a Eric Riquelme y no hace nada de verdad
   const esEric = id => /\beric\b/.test(fold(pname(id))) && /riquelme/.test(fold(pname(id)));
   $("btnBan").addEventListener("click", () => {
+    if (!ADMUI()) return;
     const box = $("banBox"), open = box.hidden;
     box.hidden = !open; $("btnBan").setAttribute("aria-expanded", open);
     if (!open) return;

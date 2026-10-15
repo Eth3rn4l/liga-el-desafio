@@ -165,6 +165,7 @@ input[type=number]{width:100%}
 .banner{font-size:13px;color:var(--gold);border:1px dashed rgba(233,180,76,.45);border-radius:10px;padding:8px 12px}
 .test-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#9fd8ff;border:1px solid rgba(110,190,255,.55);background:rgba(60,140,220,.12);font-size:14px}
 .test-banner[hidden]{display:none}
+.test-acts{display:flex;gap:8px;flex-wrap:wrap}.test-acts .btn{padding:8px 12px;font-size:12px}
 body.modo-test .brand h1::after{content:" · TESTEO";color:#6ebeff}
 body.display .test-banner{display:none}
 
@@ -637,7 +638,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   </header>
 
   <div class="banner" id="offlineBanner" hidden></div>
-  <div class="banner test-banner" id="testBanner" hidden><span><b>🧪 Liga de testeo</b> · Solo la ve el desarrollador. Nada de lo que hagas aquí cuenta para la liga real, sus estadísticas ni el bot de WhatsApp. Cuando cierres la fecha aparece <b>Finalizar liga testeo</b>, que borra todos los datos de prueba.</span><button class="btn primary" id="btnFinTest2" type="button" hidden>Finalizar liga testeo</button></div>
+  <div class="banner test-banner" id="testBanner" hidden><span id="testTxt"></span><span class="test-acts"><button class="btn ghost" id="btnTestLink" type="button" hidden>📱 Copiar link para celulares</button><a class="btn ghost" id="lnkReal" hidden>Ver la liga real</a><button class="btn primary" id="btnFinTest2" type="button" hidden>Finalizar liga testeo</button></span></div>
   <div class="banner adm live-only" id="sampleBanner" hidden>Jugadores de ejemplo. Carga los inscritos reales en el panel del organizador, al final de la página.</div>
 
   <section class="clock live-only" aria-label="Tiempo de ronda">
@@ -3001,12 +3002,26 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   const resultsSig = () => JSON.stringify(S.rounds.map(r => r.tables.map(t => [t.seats, t.result ? sig(t.result) : null])));
   const isClosed = () => !!(S && S.closedSig && S.closedSig === resultsSig() && S.archivedId);
   /* ---------- Rol desarrollador: liga de testeo ---------- */
-  const urlLiga = test => location.pathname + "?liga=" + LIGA + (test ? "&test=1" : "") + location.hash;
+  function urlLiga(test){ return location.pathname + "?liga=" + LIGA + (test ? "&test=1" : "") + location.hash; }
   function devUI(){
     document.body.classList.toggle("modo-test", TEST);
     const b = $("btnTest"); if (b){ b.hidden = !M.dev; b.textContent = TEST ? "Volver a la liga real" : "🧪 Iniciar liga de testeo"; }
     $("testBanner").hidden = !TEST;
+    if (!TEST) return;
+    $("testTxt").innerHTML = M.dev
+      ? "<b>🧪 Liga de testeo</b> · Nada de lo que hagas aquí cuenta para la liga real, sus estadísticas ni el bot de WhatsApp. Para verla en otro celular, comparte el link. Cuando cierres la fecha aparece <b>Finalizar liga testeo</b>, que borra todos los datos de prueba."
+      : "<b>🧪 Liga de testeo</b> · Esto es una prueba: nada de lo que ves aquí cuenta para la liga real.";
+    $("btnTestLink").hidden = !M.dev;
+    const real = $("lnkReal"); real.hidden = !!M.dev; real.href = urlLiga(false);
   }
+  $("btnTestLink").addEventListener("click", async () => {
+    // Link al portal de jugadores de la liga de testeo, para abrirlo en cualquier celular
+    const url = new URL(PORTAL ? location.pathname : location.pathname.replace(/[^/]*$/, "") + "jugador.html", location.origin);
+    url.search = "?liga=" + LIGA + "&test=1";
+    const b = $("btnTestLink"), txt = url.href;
+    try { if (navigator.share && matchMedia("(pointer:coarse)").matches) await navigator.share({title:"Liga de testeo", url:txt}); else { await navigator.clipboard.writeText(txt); b.textContent = "✓ Link copiado"; setTimeout(() => b.textContent = "📱 Copiar link para celulares", 2500); } }
+    catch(e){ prompt("Copia este link:", txt); }
+  });
   $("btnTest").addEventListener("click", () => {
     if (!M.dev) return;
     if (TEST){ location.href = urlLiga(false); return; }
@@ -3180,8 +3195,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const {db, user} = c;
     M.db = db; M.user = user; M.perfil = c.perfil;
     M.admin = c.admin; M.dev = !!(c.admin && c.dev);
-    // La liga de testeo solo la abre el rol desarrollador
-    if (TEST && !M.dev){ location.replace(location.pathname + "?liga=" + LIGA + location.hash); return; }
+    // Liga de testeo: cualquiera con el link la puede ver (p. ej. desde el celular), pero solo el desarrollador la maneja
+    if (TEST && !M.dev) M.admin = false;
     M.uid = c.session ? c.session.user.id : null;
     M.email = c.session ? (c.session.user.email || "").toLowerCase() : null;
     const acc = $("btnAccount"); acc.hidden = false;

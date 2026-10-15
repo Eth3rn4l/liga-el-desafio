@@ -826,7 +826,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <div class="row"><button class="btn ghost" id="btnAutoLink" type="button">Vincular por nombre ahora</button><span class="note" id="autoLinkNote"></span></div>
           <ul class="links" id="linksList"></ul>
         </div>
-        <p class="note">Rondas al azar: nunca se juntan dos comandantes iguales en una mesa y se evita repetir rivales. Rondas suizas: mesas en orden de standing; solo se evita repetir comandante (los rivales se pueden repetir). Si los inscritos no son múltiplo de 4, se forman mesas de 3. Desempate: puntos, kills y Buchholz (suma de los puntos de los rivales enfrentados).</p>
+        <p class="note">Rondas al azar: nunca se juntan dos comandantes iguales en una mesa y se evita repetir rivales. Rondas suizas: mesas en orden de standing (puntos y luego kills); si quedan dos comandantes iguales en una mesa, se cambia a uno por otro jugador empatado en puntos y kills. Los rivales se pueden repetir. Si los inscritos no son múltiplo de 4, se forman mesas de 3. Desempate: puntos, kills y Buchholz (suma de los puntos de los rivales enfrentados).</p>
       </div>
       <div class="cal-admin" id="calAdmin"></div>
     </div>
@@ -1962,7 +1962,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <li>${emparejo}</li>
       <li>Mesas de 4 jugadores; si los inscritos no son múltiplo de 4, se forman mesas de 3.</li>
       <li>Nunca se juntan dos comandantes iguales en una mesa.</li>
-      <li>En las rondas al azar se evita repetir rivales. En la ronda por standing se respeta el orden del standing, aunque se repitan rivales.</li>
+      <li>En las rondas al azar se evita repetir rivales. En la ronda por standing las mesas siguen el orden del standing (puntos y luego kills), aunque se repitan rivales; solo si quedan dos comandantes iguales en una mesa, se cambia a uno de ellos por otro jugador empatado en puntos y kills.</li>
     </ul></div>
     <div class="card"><h3>Desempate</h3><p style="margin:0">Puntos, luego kills y luego Buchholz (suma de los puntos de los rivales enfrentados).</p></div>
     <div class="card"><h3>Warnings</h3><p style="margin:0">Por cada <b>${WARN_LIMIT} warnings</b> en una misma fecha, el jugador pierde <b>${WARN_PEN} punto</b> del día. Los warnings se reinician en cada fecha.</p><div class="km"><b>⚠ Kingmaking = warning.</b> Hacer kingmaking es decidir quién gana la mesa por razones ajenas al juego, cuando tú ya no puedes ganar o dejas de jugar para ganar. Por ejemplo, regalarle la partida a un amigo, atacar solo a un jugador por revancha o por un acuerdo hecho fuera de la partida, o rendirte o dejarte matar para favorecer a alguien. Cada jugador debe jugar siempre por su propia victoria o por el bien común de la mesa.</div></div>`;
@@ -2393,7 +2393,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           const q0 = R[p]; let oro = -1, plata = -1, bronce = -1;
           for (let c = ptr + 1; c < arr.length; c++){
             const q = arr[c], r = R[q];
-            if (!(r.pts === q0.pts && r.k === q0.k && Math.abs(r.buch - q0.buch) < 0.01)) break;
+            // Solo se cambia con alguien empatado en puntos y kills (pedido de Hans)
+            if (!(r.pts === q0.pts && r.k === q0.k)) break;
             const cc = mesa.some(o => sameCmd(q, o)), hh = mesa.some(o => rep_(q, o));
             if (!cc && !hh){ oro = c; break; }
             if (!cc && hh && plata < 0) plata = c;
@@ -2416,7 +2417,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           if (t === m) continue;
           for (let tp = 0; tp < pods[t].length; tp++){
             const tid = pods[t][tp];
-            if (R[tid].pts !== R[pid].pts) continue;
+            if (R[tid].pts !== R[pid].pts || R[tid].k !== R[pid].k) continue;
             if (limpio(pods[m], p, tid) && limpio(pods[t], tp, pid)){ pods[m][p] = tid; pods[t][tp] = pid; hecho = true; break; }
           }
         }

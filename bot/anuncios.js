@@ -111,9 +111,9 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
       una(`r${ri}:armada`, () => ({
         tipo: "mesas", ri,
         texto: [`⚔️ *${NOMBRE_LIGA[liga]} · Comienza la ronda ${ri + 1} de ${S.cfg.rounds}*`, `${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`, "Busca tu nombre y anda a tu mesa. ¡Suerte a todos!"].join("\n"),
-        // En texto: un mensaje de inicio y luego un mensaje por mesa
-        respaldo: [[`⚔️ *${NOMBRE_LIGA[liga]} · Comienza la ronda ${ri + 1} de ${S.cfg.rounds}*`, `${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`, "¡Suerte a todos!"].join("\n"),
-          ...r.tables.map((t, ti) => [`*MESA ${ti + 1}*`, ...t.seats.map(id => `- ${nm(id)}`)].join("\n"))]
+        // En texto: un solo mensaje, cada mesa en negrita y los jugadores con viñetas
+        respaldo: [`⚔️ *${NOMBRE_LIGA[liga]} · Comienza la ronda ${ri + 1} de ${S.cfg.rounds}*`, `${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`,
+          ...r.tables.flatMap((t, ti) => ["", `*MESA ${ti + 1}*`, ...t.seats.map(id => `• ${nm(id)}`)]), "", "¡Suerte a todos!"].join("\n")
       }));
     r.tables.forEach((t, ti) => {
       const k = `r${ri}t${ti}`, prev = m.mesas[k];

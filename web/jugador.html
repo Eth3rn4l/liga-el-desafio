@@ -826,7 +826,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <div class="row"><button class="btn ghost" id="btnAutoLink" type="button">Vincular por nombre ahora</button><span class="note" id="autoLinkNote"></span></div>
           <ul class="links" id="linksList"></ul>
         </div>
-        <p class="note">Rondas al azar: nunca se juntan dos comandantes iguales en una mesa y se evita repetir rivales. Rondas suizas: mesas por standing con las mismas reglas. Si los inscritos no son múltiplo de 4, se forman mesas de 3. Desempate: puntos, kills y Buchholz (suma de los puntos de los rivales enfrentados).</p>
+        <p class="note">Rondas al azar: nunca se juntan dos comandantes iguales en una mesa y se evita repetir rivales. Rondas suizas: mesas en orden de standing; solo se evita repetir comandante (los rivales se pueden repetir). Si los inscritos no son múltiplo de 4, se forman mesas de 3. Desempate: puntos, kills y Buchholz (suma de los puntos de los rivales enfrentados).</p>
       </div>
       <div class="cal-admin" id="calAdmin"></div>
     </div>
@@ -1961,7 +1961,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <li><b>${c.rounds} rondas</b> de <b>${c.min} minutos</b>.</li>
       <li>${emparejo}</li>
       <li>Mesas de 4 jugadores; si los inscritos no son múltiplo de 4, se forman mesas de 3.</li>
-      <li>Nunca se juntan dos comandantes iguales en una mesa y se evita repetir rivales.</li>
+      <li>Nunca se juntan dos comandantes iguales en una mesa.</li>
+      <li>En las rondas al azar se evita repetir rivales. En la ronda por standing se respeta el orden del standing, aunque se repitan rivales.</li>
     </ul></div>
     <div class="card"><h3>Desempate</h3><p style="margin:0">Puntos, luego kills y luego Buchholz (suma de los puntos de los rivales enfrentados).</p></div>
     <div class="card"><h3>Warnings</h3><p style="margin:0">Por cada <b>${WARN_LIMIT} warnings</b> en una misma fecha, el jugador pierde <b>${WARN_PEN} punto</b> del día. Los warnings se reinician en cada fecha.</p><div class="km"><b>⚠ Kingmaking = warning.</b> Hacer kingmaking es decidir quién gana la mesa por razones ajenas al juego, cuando tú ya no puedes ganar o dejas de jugar para ganar. Por ejemplo, regalarle la partida a un amigo, atacar solo a un jugador por revancha o por un acuerdo hecho fuera de la partida, o rendirte o dejarte matar para favorecer a alguien. Cada jugador debe jugar siempre por su propia victoria o por el bien común de la mesa.</div></div>`;
@@ -2316,7 +2317,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const pods = Math.ceil(n / 4), threes = pods * 4 - n;
     return Array(pods - threes).fill(4).concat(Array(threes).fill(3));
   }
-  // Rondas al azar o suizas. Reglas en ambas: no repetir comandante en una mesa (prioridad) y evitar rivales repetidos.
+  // Rondas al azar: no repetir comandante en una mesa (prioridad) y evitar rivales repetidos.
+  // Rondas por standing: no repetir comandante; los rivales sí se pueden repetir.
   function isRandomRound(cfg, idx){
     const mode = (cfg && cfg.pairing) || "suizo";
     return mode === "azar" || idx < (mode === "desafio" ? 2 : 1);
@@ -2365,7 +2367,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (isRandomRound(st.cfg, idx)){
       pods = search(() => cut(shuffle(ids)), 150);
     } else {
-      pods = swissExcel(st, idx, ids, sizes, cmd, met);
+      // Rondas por standing: se respeta el orden del standing; solo se evita repetir comandante (no rivales)
+      pods = swissExcel(st, idx, ids, sizes, cmd, {});
     }
     return {tables: pods.map(p => ({seats: shuffle(p), result: null}))};
   }

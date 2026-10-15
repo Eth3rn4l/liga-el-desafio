@@ -47,8 +47,8 @@ const medalla = i => ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
 function textoMesa(S, ri, ti, t, correccion) {
   const nm = id => (S.players.find(p => p.id === id) || {}).name || "?";
   const r = t.result, c = S.cfg;
-  const lineas = [`${correccion ? "✏️ *Corrección* · " : "✅ "}*Mesa ${ti + 1} · Ronda ${ri + 1}*`];
-  lineas.push(r.w ? `🏆 Gana *${nm(r.w)}*` : `⏱️ Sin ganador (${(r.a || []).length} vivos al tiempo)`);
+  const lineas = [`*MESA ${ti + 1}* · Ronda ${ri + 1}${correccion ? " (corrección)" : ""}`];
+  lineas.push(r.w ? `Ganador: *${nm(r.w)}* 🏆` : `Sin ganador (${(r.a || []).length} vivos al tiempo)`, "");
   t.seats.slice().sort((a, b) => puntos(r, b, c) - puntos(r, a, c)).forEach(id => {
     const det = [];
     if (kills(r, id)) det.push(`${kills(r, id)} kill${kills(r, id) > 1 ? "s" : ""}`);
@@ -57,7 +57,7 @@ function textoMesa(S, ri, ti, t, correccion) {
     if (bruto(r, id) && c.bruto) det.push(`demasiado bruto −${bruto(r, id) * c.bruto}`);
     if (dq(r, id)) det.push("no es tu lugar");
     const p = puntos(r, id, c);
-    lineas.push(`• ${nm(id)}: ${p > 0 ? "+" + p : p} pts${det.length ? " (" + det.join(", ") + ")" : ""}`);
+    lineas.push(`- ${nm(id)}: ${p > 0 ? "+" + p : p} pts${det.length ? " (" + det.join(", ") + ")" : ""}`);
   });
   return lineas.join("\n");
 }
@@ -66,24 +66,24 @@ function textoStanding(S, titulo, top) {
   const st = standing(S);
   const n = top ? Math.min(top, st.length) : st.length;
   const filas = st.slice(0, n).map((x, i) => `${medalla(i)} ${x.name} — *${x.pts}* pts · ${x.k} K`);
-  return [`📊 *${titulo}*`, ...filas, st.length > n ? `_…y ${st.length - n} más. Revisa tu posición en el portal._` : ""].filter(Boolean).join("\n");
+  return [`*${titulo}*`, ...filas, st.length > n ? `_…y ${st.length - n} más. Revisa tu posición en el portal._` : ""].filter(Boolean).join("\n");
 }
 
 function textoCierre(S, liga, top, portal) {
   const st = standing(S);
-  const lineas = [`🏁 *${NOMBRE_LIGA[liga] || "Liga"} · fecha cerrada*${S.fecha ? " (" + S.fecha.split("-").reverse().join("/") + ")" : ""}`, ""];
+  const lineas = [`*${NOMBRE_LIGA[liga] || "Liga"} · Fecha cerrada*${S.fecha ? " (" + S.fecha.split("-").reverse().join("/") + ")" : ""}`, ""];
   st.slice(0, 3).forEach((x, i) => lineas.push(`${medalla(i)} *${x.name}* — ${x.pts} pts · ${x.w} V · ${x.k} K`));
   const killer = st.slice().sort((a, b) => b.k - a.k)[0];
-  if (killer && killer.k > 0) lineas.push("", `🔪 Más kills del día: *${killer.name}* (${killer.k})`);
+  if (killer && killer.k > 0) lineas.push("", `Más kills del día: *${killer.name}* (${killer.k})`);
   const cmdK = {};
   S.rounds.forEach(r => r.tables.forEach(t => t.result && t.seats.forEach(id => {
     const p = S.players.find(x => x.id === id), c = p && p.deck && p.deck.c;
     if (c) cmdK[c] = (cmdK[c] || 0) + kills(t.result, id);
   })));
   const topCmd = Object.entries(cmdK).sort((a, b) => b[1] - a[1])[0];
-  if (topCmd && topCmd[1] > 0) lineas.push(`🐉 Comandante más letal: *${topCmd[0]}* (${topCmd[1]} kills)`);
-  lineas.push("", textoStanding(S, "Standing final", top));
-  if (portal) lineas.push("", `Tus estadísticas: ${portal}`);
+  if (topCmd && topCmd[1] > 0) lineas.push(`Comandante más letal: *${topCmd[0]}* (${topCmd[1]} kills)`);
+  // Solo el podio: el standing completo queda en la página (no se publica para no generar mal ambiente)
+  if (portal) lineas.push("", `Standing completo y estadísticas: ${portal}`);
   return lineas.join("\n");
 }
 
@@ -97,7 +97,7 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
   const una = (k, fn) => { if (m.hecho[k]) return; m.hecho[k] = 1; if (!silencioso) { const t = fn(); if (t) msgs.push(t); } };
 
   if (S.phase === "inscripcion") {
-    una("insc", () => `📝 *${NOMBRE_LIGA[liga]}: inscripciones abiertas*${S.fecha ? " para el " + S.fecha.split("-").reverse().join("/") : ""}.${portal ? "\nInscríbete en " + portal : ""}`);
+    una("insc", () => `*${NOMBRE_LIGA[liga]}: inscripciones abiertas*${S.fecha ? " para el " + S.fecha.split("-").reverse().join("/") : ""}.${portal ? "\nInscríbete en " + portal : ""}`);
     return { mensajes: msgs, memoria: m };
   }
   const nm = id => (S.players.find(p => p.id === id) || {}).name || "?";
@@ -110,8 +110,10 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
       // Se publica como imágenes de las mesas (4 por imagen); el texto va como descripción y sirve de respaldo
       una(`r${ri}:armada`, () => ({
         tipo: "mesas", ri,
-        texto: [`⚔️ *${NOMBRE_LIGA[liga]} · ¡Comienza la ronda ${ri + 1} de ${S.cfg.rounds}!*`, `⏱️ ${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`, "Busca tu nombre y anda a tu mesa. ¡Suerte a todos!"].join("\n"),
-        respaldo: [`⚔️ *${NOMBRE_LIGA[liga]} · ¡Comienza la ronda ${ri + 1} de ${S.cfg.rounds}!*`, `⏱️ ${S.cfg.min} minutos`, "", ...r.tables.map((t, ti) => `*Mesa ${ti + 1}:* ${t.seats.map(nm).join(", ")}`), "", "¡Suerte a todos!"].join("\n")
+        texto: [`⚔️ *${NOMBRE_LIGA[liga]} · Comienza la ronda ${ri + 1} de ${S.cfg.rounds}*`, `${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`, "Busca tu nombre y anda a tu mesa. ¡Suerte a todos!"].join("\n"),
+        // En texto: un mensaje de inicio y luego un mensaje por mesa
+        respaldo: [[`⚔️ *${NOMBRE_LIGA[liga]} · Comienza la ronda ${ri + 1} de ${S.cfg.rounds}*`, `${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`, "¡Suerte a todos!"].join("\n"),
+          ...r.tables.map((t, ti) => [`*MESA ${ti + 1}*`, ...t.seats.map(id => `- ${nm(id)}`)].join("\n"))]
       }));
     r.tables.forEach((t, ti) => {
       const k = `r${ri}t${ti}`, prev = m.mesas[k];
@@ -124,7 +126,8 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
     });
     if (completa(r)) {
       const ultima = ri === S.cfg.rounds - 1;
-      if (!ultima) una(`r${ri}:standing`, () => textoStanding({ ...S, rounds: S.rounds.slice(0, ri + 1) }, `Standing tras la ronda ${ri + 1}`, top));
+      // El standing entre rondas ya no se publica (puede generar mal ambiente); queda en la página
+      void ultima;
     }
   });
   if (S.closedSig && S.archivedId) {

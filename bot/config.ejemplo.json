@@ -11,5 +11,6 @@
   "numeroBot": "",
   "chromePath": "",
   "top": 10,
-  "cadaSegundos": 15
+  "cadaSegundos": 15,
+  "mesasComo": "imagen"
 }

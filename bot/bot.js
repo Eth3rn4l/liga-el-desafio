@@ -63,6 +63,8 @@ async function enviar(id, contenido, opciones = {}) {
   }
 }
 async function enviarMesas(liga, m, S) {
+  // config.json → "mesasComo": "texto" manda un mensaje por mesa en vez de imágenes
+  if (CFG.mesasComo === "texto") return enviarTexto(liga, m.respaldo);
   let imgs = [];
   try { imgs = await imagenesMesas(await obtenerNavegador(), S, liga, m.ri); }
   catch (e) { console.error(`${hora()} no se pudieron dibujar las mesas, se envían como texto:`, e.message); }
@@ -88,6 +90,8 @@ async function enviarMesas(liga, m, S) {
   console.log(`${hora()} enviado a ${liga}: ${imgs.length} ${imgs.length === 1 ? "imagen" : "imágenes"} de la ronda ${m.ri + 1}`);
 }
 async function enviarTexto(liga, texto) {
+  // Varios mensajes (por ejemplo, una mesa por mensaje) se mandan de a uno con una pausa
+  if (Array.isArray(texto)){ for (let i = 0; i < texto.length; i++){ await enviarTexto(liga, texto[i]); if (i < texto.length - 1) await espera(SIMULAR ? 0 : 1500); } return; }
   if (SIMULAR) console.log(`\n----- [${liga}] ${hora()} -----\n${texto}\n`);
   else { await enviar(destinos[liga], texto); console.log(`${hora()} enviado a ${liga}: ${texto.split("\n")[0]}`); }
 }

@@ -356,6 +356,7 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .sf-slot b{font-size:16px;line-height:1.2}
 .sf-slot small{color:var(--muted);font-size:12px}
 .sf-slot.vacio{border-style:dashed;color:var(--muted)}
+.sf-slot .sf-nota{font-size:11px;color:var(--muted);font-style:italic;line-height:1.3}
 .sf-slot.vacio .tro{opacity:.35;filter:grayscale(1)}
 .sf-slot.campeon{border-color:var(--gold);background:linear-gradient(180deg,rgba(233,180,76,.18),var(--surface-2))}
 .sf-slot .x{position:absolute;top:6px;right:8px;background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px}
@@ -2058,20 +2059,37 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // Ganadores anteriores (pizarras del salón de la fama de la tienda). Las ligas sin mes usan una clave "2000-NN" solo para ordenarlas.
   const SALON_HIST = {
     precon: [["2000-01", "Liga Año 0", "Nicolás Núñez"], ["2000-02", "Liga Verano", "Héctor Riquelme"], ["2000-03", "Liga Vc", "Nicolás Núñez"], ["2000-04", "Liga C", "Paulo Olovarria"],
-             ["2000-05", "Liga M", "José Garrido"], ["2000-06", "Liga J", "Nicolás Núñez"], ["2000-07", "Liga Jul", "Eric Riquelme"]],
+             ["2000-05", "Liga M", "José Garrido"], ["2000-06", "Liga J", "Yves Caodevile", "Ganó Nicolás Núñez (ya clasificado): entró el 2.º"], ["2000-07", "Liga Jul", "Eric Riquelme"]],
     b3: [["2026-04", "", "José Garrido"], ["2026-05", "", "Nicolás Núñez"], ["2026-06", "", "Felipe Flores"], ["2026-07", "", "José Garrido"], ["2026-08", "", "José Garrido"], ["2026-09", "", "Marco Camargo"]]
   };
   const etiquetaSalon = m => m.etiqueta || monthLabel(m.mes);
   const salonLista = () => (CAL.salon || []).slice().sort((a, b) => a.mes.localeCompare(b.mes));
+  function gruposSalon(){
+    const L = salonLista(), fijos = L.filter(m => m.grupo), libres = L.filter(m => !m.grupo), G = {};
+    const base = fijos.reduce((a, m) => Math.max(a, m.grupo), 0);
+    fijos.forEach(m => (G[m.grupo] = G[m.grupo] || []).push(m));
+    libres.forEach((m, i) => { const g = base + 1 + Math.floor(i / 4); (G[g] = G[g] || []).push(m); });
+    const ultimo = libres.length ? base + 1 + Math.floor((libres.length - 1) / 4) : base;
+    const total = libres.length % 4 === 0 ? ultimo + 1 : ultimo;
+    const abierta = libres.length % 4 ? libres.slice(-(libres.length % 4)) : [];
+    return {G, total: Math.max(total, 1), abierta};
+  }
   // Al cerrar la última fecha del mes, el 1.º del standing mensual entra al salón (si se actualiza el cierre, se recalcula)
   function asignarSalon(ev){
     if (!ev) return null;
     const mes = mesDe(ev), info = fechaInfo(ev, allEvents());
     if (info.extra || info.n !== info.total) return null;
-    const top = standMes(mes)[0]; if (!top) return null;
     const prev = (CAL.salon || []).find(x => x.mes === mes);
     if (prev && prev.manual) return null;   // lo fijó el organizador a mano
-    CAL.salon = (CAL.salon || []).filter(x => x.mes !== mes).concat([{mes, nombre:top.nombre, pts:top.pts, kills:top.kills, fechas:top.fechas, at:Date.now()}]);
+    const st = standMes(mes); if (!st[0]) return null;
+    // Precon: si el 1.º ya está clasificado a la fecha de ganadores que se está llenando, entra el siguiente del standing
+    let top = st[0], nota = "";
+    if (!B3){
+      const ya = new Set(gruposSalon().abierta.filter(x => x.mes !== mes).map(x => fold(x.nombre)));
+      const libre = st.find(p => !ya.has(fold(p.nombre)));
+      if (libre && libre !== st[0]){ nota = `Ganó ${st[0].nombre} (ya clasificado): entró el ${st.indexOf(libre) + 1}.º`; top = libre; }
+    }
+    CAL.salon = (CAL.salon || []).filter(x => x.mes !== mes).concat([Object.assign({mes, nombre:top.nombre, pts:top.pts, kills:top.kills, fechas:top.fechas, at:Date.now()}, nota ? {nota} : {})]);
     saveCal();
     return top;
   }
@@ -2079,23 +2097,25 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function renderSalon(){
     const box = $("salon"); if (!box || view !== "salon" || typing(box)) return;
     const L = salonLista(), adm = ADMUI() && !document.body.classList.contains("display");
-    const G = CAL.salonFechas || {};
-    const grupos = Math.max(1, Math.ceil(L.length / 4) + (L.length && L.length % 4 === 0 ? 1 : 0));
-    const intro = B3
-      ? "El 1.º del standing de cada mes entra al salón de la fama. Cada 4 ganadores se arma una <b>Fecha de ganadores</b>."
-      : "El 1.º del standing de cada mes entra al salón de la fama. Cada 4 ganadores se arma una <b>Fecha de ganadores</b> donde se juega por un <b>playmat personalizado de la Liga Precon</b>, normalmente un sábado después de la liga.";
-    let html = `<div class="stats-head"><div><h2>Salón de la fama · ${esc(LIGAS[LIGA].nombre)}</h2><p class="salon-intro">${intro} El ganador entra apenas se cierra la última fecha del mes.</p></div></div>`;
-    for (let g = 0; g < grupos; g++){
-      const miembros = L.slice(g * 4, g * 4 + 4), gi = G[g] || {}, lista = miembros.length === 4;
-      const estado = gi.campeon ? `<span class="sf-pill jugada">Campeón: ${esc(gi.campeon)}</span>` : lista ? '<span class="sf-pill lista">Lista para jugar</span>' : `<span class="sf-pill">${miembros.length}/4 ganadores</span>`;
-      const slots = [0, 1, 2, 3].map(k => {
-        const m = miembros[k];
-        if (!m) return `<div class="sf-slot vacio"><span class="tro">🏆</span><small>Por definir</small></div>`;
-        const camp = gi.campeon && fold(gi.campeon) === fold(m.nombre);
-        return `<div class="sf-slot${camp ? " campeon" : ""}">${adm ? `<button class="x" type="button" data-salon-del="${esc(m.mes)}" title="Quitar del salón" aria-label="Quitar a ${esc(m.nombre)} del salón">×</button>` : ""}<span class="tro">${camp ? "👑" : "🏆"}</span><span class="mes">${esc(etiquetaSalon(m))}</span><b>${esc(m.nombre)}</b>${m.pts != null ? `<small>${m.pts} pts${m.kills != null ? " · " + m.kills + " K" : ""}</small>` : ""}</div>`;
-      }).join("");
-      const campSel = adm && lista ? `<div class="sf-admin"><div class="field"><label for="sfCamp${g}">Campeón de esta fecha de ganadores</label><select id="sfCamp${g}" data-salon-camp="${g}"><option value="">— Sin jugar —</option>${miembros.map(m => `<option ${gi.campeon && fold(gi.campeon) === fold(m.nombre) ? "selected" : ""}>${esc(m.nombre)}</option>`).join("")}</select></div></div>` : "";
-      html += `<div class="sf-grupo${lista && !gi.campeon ? " lista" : ""}"><div class="sf-head"><h3>Fecha de ganadores #${g + 1}</h3>${estado}</div><div class="sf-podio">${slots}</div>${campSel}</div>`;
+    const F = CAL.salonFechas || {};
+    const tarjeta = (m, camp) => `<div class="sf-slot${camp ? " campeon" : ""}">${adm ? `<button class="x" type="button" data-salon-del="${esc(m.mes)}" title="Quitar del salón" aria-label="Quitar a ${esc(m.nombre)} del salón">×</button>` : ""}<span class="tro">${camp ? "👑" : "🏆"}</span><span class="mes">${esc(etiquetaSalon(m))}</span><b>${esc(m.nombre)}</b>${m.pts != null ? `<small>${m.pts} pts${m.kills != null ? " · " + m.kills + " K" : ""}</small>` : ""}${m.nota ? `<small class="sf-nota">${esc(m.nota)}</small>` : ""}</div>`;
+    let html;
+    if (B3){
+      // Bracket 3: solo ganadores del mes (no se disputa nada)
+      html = `<div class="stats-head"><div><h2>Salón de la fama · ${esc(LIGAS[LIGA].nombre)}</h2><p class="salon-intro">El 1.º del standing de cada mes queda como <b>ganador del mes</b>. Entra apenas se cierra la última fecha del mes.</p></div></div>
+        <div class="sf-grupo"><div class="sf-podio sf-lista">${L.length ? L.slice().reverse().map(m => tarjeta(m, false)).join("") : '<div class="sf-slot vacio"><span class="tro">🏆</span><small>Aún no hay ganadores</small></div>'}</div></div>`;
+    } else {
+      const {G, total} = gruposSalon();
+      html = `<div class="stats-head"><div><h2>Salón de la fama · ${esc(LIGAS[LIGA].nombre)}</h2><p class="salon-intro">El 1.º del standing de cada mes entra al salón (si ya está clasificado, entra el siguiente). Cada 4 ganadores se arma una <b>Fecha de ganadores</b> donde se juega por un <b>playmat personalizado de la Liga Precon</b>, normalmente un sábado después de la liga.</p></div></div>`;
+      for (let g = total; g >= 1; g--){
+        const miembros = G[g] || [], fi = F[g] || {}, lista = miembros.length >= 4, jugada = !!(fi.campeon || fi.jugada);
+        const estado = fi.campeon ? `<span class="sf-pill jugada">Campeón: ${esc(fi.campeon)}</span>` : fi.jugada ? '<span class="sf-pill jugada">Jugada</span>' : lista ? '<span class="sf-pill lista">Lista para jugar</span>' : `<span class="sf-pill">${miembros.length}/4 ganadores</span>`;
+        const n = jugada ? miembros.length : Math.max(4, miembros.length);
+        const slots = Array.from({length:n}, (_, k) => { const m = miembros[k]; return m ? tarjeta(m, fi.campeon && fold(fi.campeon) === fold(m.nombre)) : '<div class="sf-slot vacio"><span class="tro">🏆</span><small>Por definir</small></div>'; }).join("");
+        const nombres = [...new Set(miembros.map(m => m.nombre))];
+        const campSel = adm && (lista || jugada) ? `<div class="sf-admin"><div class="field"><label for="sfCamp${g}">Campeón de esta fecha de ganadores</label><select id="sfCamp${g}" data-salon-camp="${g}"><option value="">${fi.jugada ? "— Jugada, sin registrar —" : "— Sin jugar —"}</option>${nombres.map(nm => `<option ${fi.campeon && fold(fi.campeon) === fold(nm) ? "selected" : ""}>${esc(nm)}</option>`).join("")}</select></div></div>` : "";
+        html += `<div class="sf-grupo${lista && !jugada ? " lista" : ""}"><div class="sf-head"><h3>Fecha de ganadores #${g}</h3>${estado}</div><div class="sf-podio">${slots}</div>${campSel}</div>`;
+      }
     }
     if (adm){
       const ultimo = (() => { const ms = [...new Set(allEvents().map(mesDe))].sort(); return ms[ms.length - 1] || curMes(); })();
@@ -2105,7 +2125,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="field" style="flex:1;min-width:200px"><label for="sfNom">Ganador</label><input type="text" id="sfNom" autocomplete="off" placeholder="${sug ? "Sugerido: " + esc(sug.nombre) : "Nombre y apellido"}" value=""></div>
         <div class="field"><label for="sfEti">Nombre de la liga (opcional)</label><input type="text" id="sfEti" autocomplete="off" placeholder="Ej: Liga Verano"></div>
         <button class="btn primary" type="button" data-salon-add>Guardar ganador</button></div>
-        ${(() => { const falt = (SALON_HIST[LIGA] || []).filter(([mes]) => !(CAL.salon || []).some(x => x.mes === mes)).length;
+        ${(() => { const falt = (SALON_HIST[LIGA] || []).filter(([mes, et, nom]) => !(CAL.salon || []).some(x => x.mes === mes && x.nombre === nom && (B3 || x.grupo === 1))).length;
           return falt ? `<div class="sf-admin"><button class="btn" type="button" data-salon-hist>Cargar ganadores anteriores de la pizarra (${falt})</button></div>` : ""; })()}
         <span class="${salonMsg && salonMsg.ok ? "ok-t" : "err"}" style="font-size:12px">${salonMsg ? esc(salonMsg.t) : ""}</span></div>`;
     }
@@ -2115,8 +2135,10 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (!M.admin && M.mode === "live") return;
     const del = e.target.closest("[data-salon-del]");
     if (e.target.closest("[data-salon-hist]")){
-      const nuevos = (SALON_HIST[LIGA] || []).filter(([mes]) => !(CAL.salon || []).some(x => x.mes === mes)).map(([mes, etiqueta, nombre]) => Object.assign({mes, nombre, at:Date.now(), manual:true}, etiqueta ? {etiqueta} : {}));
-      CAL.salon = (CAL.salon || []).concat(nuevos); salonMsg = {t:`Se cargaron ${nuevos.length} ganadores anteriores ✓`, ok:true}; saveCal(); renderSalon(); return;
+      const H = SALON_HIST[LIGA] || [], claves = new Set(H.map(h => h[0]));
+      const nuevos = H.map(([mes, etiqueta, nombre, nota]) => Object.assign({mes, nombre, at:Date.now(), manual:true}, etiqueta ? {etiqueta} : {}, nota ? {nota} : {}, B3 ? {} : {grupo:1}));
+      CAL.salon = (CAL.salon || []).filter(x => !claves.has(x.mes)).concat(nuevos);
+      if (!B3){ CAL.salonFechas = Object.assign({}, CAL.salonFechas || {}); CAL.salonFechas[1] = Object.assign({}, CAL.salonFechas[1], {jugada:true}); } salonMsg = {t:`Se cargaron ${nuevos.length} ganadores anteriores ✓`, ok:true}; saveCal(); renderSalon(); return;
     }
     if (del){ const mes = del.dataset.salonDel, m = (CAL.salon || []).find(x => x.mes === mes); if (!m || !confirm(`¿Quitar a ${m.nombre} (${etiquetaSalon(m)}) del salón de la fama?`)) return; CAL.salon = (CAL.salon || []).filter(x => x.mes !== mes); saveCal(); renderSalon(); return; }
     if (e.target.closest("[data-salon-add]")){
@@ -2135,7 +2157,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   $("salon").addEventListener("change", e => {
     const sel = e.target.closest("[data-salon-camp]"); if (!sel || (!M.admin && M.mode === "live")) return;
     const g = sel.dataset.salonCamp; CAL.salonFechas = Object.assign({}, CAL.salonFechas || {});
-    if (sel.value) CAL.salonFechas[g] = {campeon:sel.value, at:Date.now()}; else delete CAL.salonFechas[g];
+    const prevF = CAL.salonFechas[g] || {};
+    if (sel.value) CAL.salonFechas[g] = Object.assign({}, prevF, {campeon:sel.value, at:Date.now()});
+    else { CAL.salonFechas[g] = Object.assign({}, prevF); delete CAL.salonFechas[g].campeon; }
     sel.blur(); saveCal(); renderSalon();
   });
   // Reglas de la Liga Precon: se arman con la configuración vigente de la fecha (rondas, minutos y puntos)

@@ -2021,6 +2021,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // Botón del modo pantalla: desde la liga en vivo va al sorteo; desde cualquier otra pestaña vuelve a la liga en vivo
   const tvLabel = () => { const b = $("btnTvSorteo"); if (b) b.textContent = view === "live" ? "🎡 Sorteo" : "⏱ Liga en vivo"; };
   function setView(v){
+    if ((v === "sorteo" || v === "warn") && !ADMUI() && M.mode === "connecting") vistaPendiente = v;
     if (v === "warn" && !ADMUI()) v = "live";
     if (v === "sorteo" && !ADMUI()) v = "live";   // el sorteo solo lo ven los organizadores
     view = v;
@@ -2040,7 +2041,11 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (v === "warn") renderWarn();
     if (v === "reglas") renderReglas();
     if (v === "salon") renderSalon();
+    // La sección queda en la dirección (#salon, #estadisticas…) para que al cambiar de liga o recargar se mantenga
+    try { history.replaceState(null, "", location.pathname + location.search + (VISTA_HASH[v] || "")); } catch(e){}
   }
+  const VISTA_HASH = {stats:"#estadisticas", sorteo:"#sorteo", salon:"#salon", reglas:"#reglas", warn:"#warnings", live:""};
+  let vistaPendiente = null;   // sorteo/warnings: se abren cuando se confirma que es organizador
   /* ---------- Salón de la fama: el 1.º de cada mes entra; cada 4 ganadores se juega una fecha de ganadores ---------- */
   // Standing mensual (mismo cálculo que Estadísticas: puntos + bono de variedad; desempate kills, Buchholz, victorias)
   // Puestos 1 a 4 del standing con medalla: 🥇 🥈 🥉 🏅
@@ -2058,8 +2063,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   // Ganadores anteriores (pizarras del salón de la fama de la tienda). Las ligas sin mes usan una clave "2000-NN" solo para ordenarlas.
   const SALON_HIST = {
-    precon: [["2000-01", "Liga Año 0", "Nicolás Núñez"], ["2000-02", "Liga Verano", "Héctor Riquelme"], ["2000-03", "Liga Vc", "Nicolás Núñez"], ["2000-04", "Liga C", "Paulo Olovarria"],
-             ["2000-05", "Liga M", "José Garrido"], ["2000-06", "Liga J", "Yves Caodevile", "Ganó Nicolás Núñez (ya clasificado): entró el 2.º"], ["2000-07", "Liga Jul", "Eric Riquelme"]],
+    precon: [["2026-01", "", "Nicolás Núñez"], ["2026-02", "", "Héctor Riquelme"], ["2026-03", "", "Nicolás Núñez"], ["2026-04", "", "Paulo Olovarria"],
+             ["2026-05", "", "José Garrido"], ["2026-06", "", "Yves Caodevile", "Ganó Nicolás Núñez (ya clasificado): entró el 2.º"], ["2026-07", "", "Eric Riquelme"]],
     b3: [["2026-04", "", "José Garrido"], ["2026-05", "", "Nicolás Núñez"], ["2026-06", "", "Felipe Flores"], ["2026-07", "", "José Garrido"], ["2026-08", "", "José Garrido"], ["2026-09", "", "Marco Camargo"]]
   };
   const etiquetaSalon = m => m.etiqueta || monthLabel(m.mes);
@@ -2125,7 +2130,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="field" style="flex:1;min-width:200px"><label for="sfNom">Ganador</label><input type="text" id="sfNom" autocomplete="off" placeholder="${sug ? "Sugerido: " + esc(sug.nombre) : "Nombre y apellido"}" value=""></div>
         <div class="field"><label for="sfEti">Nombre de la liga (opcional)</label><input type="text" id="sfEti" autocomplete="off" placeholder="Ej: Liga Verano"></div>
         <button class="btn primary" type="button" data-salon-add>Guardar ganador</button></div>
-        ${(() => { const falt = (SALON_HIST[LIGA] || []).filter(([mes, et, nom]) => !(CAL.salon || []).some(x => x.mes === mes && x.nombre === nom && (B3 || x.grupo === 1))).length;
+        ${(() => { const falt = (SALON_HIST[LIGA] || []).filter(([mes, et, nom]) => !(CAL.salon || []).some(x => x.mes === mes && x.nombre === nom && !x.etiqueta && (B3 || x.grupo === 1))).length + ((CAL.salon || []).some(x => /^2000-/.test(x.mes)) ? 1 : 0);
           return falt ? `<div class="sf-admin"><button class="btn" type="button" data-salon-hist>Cargar ganadores anteriores de la pizarra (${falt})</button></div>` : ""; })()}
         <span class="${salonMsg && salonMsg.ok ? "ok-t" : "err"}" style="font-size:12px">${salonMsg ? esc(salonMsg.t) : ""}</span></div>`;
     }
@@ -2137,7 +2142,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (e.target.closest("[data-salon-hist]")){
       const H = SALON_HIST[LIGA] || [], claves = new Set(H.map(h => h[0]));
       const nuevos = H.map(([mes, etiqueta, nombre, nota]) => Object.assign({mes, nombre, at:Date.now(), manual:true}, etiqueta ? {etiqueta} : {}, nota ? {nota} : {}, B3 ? {} : {grupo:1}));
-      CAL.salon = (CAL.salon || []).filter(x => !claves.has(x.mes)).concat(nuevos);
+      CAL.salon = (CAL.salon || []).filter(x => !claves.has(x.mes) && !/^2000-/.test(x.mes)).concat(nuevos);   // 2000-NN: claves antiguas por nombre de liga
       if (!B3){ CAL.salonFechas = Object.assign({}, CAL.salonFechas || {}); CAL.salonFechas[1] = Object.assign({}, CAL.salonFechas[1], {jugada:true}); } salonMsg = {t:`Se cargaron ${nuevos.length} ganadores anteriores ✓`, ok:true}; saveCal(); renderSalon(); return;
     }
     if (del){ const mes = del.dataset.salonDel, m = (CAL.salon || []).find(x => x.mes === mes); if (!m || !confirm(`¿Quitar a ${m.nombre} (${etiquetaSalon(m)}) del salón de la fama?`)) return; CAL.salon = (CAL.salon || []).filter(x => x.mes !== mes); saveCal(); renderSalon(); return; }
@@ -2850,6 +2855,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const wt = document.querySelector('.tab[data-view="warn"]'); if (wt) wt.hidden = !ADMUI();
     const stb = document.querySelector('.tab[data-view="sorteo"]'); if (stb) stb.hidden = !ADMUI();
     if (!ADMUI() && view === "sorteo") setView("live");
+    if (vistaPendiente && M.mode !== "connecting"){ const vp = vistaPendiente; vistaPendiente = null; if (ADMUI()) setView(vp); }
     renderCal(); renderJornada(); renderLate();
     if (view === "warn"){ if (!ADMUI()) setView("live"); else setTimeout(renderWarn, 0); }
     if (view === "sorteo") setTimeout(renderSorteo, 0);
@@ -3561,8 +3567,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     document.querySelector('.tab[data-view="stats"]').textContent = "Estadísticas";
     $("btnDisplay").hidden = true;
   }
-  if (location.hash === "#estadisticas") setView("stats");
-  if (location.hash === "#sorteo") setView("sorteo");
+  { const v0 = Object.keys(VISTA_HASH).find(k => VISTA_HASH[k] && VISTA_HASH[k] === location.hash); if (v0) setView(v0); }
   init();
 })();
 </script>

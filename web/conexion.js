@@ -78,6 +78,10 @@
 .acc .eye button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted);font-size:12px;font-family:var(--f-num);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
 .acc-user{display:inline-flex;align-items:center;gap:8px}
 a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
+.acc .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 14px;border-radius:999px;border:1px solid #dadce0;background:#fff;color:#1f1f1f;font:600 15px/1.2 "Open Sans",Arial,sans-serif;cursor:pointer}
+.acc .gbtn:hover{background:#f2f2f2}.acc .gbtn:disabled{opacity:.6;cursor:default}
+.acc .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.12em}
+.acc .or::before,.acc .or::after{content:"";flex:1;height:1px;background:var(--line)}
 `;
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 
@@ -87,8 +91,13 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
   function passField(id, label, auto){
     return `<div class="field"><label for="${id}">${label}</label><div class="eye"><input id="${id}" type="password" autocomplete="${auto}" maxlength="${R.passMax}" required><button type="button" data-eye="${id}">Ver</button></div></div>`;
   }
+  const googleBox = (txt, nota) => `<button class="gbtn" type="button" data-google><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg><span>${txt}</span></button>
+      ${nota ? `<p class="hint" style="margin-top:-4px">${nota}</p>` : ""}
+      <span class="err" id="aGErr"></span>
+      <div class="or">o con tu correo</div>`;
   const VIEWS = {
     login: () => ({eyebrow:"Liga Commander El Desafío", title:"Entrar", body:`
+      ${googleBox("Entrar con Google")}
       <form id="fLogin" novalidate>
         <div class="field"><label for="aEmail">Correo</label><input id="aEmail" type="email" autocomplete="email" inputmode="email" value="${esc(ctx.email)}" required></div>
         ${passField("aPass", "Contraseña", "current-password")}
@@ -97,6 +106,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
       </form>
       <div class="links"><button class="lnk" type="button" data-go="signup">Crear cuenta</button><button class="lnk" type="button" data-go="forgot">Olvidé mi contraseña</button></div>`}),
     signup: () => ({eyebrow:"Portal de jugadores", title:"Crear cuenta", body:`
+      ${googleBox("Crear cuenta con Google", "Sin contraseña ni código. Al continuar aceptas que la liga use tu nombre, correo y resultados para gestionar inscripciones, mesas y estadísticas; tu correo no se muestra a otros jugadores.")}
       <form id="fSignup" novalidate>
         <div class="two">
           <div class="field"><label for="aFirst">Nombre</label><input id="aFirst" type="text" autocomplete="given-name" maxlength="${R.nombreMax}" required></div>
@@ -128,6 +138,18 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
         <button class="btn primary" type="submit">Enviar código</button>
       </form>
       <div class="links"><button class="lnk" type="button" data-go="login">Volver</button></div>`}),
+    perfil: () => ({eyebrow:"Último paso", title:"Completa tu perfil", body:`
+      <p class="hint" style="font-size:14px">Así te verán en las mesas y el standing de la liga.</p>
+      <form id="fPerfil" novalidate>
+        <div class="two">
+          <div class="field"><label for="aFirst">Nombre</label><input id="aFirst" type="text" autocomplete="given-name" maxlength="${R.nombreMax}" value="${esc(ctx.first || "")}" required></div>
+          <div class="field"><label for="aLast">Apellido</label><input id="aLast" type="text" autocomplete="family-name" maxlength="${R.nombreMax}" value="${esc(ctx.last || "")}" required></div>
+        </div>
+        <div class="field"><label for="aNick">Apodo (opcional)</label><input id="aNick" type="text" autocomplete="nickname" maxlength="${R.apodoMax}"></div>
+        <span class="err" id="aErr"></span>
+        <button class="btn primary" type="submit">Guardar y continuar</button>
+      </form>
+      <div class="links"><button class="lnk" type="button" data-logout>Salir</button></div>`, noClose:true}),
     newpass: () => ({eyebrow:"Recuperar contraseña", title:"Crea tu contraseña nueva", body:`
       <form id="fNew" novalidate>
         ${passField("aPass", "Contraseña nueva", "new-password")}
@@ -192,6 +214,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
   }
   const done = () => { store.del("desafio-pend"); close(); location.reload(); };
 
+  const nameErr = (v, what) => v.length < R.nombreMin || v.length > R.nombreMax ? `El ${what} debe tener entre ${R.nombreMin} y ${R.nombreMax} caracteres.` : !NOMBRE_RE.test(v) ? `El ${what} solo puede tener letras, espacios, guion o apóstrofo.` : "";
   async function onSubmit(e){
     e.preventDefault();
     const f = e.target; setErr("");
@@ -216,11 +239,22 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
       }
       return setErr(friendly(error));
     }
+    if (f.id === "fPerfil"){
+      const first = clean($a("aFirst").value), last = clean($a("aLast").value), nick = clean($a("aNick").value);
+      const err = nameErr(first, "nombre") || nameErr(last, "apellido") ||
+        (nick && (nick.length < R.apodoMin || nick.length > R.apodoMax) ? `El apodo debe tener entre ${R.apodoMin} y ${R.apodoMax} caracteres.` : "");
+      if (err) return setErr(err);
+      busy(f, true);
+      const {data:{user}} = await sb.auth.getUser();
+      const {error} = await sb.from("perfiles").upsert({id:user.id, nombre:first, apellido:last, apodo:nick || null});
+      busy(f, false);
+      if (error) return setErr(friendly(error));
+      return done();
+    }
     if (f.id === "fSignup"){
       const first = clean($a("aFirst").value), last = clean($a("aLast").value), nick = clean($a("aNick").value);
       const email = clean($a("aEmail").value).toLowerCase(), p1 = $a("aPass").value, p2 = $a("aPass2").value;
       ctx.email = email;
-      const nameErr = (v, what) => v.length < R.nombreMin || v.length > R.nombreMax ? `El ${what} debe tener entre ${R.nombreMin} y ${R.nombreMax} caracteres.` : !NOMBRE_RE.test(v) ? `El ${what} solo puede tener letras, espacios, guion o apóstrofo.` : "";
       const err = nameErr(first, "nombre") || nameErr(last, "apellido") ||
         (nick && (nick.length < R.apodoMin || nick.length > R.apodoMax) ? `El apodo debe tener entre ${R.apodoMin} y ${R.apodoMax} caracteres.` : "") ||
         (!EMAIL_RE.test(email) ? "Escribe un correo válido." : "") ||
@@ -276,6 +310,19 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     const t = e.target;
     if (t === back && Auth.closable && !VIEWS[view]().noClose) return close();
     if (t.closest("[data-close]")) return close();
+    if (t.closest("[data-logout]")){ if (sb) await sb.auth.signOut(); location.reload(); return; }
+    const gb = t.closest("[data-google]");
+    if (gb){
+      if (!sb) return;
+      gb.disabled = true;
+      // Vuelve a la misma página (y liga) después de elegir la cuenta de Google
+      const {error} = await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin + location.pathname + location.search, queryParams:{prompt:"select_account"}}});
+      if (error){
+        gb.disabled = false;
+        const e2 = $a("aGErr"); if (e2) e2.textContent = /provider is not enabled|unsupported provider/i.test(error.message || "") ? "El acceso con Google aún no está activado. Usa tu correo por ahora." : friendly(error);
+      }
+      return;
+    }
     const eye = t.closest("[data-eye]");
     if (eye){ const i = $a(eye.dataset.eye); i.type = i.type === "password" ? "text" : "password"; eye.textContent = i.type === "password" ? "Ver" : "Ocultar"; return; }
     const go = t.closest("[data-go]");
@@ -385,6 +432,13 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
       // Rol desarrollador (liga de testeo). Si la función aún no existe en Supabase, queda en falso.
       if (admin){ try { const d = await sb.rpc("es_dev"); dev = !!(d && d.data); } catch(e){} }
       perfil = p && p.data || null;
+      // Cuenta nueva con Google sin perfil todavía: se pide nombre y apellido una sola vez
+      if (!perfil){
+        const md = u.user_metadata || {}, full = String(md.full_name || md.name || "").trim();
+        ctx.first = md.given_name || full.split(/\s+/)[0] || "";
+        ctx.last = md.family_name || full.split(/\s+/).slice(1).join(" ") || "";
+        setTimeout(() => show("perfil"), 50);
+      }
     }
     // Si la sesión se cierra en otra pestaña, recarga para quedar sin datos privados
     sb.auth.onAuthStateChange(ev => { if (ev === "SIGNED_OUT" && u) location.reload(); });

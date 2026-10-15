@@ -315,12 +315,17 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     if (gb){
       if (!sb) return;
       gb.disabled = true;
+      const gErr = t => { gb.disabled = false; const e2 = $a("aGErr"); if (e2) e2.textContent = t; };
+      // Antes de salir hacia Google se revisa que esté activado en Supabase (si no, Supabase muestra un error en pantalla)
+      try {
+        const r = await fetch(CFG.url + "/auth/v1/settings", {headers:{apikey:CFG.key}});
+        const st = r.ok ? await r.json() : null;
+        if (st && st.external && !st.external.google) return gErr("El acceso con Google aún no está activado. Usa tu correo por ahora.");
+      } catch(e){}
       // Vuelve a la misma página (y liga) después de elegir la cuenta de Google
-      const {error} = await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin + location.pathname + location.search, queryParams:{prompt:"select_account"}}});
-      if (error){
-        gb.disabled = false;
-        const e2 = $a("aGErr"); if (e2) e2.textContent = /provider is not enabled|unsupported provider/i.test(error.message || "") ? "El acceso con Google aún no está activado. Usa tu correo por ahora." : friendly(error);
-      }
+      const {data, error} = await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin + location.pathname + location.search, queryParams:{prompt:"select_account"}, skipBrowserRedirect:true}});
+      if (error) return gErr(/provider is not enabled|unsupported provider/i.test(error.message || "") ? "El acceso con Google aún no está activado. Usa tu correo por ahora." : friendly(error));
+      if (data && data.url) location.assign(data.url);
       return;
     }
     const eye = t.closest("[data-eye]");

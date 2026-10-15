@@ -2038,16 +2038,34 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // ---------- Efectos de la ruleta: sonido, puntero, confeti ----------
   let ruletaAudio = null;
   const sonidoOn = () => { try { return localStorage.getItem("sorteo_sonido") !== "0"; } catch(e){ return true; } };
-  function audioCtx(){ try { ruletaAudio = ruletaAudio || new (window.AudioContext || window.webkitAudioContext)(); if (ruletaAudio.state === "suspended") ruletaAudio.resume(); return ruletaAudio; } catch(e){ return null; } }
+  // Salida común con volumen alto y compresor (para que se escuche en parlantes de notebook o TV)
+  let ruletaOut = null;
+  function audioCtx(){
+    try {
+      // iPhone: que el sonido salga aunque el celular esté en silencio
+      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}
+      if (!ruletaAudio){
+        ruletaAudio = new (window.AudioContext || window.webkitAudioContext)();
+        const comp = ruletaAudio.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4;
+        ruletaOut = ruletaAudio.createGain(); ruletaOut.gain.value = 1.6;
+        ruletaOut.connect(comp); comp.connect(ruletaAudio.destination);
+      }
+      if (ruletaAudio.state !== "running") ruletaAudio.resume().catch(() => {});
+      return ruletaAudio;
+    } catch(e){ return null; }
+  }
+  // El navegador solo deja sonar después de un toque o clic en la página: se habilita con el primero que ocurra
+  // (así suena también en la pantalla/TV aunque el giro se lance desde otro equipo)
+  ["pointerdown", "keydown", "touchend"].forEach(ev => document.addEventListener(ev, () => { if (sonidoOn()) audioCtx(); }, {passive:true}));
   let ultimoTick = 0;
   function ruletaTick(lento){
     if (!sonidoOn()) return;
     const now = performance.now(); if (now - ultimoTick < 35) return; ultimoTick = now;
     const a = audioCtx(); if (!a) return;
     const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime;
-    o.type = "triangle"; o.frequency.setValueAtTime(lento ? 1100 : 1500, t0); o.frequency.exponentialRampToValueAtTime(600, t0 + 0.04);
-    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(lento ? 0.35 : 0.18, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
-    o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + 0.07);
+    o.type = "square"; o.frequency.setValueAtTime(lento ? 1300 : 1700, t0); o.frequency.exponentialRampToValueAtTime(500, t0 + 0.05);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(lento ? 0.7 : 0.45, t0 + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
+    o.connect(g); g.connect(ruletaOut || a.destination); o.start(t0); o.stop(t0 + 0.08);
   }
   function fanfarria(){
     if (!sonidoOn()) return;
@@ -2055,8 +2073,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5].forEach((f, i) => {
       const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + i * (i < 4 ? 0.12 : 0.18), d = i === 5 ? 0.9 : 0.16;
       o.type = "square"; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
-      o.connect(g); g.connect(a.destination); o.start(t0); o.stop(t0 + d + 0.02);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      o.connect(g); g.connect(ruletaOut || a.destination); o.start(t0); o.stop(t0 + d + 0.02);
     });
   }
   function golpePuntero(){

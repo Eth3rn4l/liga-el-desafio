@@ -510,6 +510,11 @@ body.liga-b3 .ls-thumb{transform:translateX(100%)}
 body.liga-b3 .ls-opt[aria-selected="true"]{color:#1a1206}
 .liga-hint{margin:0;font-size:13px;color:var(--muted)}
 .liga-hint b{color:var(--fg)}
+.liga-hint .dias-hoy{color:var(--red-hi)}
+body.liga-b3 .liga-hint .dias-hoy{color:var(--gold)}
+.tab-dias{margin-left:6px;font-size:10px;letter-spacing:.08em;padding:2px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);vertical-align:middle;white-space:nowrap}
+.tab-dias.hoy{background:var(--red-hi);color:#fff}
+body.liga-b3 .tab-dias.hoy{background:var(--gold);color:#1a1206}
 body.display .liga-row{display:none}
 @media (max-width:600px){.liga-switch{width:100%}.liga-hint{flex-basis:100%;text-align:center}}
 .liga-badge{font-family:var(--f-num);font-size:12px;letter-spacing:.14em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:1px solid rgba(233,180,76,.5);color:var(--gold);white-space:nowrap}
@@ -1836,6 +1841,22 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const d = parseISO(today()); d.setDate(d.getDate() + ((DOW - d.getDay() + 7) % 7)); const sab = iso(d);   // próximo sábado (hoy si es sábado)
     return jugadas.has(sab) ? (d.setDate(d.getDate() + 7), iso(d)) : sab;
   }
+  // Cuánto falta para la próxima fecha de esta liga (calendario; si no hay, el próximo día de la liga)
+  function proximaLiga(){
+    const hoy = today(), jugadas = new Set(realHist(null).map(e => e.fecha));
+    const hecha = f => jugadas.has(f) || (S && S.fecha === f && isClosed());
+    const all = Object.values(CAL.ligas || {}).flatMap(l => l.fechas || []).sort();
+    let f = all.find(x => x >= hoy && !hecha(x));
+    if (!f){ const d = parseISO(hoy); d.setDate(d.getDate() + ((DOW - d.getDay() + 7) % 7)); if (hecha(iso(d))) d.setDate(d.getDate() + 7); f = iso(d); }
+    const dias = Math.round((parseISO(f) - parseISO(hoy)) / 86400000);
+    return {f, dias, txt: dias <= 0 ? "Hoy" : dias === 1 ? "Mañana" : `En ${dias} días`};
+  }
+  function pintarDias(){
+    const p = proximaLiga();
+    const tab = document.querySelector('.tab[data-view="live"]');
+    if (tab){ let sp = tab.querySelector(".tab-dias"); if (!sp){ sp = document.createElement("span"); sp.className = "tab-dias"; tab.appendChild(sp); } sp.textContent = p.txt; sp.classList.toggle("hoy", p.dias <= 0); sp.title = "Próxima fecha: " + diaLargo(p.f); }
+    const h = $("ligaDias"); if (h) h.innerHTML = ` · ${p.dias <= 0 ? "<b class=\"dias-hoy\">¡Hoy se juega!</b>" : `Próxima fecha: <b>${diaLargo(p.f)}</b> (${p.txt.toLowerCase()})`}`;
+  }
   function aplicarCfgLiga(st){
     const l = st && st.fecha && ligaDeFecha(st.fecha);
     if (!l || !l.cfg) return false;
@@ -2776,7 +2797,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
 
   /* ---------- Render ---------- */
   function render(){
-    devUI();
+    devUI(); try { pintarDias(); } catch(e){}
     document.body.classList.toggle("is-admin", ADMUI());
     document.body.classList.toggle("portal", PORTAL);
     document.body.classList.toggle("insc-phase", !!(S && S.phase === "inscripcion"));
@@ -3427,7 +3448,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     // Interruptor de liga: tocar una opción o deslizar el interruptor cambia de liga
     (function ligaSwitch(){
       const sw = $("ligaSwitch"), th = sw.querySelector(".ls-thumb");
-      $("ligaHint").innerHTML = `Estás en la <b>${L.nombre}</b> · ${B3 ? "mazos propios, solo declaras tu comandante" : "mazos preconstruidos de Commander"}`;
+      $("ligaHint").innerHTML = `Estás en la <b>${L.nombre}</b> · ${B3 ? "Mazos propios, solo declaras tu comandante" : "Mazos preconstruidos de Commander"}<span id="ligaDias"></span>`;
       sw.querySelectorAll(".ls-opt").forEach(b => b.setAttribute("aria-selected", b.dataset.liga === LIGA));
       const ir = liga => {
         if (liga === LIGA) return;

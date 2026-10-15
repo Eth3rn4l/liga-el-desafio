@@ -495,6 +495,23 @@ canvas.confeti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:no
 .win-list.toplist .pos-n{color:var(--muted)}
 .tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
 .hdr-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+/* Selector de liga: interruptor deslizable Precon / Bracket 3 */
+.liga-row{flex-basis:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.liga-switch{--acc:var(--red-hi);position:relative;display:grid;grid-template-columns:1fr 1fr;width:min(100%,420px);padding:4px;border-radius:999px;background:var(--surface);border:1px solid var(--line);touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
+.liga-switch.drag{cursor:grabbing}
+body.liga-b3 .liga-switch{--acc:var(--gold)}
+.ls-thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--acc);box-shadow:0 6px 18px rgba(0,0,0,.35);transition:transform .32s cubic-bezier(.22,1,.36,1),background-color .3s}
+body.liga-b3 .ls-thumb{transform:translateX(100%)}
+.liga-switch.drag .ls-thumb{transition:none}
+.ls-opt{position:relative;z-index:1;border:0;background:none;color:var(--muted);padding:9px 12px;border-radius:999px;display:flex;flex-direction:column;align-items:center;line-height:1.15;cursor:pointer;transition:color .25s}
+.ls-opt b{font-family:var(--f-display);font-weight:900;font-size:15px;text-transform:uppercase;letter-spacing:.04em}
+.ls-opt small{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.ls-opt[aria-selected="true"]{color:#fff}
+body.liga-b3 .ls-opt[aria-selected="true"]{color:#1a1206}
+.liga-hint{margin:0;font-size:13px;color:var(--muted)}
+.liga-hint b{color:var(--fg)}
+body.display .liga-row{display:none}
+@media (max-width:600px){.liga-switch{width:100%}.liga-hint{flex-basis:100%;text-align:center}}
 .liga-badge{font-family:var(--f-num);font-size:12px;letter-spacing:.14em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:1px solid rgba(233,180,76,.5);color:var(--gold);white-space:nowrap}
 .burger{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;flex:none}
 .burger span{display:block;width:20px;height:2px;border-radius:2px;background:var(--fg)}
@@ -664,8 +681,16 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       </div>
     </div>
     <div class="hdr-right">
-      <span class="liga-badge" id="ligaBadge"></span>
+      <span class="liga-badge" id="ligaBadge" hidden></span>
       <button class="burger" id="btnMenu" type="button" aria-expanded="false" aria-controls="menuDrawer" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+    </div>
+    <div class="liga-row">
+      <div class="liga-switch" id="ligaSwitch" role="tablist" aria-label="Elegir liga">
+        <span class="ls-thumb" aria-hidden="true"></span>
+        <button type="button" role="tab" class="ls-opt" data-liga="precon"><b>Precon</b><small>Sábados</small></button>
+        <button type="button" role="tab" class="ls-opt" data-liga="b3"><b>Bracket 3</b><small>Jueves</small></button>
+      </div>
+      <p class="liga-hint" id="ligaHint"></p>
     </div>
     <nav class="tabs" aria-label="Secciones">
       <button type="button" class="tab" data-view="live" aria-current="page">Liga en vivo</button>
@@ -3399,6 +3424,37 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   (function initMenu(){
     const L = LIGAS[LIGA];
     $("ligaBadge").textContent = `${L.nombre} · ${L.dia}`;
+    // Interruptor de liga: tocar una opción o deslizar el interruptor cambia de liga
+    (function ligaSwitch(){
+      const sw = $("ligaSwitch"), th = sw.querySelector(".ls-thumb");
+      $("ligaHint").innerHTML = `Estás en la <b>${L.nombre}</b> · ${B3 ? "mazos propios, solo declaras tu comandante" : "mazos preconstruidos de Commander"}`;
+      sw.querySelectorAll(".ls-opt").forEach(b => b.setAttribute("aria-selected", b.dataset.liga === LIGA));
+      const ir = liga => {
+        if (liga === LIGA) return;
+        document.body.classList.toggle("liga-b3", liga === "b3");   // el interruptor se desliza antes de cambiar de página
+        sw.querySelectorAll(".ls-opt").forEach(b => b.setAttribute("aria-selected", b.dataset.liga === liga));
+        const q = new URLSearchParams(location.search); q.set("liga", liga);
+        setTimeout(() => { location.href = location.pathname + "?" + q.toString() + location.hash; }, 260);
+      };
+      let x0 = null, dx = 0, mov = false;
+      sw.addEventListener("pointerdown", e => { x0 = e.clientX; dx = 0; mov = false; });
+      sw.addEventListener("pointermove", e => {
+        if (x0 == null) return;
+        dx = e.clientX - x0;
+        if (!mov && Math.abs(dx) > 6){ mov = true; sw.classList.add("drag"); try { sw.setPointerCapture(e.pointerId); } catch(_){} }
+        if (mov){ const w = sw.clientWidth / 2 - 4, base = B3 ? w : 0; th.style.transform = `translateX(${Math.max(0, Math.min(w, base + dx))}px)`; }
+      });
+      const fin = e => {
+        if (x0 == null) return;
+        const fue = mov; x0 = null; sw.classList.remove("drag"); th.style.transform = "";
+        if (fue){ if (dx > 30) ir("b3"); else if (dx < -30) ir("precon"); return; }
+        const o = e.target.closest(".ls-opt"); if (o) ir(o.dataset.liga);
+      };
+      sw.addEventListener("pointerup", fin);
+      sw.addEventListener("pointercancel", () => { x0 = null; sw.classList.remove("drag"); th.style.transform = ""; });
+      sw.addEventListener("click", e => { if (e.detail === 0){ const o = e.target.closest(".ls-opt"); if (o) ir(o.dataset.liga); } });   // teclado
+      sw.addEventListener("keydown", e => { if (e.key === "ArrowRight") ir("b3"); if (e.key === "ArrowLeft") ir("precon"); });
+    })();
     $("brandEyebrow").textContent = `${L.nombre} · ${L.dia} · Cafetería El Desafío`;
     document.title = `${L.nombre} · El Desafío`;
     const page = location.pathname.split("/").pop() || "";

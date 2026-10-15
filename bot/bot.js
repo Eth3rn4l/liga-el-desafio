@@ -52,6 +52,16 @@ async function obtenerNavegador() {
   if (!navegador) navegador = await require("puppeteer").launch({ headless: true, executablePath: CFG.chromePath || undefined, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] });
   return navegador;
 }
+// Envío robusto: sin "marcar como leído" (falla en algunas versiones de WhatsApp Web) y, si aun así falla, por el chat directamente
+async function enviar(id, contenido, opciones = {}) {
+  const op = Object.assign({ sendSeen: false }, opciones);
+  try { return await client.sendMessage(id, contenido, op); }
+  catch (e) {
+    console.log(`${hora()} reintentando el envío por otra vía (${String(e.message || e).split("\n")[0].slice(0, 80)})`);
+    const chat = await client.getChatById(id);
+    return await chat.sendMessage(contenido, op);
+  }
+}
 async function enviarMesas(liga, m, S) {
   let imgs = [];
   try { imgs = await imagenesMesas(await obtenerNavegador(), S, liga, m.ri); }
@@ -64,16 +74,22 @@ async function enviarMesas(liga, m, S) {
     return;
   }
   const { MessageMedia } = require("whatsapp-web.js");
-  for (let i = 0; i < imgs.length; i++) {
-    const media = new MessageMedia("image/png", imgs[i].png.toString("base64"), imgs[i].nombre);
-    await client.sendMessage(destinos[liga], media, i === 0 ? { caption: m.texto } : {});
-    await espera(1200);
+  try {
+    for (let i = 0; i < imgs.length; i++) {
+      const media = new MessageMedia("image/png", imgs[i].png.toString("base64"), imgs[i].nombre);
+      await enviar(destinos[liga], media, i === 0 ? { caption: m.texto } : {});
+      await espera(1200);
+    }
+  } catch (e) {
+    // Si la imagen no se puede mandar, las mesas salen igual como texto
+    console.error(`${hora()} no se pudo mandar la imagen de las mesas, se envían como texto:`, String(e.message || e).split("\n")[0]);
+    return enviarTexto(liga, m.respaldo);
   }
   console.log(`${hora()} enviado a ${liga}: ${imgs.length} ${imgs.length === 1 ? "imagen" : "imágenes"} de la ronda ${m.ri + 1}`);
 }
 async function enviarTexto(liga, texto) {
   if (SIMULAR) console.log(`\n----- [${liga}] ${hora()} -----\n${texto}\n`);
-  else { await client.sendMessage(destinos[liga], texto); console.log(`${hora()} enviado a ${liga}: ${texto.split("\n")[0]}`); }
+  else { await enviar(destinos[liga], texto); console.log(`${hora()} enviado a ${liga}: ${texto.split("\n")[0]}`); }
 }
 async function procesarCola() {
   if (enviando) return; enviando = true;
@@ -196,7 +212,7 @@ client.on("ready", async () => {
   }
   if (!Object.keys(destinos).length) { console.error("No hay grupos configurados. Revisa config.json."); process.exit(1); }
   if (ARG.includes("--prueba")) {
-    for (const id of new Set(Object.values(destinos))) await client.sendMessage(id, "🤖 Bot de la liga conectado. Aquí se publicarán las mesas y los resultados en vivo.");
+    for (const id of new Set(Object.values(destinos))) await enviar(id, "🤖 Bot de la liga conectado. Aquí se publicarán las mesas y los resultados en vivo.");
     console.log("Mensaje de prueba enviado."); await espera(3000); process.exit(0);
   }
   iniciar();

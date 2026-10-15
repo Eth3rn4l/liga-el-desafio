@@ -4,7 +4,9 @@
   "portal": "https://liga-eldesafio.netlify.app/jugador.html",
   "grupos": {
     "precon": "NOMBRE EXACTO DEL GRUPO DE LA LIGA PRECON",
-    "b3": "NOMBRE EXACTO DEL GRUPO DE LA LIGA B3"
+    "b3": "NOMBRE EXACTO DEL GRUPO DE LA LIGA B3",
+    "precon_test": "",
+    "b3_test": ""
   },
   "numeroBot": "",
   "chromePath": "",

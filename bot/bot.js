@@ -20,7 +20,9 @@ if (!fs.existsSync(CFG_FILE)) { console.error("Falta config.json: copia config.e
 const CFG = JSON.parse(fs.readFileSync(CFG_FILE, "utf8"));
 const ARG = process.argv.slice(2);
 const SIMULAR = ARG.includes("--simular");
-const LIGAS = { precon: { estado: "estado", cal: "calendario" }, b3: { estado: "estado_b3", cal: "calendario_b3" } };
+const LIGAS = { precon: { estado: "estado", cal: "calendario" }, b3: { estado: "estado_b3", cal: "calendario_b3" },
+  // Ligas de testeo del desarrollador: solo se leen si tienen grupo en config.json ("precon_test" / "b3_test")
+  precon_test: { estado: "estado_test", cal: "calendario_test" }, b3_test: { estado: "estado_b3_test", cal: "calendario_b3_test" } };
 
 const leerMem = () => { try { return JSON.parse(fs.readFileSync(MEM_FILE, "utf8")); } catch (e) { return {}; } };
 const guardarMem = m => fs.writeFileSync(MEM_FILE, JSON.stringify(m, null, 1));

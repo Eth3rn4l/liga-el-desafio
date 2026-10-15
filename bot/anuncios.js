@@ -2,7 +2,7 @@
 // Compara con lo que ya se anunció (memoria) para no repetir mensajes.
 
 const WARN_LIMIT = 2, WARN_PEN = 1;   // cada 2 warnings en una fecha = −1 punto (igual que la página)
-const NOMBRE_LIGA = { precon: "Liga Precon", b3: "Liga Bracket 3" };
+const NOMBRE_LIGA = { precon: "Liga Precon", b3: "Liga Bracket 3", precon_test: "🧪 Liga Precon (testeo)", b3_test: "🧪 Liga Bracket 3 (testeo)" };
 
 const kills = (r, p) => (r.k && r.k[p]) || 0;
 const vivo = (r, p) => (r.a || []).includes(p);
@@ -89,7 +89,7 @@ function textoCierre(S, liga, top, portal) {
 
 // Devuelve {mensajes, memoria}. Con silencioso=true solo registra lo que ya existe (al arrancar el bot a mitad de fecha).
 function anunciar(liga, S, cfgBot, memoria, silencioso) {
-  const top = cfgBot.top, portal = cfgBot.portal ? cfgBot.portal + "?liga=" + liga : "";
+  const top = cfgBot.top, portal = cfgBot.portal ? cfgBot.portal + "?liga=" + liga.replace("_test", "") + (liga.endsWith("_test") ? "&test=1" : "") : "";
   const msgs = [];
   if (!S || !S.players) return { mensajes: msgs, memoria };
   const clave = S.fecha || "sin-fecha";

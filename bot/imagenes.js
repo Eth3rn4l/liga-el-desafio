@@ -7,7 +7,7 @@ const { standing } = require("./anuncios");
 
 const DIR = __dirname;
 const MESAS_POR_IMAGEN = 4;
-const NOMBRE_LIGA = { precon: "Liga Precon", b3: "Liga Bracket 3" };
+const NOMBRE_LIGA = { precon: "Liga Precon", b3: "Liga Bracket 3", precon_test: "Liga Precon · Testeo", b3_test: "Liga Bracket 3 · Testeo" };
 const SISTEMA = { suizo: "Suizo", desafio: "Suizo Desafío", azar: "Al azar" };
 const MANA_CSS = fs.readFileSync(path.join(DIR, "mana.css"), "utf8");
 const LOGO = fs.readFileSync(path.join(DIR, "logo.png")).toString("base64");
@@ -71,7 +71,7 @@ function htmlMesas(S, liga, ri, mesas, desde, parte, total) {
     const filas = t.seats.map((id, k) => {
       const p = P[id] || { name: "?" }, d = p.deck || {};
       const [set, mazo] = (d.k || "").split("|");
-      const sub = liga === "b3" ? "" : (mazo ? `${E(mazo)} · ${E(set)}` : "");
+      const sub = liga.startsWith("b3") ? "" : (mazo ? `${E(mazo)} · ${E(set)}` : "");
       return `<li><span class="n">${k + 1}</span><div class="who"><b>${E(p.name)}</b>
         <span class="cmd">${pips(coloresDe(d))}${E(d.c || "Sin comandante")}</span>${sub ? `<span class="deck">${sub}</span>` : ""}</div>
         <span class="pts">${pts[id] || 0}<small>pts</small></span></li>`;

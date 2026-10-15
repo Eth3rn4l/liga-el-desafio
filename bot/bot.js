@@ -144,23 +144,57 @@ client.on("code", code => {
 client.on("authenticated", () => console.log(`${hora()} Sesión de WhatsApp guardada.`));
 client.on("auth_failure", m => console.error("No se pudo iniciar sesión en WhatsApp:", m));
 client.on("disconnected", r => { console.error(`${hora()} WhatsApp se desconectó (${r}). Vuelve a abrir el bot.`); process.exit(1); });
+// Lista de grupos (con reintentos: recién vinculado, WhatsApp tarda en sincronizar los chats)
+async function listarGrupos() {
+  for (let i = 0; i < 5; i++) {
+    try { return (await client.getChats()).filter(c => c.isGroup); }
+    catch (e) { console.log(`${hora()} WhatsApp todavía está cargando los chats… (intento ${i + 1} de 5)`); await espera(10000); }
+  }
+  return null;
+}
+// Un grupo se puede indicar por su nombre exacto o por su link de invitación (https://chat.whatsapp.com/...)
+async function idDeGrupo(valor, cargar) {
+  const m = /chat\.whatsapp\.com\/(?:invite\/)?([A-Za-z0-9]+)/.exec(valor || "");
+  if (m) {
+    try {
+      const info = await client.getInviteInfo(m[1]), id = info && info.id;
+      const s = id && (typeof id === "string" ? id : id._serialized || (id.user && id.server ? id.user + "@" + id.server : null));
+      if (s) return { id: s, nombre: info.subject || "grupo del link" };
+    } catch (e) { /* se intenta unir con el link */ }
+    try { const gid = await client.acceptInvite(m[1]); return { id: gid, nombre: "grupo del link" }; } catch (e) {}
+    return null;
+  }
+  const grupos = await cargar(); if (!grupos) return null;
+  const g = grupos.find(x => (x.name || "").trim().toLowerCase() === valor.trim().toLowerCase());
+  return g ? { id: g.id._serialized, nombre: g.name } : null;
+}
 client.on("ready", async () => {
-  const chats = await client.getChats();
-  const grupos = chats.filter(c => c.isGroup);
+  console.log(`${hora()} WhatsApp conectado.`);
+  await espera(4000);
+  let cache;
+  const cargar = async () => (cache !== undefined ? cache : (cache = await listarGrupos()));
   if (ARG.includes("--grupos")) {
-    console.log("\nTus grupos (copia el nombre exacto en config.json):");
+    const grupos = await cargar();
+    if (!grupos) {
+      console.log("\nNo pude leer la lista de grupos (WhatsApp sigue sincronizando o cambió algo en WhatsApp Web).");
+      console.log("Alternativa: en config.json pon el LINK DE INVITACIÓN del grupo en vez del nombre, por ejemplo:");
+      console.log('   "precon": "https://chat.whatsapp.com/XXXXXXXX"');
+      console.log("y luego abre 3-PROBAR.bat. También puedes esperar unos minutos y volver a abrir este archivo.");
+      process.exit(1);
+    }
+    console.log("\nTus grupos (copia el nombre exacto en config.json, o usa el link de invitación del grupo):");
     grupos.forEach(g => console.log("  · " + g.name));
     process.exit(0);
   }
-  for (const [liga, nombre] of Object.entries(CFG.grupos || {})) {
-    if (!nombre) continue;
-    const g = grupos.find(x => x.name.trim().toLowerCase() === nombre.trim().toLowerCase());
-    if (g) { destinos[liga] = g.id._serialized; console.log(`${hora()} ${liga} → grupo "${g.name}"`); }
-    else console.error(`${hora()} No encontré el grupo "${nombre}" para ${liga}. Usa --grupos para ver los nombres.`);
+  for (const [liga, valor] of Object.entries(CFG.grupos || {})) {
+    if (!valor || /NOMBRE EXACTO/.test(valor)) continue;
+    const g = await idDeGrupo(valor, cargar);
+    if (g) { destinos[liga] = g.id; console.log(`${hora()} ${liga} → ${g.nombre}`); }
+    else console.error(`${hora()} No encontré el grupo "${valor}" para ${liga}. Revisa el nombre o usa el link de invitación del grupo.`);
   }
   if (!Object.keys(destinos).length) { console.error("No hay grupos configurados. Revisa config.json."); process.exit(1); }
   if (ARG.includes("--prueba")) {
-    for (const liga of Object.keys(destinos)) await client.sendMessage(destinos[liga], "🤖 Bot de la liga conectado. Aquí se publicarán las mesas y los resultados en vivo.");
+    for (const id of new Set(Object.values(destinos))) await client.sendMessage(id, "🤖 Bot de la liga conectado. Aquí se publicarán las mesas y los resultados en vivo.");
     console.log("Mensaje de prueba enviado."); await espera(3000); process.exit(0);
   }
   iniciar();

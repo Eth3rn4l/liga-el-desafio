@@ -31,6 +31,7 @@ Solo **lee** la liga; no puede cambiar nada.
      "b3": "Liga B3 El Desafío"
    },
    ```
+   En vez del nombre también puedes pegar el **link de invitación** del grupo (`https://chat.whatsapp.com/...`); sirve si la lista de grupos no aparece.
    Si una liga no tiene grupo, deja `""`. Guarda el archivo.
 5. Doble clic en **3-PROBAR.bat**: debe llegar “🤖 Bot de la liga conectado…” a los grupos.
 

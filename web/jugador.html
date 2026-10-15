@@ -1851,8 +1851,14 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const dias = Math.round((parseISO(f) - parseISO(hoy)) / 86400000);
     return {f, dias, txt: dias <= 0 ? "Hoy" : dias === 1 ? "Mañana" : `En ${dias} días`};
   }
+  // "Por comenzar", o cuánto falta si la fecha no es hoy (se recalcula cada 30 s)
+  let pcCache = {t:0, v:"Por comenzar"};
+  function porComenzar(){
+    if (Date.now() - pcCache.t > 30000){ let v = "Por comenzar"; try { const p = proximaLiga(); if (p.dias === 1) v = "Mañana"; else if (p.dias > 1) v = `Faltan ${p.dias} días`; } catch(e){} pcCache = {t:Date.now(), v}; }
+    return pcCache.v;
+  }
   function pintarDias(){
-    const p = proximaLiga();
+    const p = proximaLiga(); pcCache.t = 0;
     const tab = document.querySelector('.tab[data-view="live"]');
     if (tab){ let sp = tab.querySelector(".tab-dias"); if (!sp){ sp = document.createElement("span"); sp.className = "tab-dias"; tab.appendChild(sp); } sp.textContent = p.txt; sp.classList.toggle("hoy", p.dias <= 0); sp.title = "Próxima fecha: " + diaLargo(p.f); }
     const h = $("ligaDias"); if (h) h.innerHTML = ` · ${p.dias <= 0 ? "<b class=\"dias-hoy\">¡Hoy se juega!</b>" : `Próxima fecha: <b>${diaLargo(p.f)}</b> (${p.txt.toLowerCase()})`}`;
@@ -2777,10 +2783,10 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     let label, cls = "", sub = "";
     if (ms <= 0){ label = "Tiempo cumplido"; cls = "over"; sub = "Se termina el turno en curso. Quienes sigan vivos al final suman el punto por sobrevivir."; }
     else if (S.timer.running){ const w = ms <= 10 * 60000; label = w ? "Últimos minutos" : "En juego"; cls = w ? "warn" : "run"; }
-    else label = ms === total ? "Por comenzar" : "En pausa";
+    else label = ms === total ? porComenzar() : "En pausa";
     if (inscOpen()){
       // Carrusel durante inscripciones: alterna mensajes cada 3 s
-      const n = registrants().length, msgs = ["Inscripciones abiertas", "Por comenzar", n + (n === 1 ? " inscrito" : " inscritos")];
+      const n = registrants().length, msgs = ["Inscripciones abiertas", porComenzar(), n + (n === 1 ? " inscrito" : " inscritos")];
       label = msgs[Math.floor(Date.now() / 3000) % msgs.length]; cls = "insc"; sub = "";
     }
     else if (roundComplete() && S.cur === S.cfg.rounds - 1){ const cz = isClosed(); label = cz ? "Liga cerrada" : "Liga finalizada"; cls = "run"; sub = cz ? "Gracias por jugar. Resultados finales en el standing." : "Resultados finales en el standing."; }

@@ -1,0 +1,8 @@
+node_modules/
+sesion-whatsapp/
+.wwebjs_cache/
+.wwebjs_auth/
+memoria.json
+config.json
+colores.json
+salida/

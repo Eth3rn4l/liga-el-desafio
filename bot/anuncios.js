@@ -35,6 +35,8 @@ function standing(S, hasta) {
   const list = Object.values(rec);
   const W = S.warnings || {};
   list.forEach(x => { x.pts -= Math.floor((W[x.id] || 0) / WARN_LIMIT) * WARN_PEN; });
+  const AJ = S.ajustes || {};
+  list.forEach(x => { if (AJ[x.id]) x.pts += (+AJ[x.id].pts || 0); });   // ajuste manual del organizador
   list.forEach(x => { x.buch = x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0); });
   list.sort((a, b) => b.pts - a.pts || b.k - a.k || b.buch - a.buch || a.ord - b.ord);
   return list;

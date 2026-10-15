@@ -362,6 +362,15 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .sf-slot .x{position:absolute;top:6px;right:8px;background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px}
 .sf-admin{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
 .sf-admin .field{margin:0}
+.corr{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:8px}
+.corr h3{margin:0}
+.corr-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.corr-list li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.corr select,.corr input{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--fg);font:inherit;min-width:0}
+.corr-aj{display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:8px;align-items:center}
+.corr-aj label{grid-column:1/-1;font-size:13px;color:var(--muted)}
+@media (max-width:600px){.corr-aj{grid-template-columns:1fr 1fr}.corr-aj label{grid-column:1/-1}}
+body.display .corr{display:none}
 .sf-admin input,.sf-admin select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--fg);font:inherit;color-scheme:dark;width:100%}
 .warn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .warn-list li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid transparent}
@@ -2687,6 +2696,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const list = Object.values(rec);
     const W = st.warnings || {};
     list.forEach(x => { x.warn = W[x.id] || 0; x.pen = warnPen(x.warn); x.pts -= x.pen; x.neg += x.pen; });
+    // Ajuste manual del organizador (corrección de puntos con motivo)
+    const AJ = st.ajustes || {};
+    list.forEach(x => { const a = AJ[x.id]; x.adj = a ? (+a.pts || 0) : 0; if (x.adj){ x.pts += x.adj; if (x.adj < 0) x.neg += -x.adj; } });
     list.forEach(x => { x.buch = x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0); });
     list.sort((a, b) => b.pts - a.pts || b.k - a.k || b.buch - a.buch || a.ord - b.ord);
     return list;
@@ -2717,7 +2729,20 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         return `<li><span class="r">R${ri + 1} · M${ti + 1}</span><span class="vs">vs ${vs}</span>${tag}</li>`;
       }).join("")}</ul>
       <h3>Rivales enfrentados (${rivals.length})</h3>
-      <div class="chips">${rivals.map(r => `<span>${esc(pname(r))}</span>`).join("") || '<span>Ninguno aún</span>'}</div>`;
+      <div class="chips">${rivals.map(r => `<span>${esc(pname(r))}</span>`).join("") || '<span>Ninguno aún</span>'}</div>${ADMUI() ? corregirHTML(pid, h, me) : ""}`;
+  }
+  // Organizador: corregir mesas de rondas ya jugadas (cambiar a un jugador por quien realmente jugó) y ajustar puntos a mano
+  function corregirHTML(pid, h, me){
+    const mesaDe = (ri, id) => { const i = S.rounds[ri].tables.findIndex(t => t.seats.includes(id)); return i < 0 ? null : i; };
+    const aj = (S.ajustes || {})[pid] || {};
+    const filas = h.map(({ri, ti}) => `<li><span class="r">R${ri + 1} · M${ti + 1}</span>
+        <select data-swap-sel="${ri}" aria-label="Cambiar en la ronda ${ri + 1}"><option value="">Cambiar por…</option>${S.players.filter(p => p.id !== pid).sort((a, b) => a.name.localeCompare(b.name)).map(p => { const m = mesaDe(ri, p.id); return `<option value="${esc(p.id)}">${esc(p.name)}${m === ti ? " (misma mesa)" : m != null ? ` (Mesa ${m + 1})` : " (no jugó)"}</option>`; }).join("")}</select>
+        <button class="btn" type="button" data-swap="${esc(pid)}" data-ri="${ri}">Aplicar</button></li>`).join("");
+    return `<div class="corr"><h3>Corregir · solo organizadores</h3>
+      <p class="note">¿Quedó alguien en la mesa equivocada? Elige quién jugó realmente en su lugar: se intercambian sus asientos y resultados en esa ronda y el standing se recalcula.</p>
+      ${filas ? `<ul class="corr-list">${filas}</ul>` : '<p class="note">Aún no juega ninguna ronda.</p>'}
+      <div class="corr-aj"><label for="ajPts">Ajuste manual de puntos</label><input type="number" id="ajPts" step="1" min="-30" max="30" value="${aj.pts || 0}"><input type="text" id="ajMot" maxlength="80" placeholder="Motivo (ej: error al anotar la mesa 3)" value="${esc(aj.motivo || "")}"><button class="btn primary" type="button" data-ajuste="${esc(pid)}">Guardar ajuste</button></div>
+      ${me && me.adj ? `<p class="note" style="margin:0">Ajuste actual: <b>${me.adj > 0 ? "+" : "−"}${Math.abs(me.adj)} pts</b>${aj.motivo ? " · " + esc(aj.motivo) : ""}</p>` : ""}</div>`;
   }
 
   // Código personal del jugador (4 caracteres), derivado de su id: lo entrega el organizador para vincular la cuenta
@@ -2956,7 +2981,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       (M.admin ? " Los jugadores reportan desde su celular; cuando toda la mesa reporta lo mismo, el resultado se registra solo." : "");
 
     const ficha = $("ficha");
-    if (focus && S.players.some(p => p.id === focus)){ ficha.hidden = false; ficha.innerHTML = `<h3>${esc(pname(focus))}</h3>` + fichaHTML(focus, stand); }
+    if (focus && S.players.some(p => p.id === focus)){ ficha.hidden = false; if (!typing(ficha)) ficha.innerHTML = `<h3>${esc(pname(focus))}</h3>` + fichaHTML(focus, stand); }
     else ficha.hidden = true;
 
     autoLink(); fixMissingCI(); precargarCI(); moverCorreos();
@@ -3186,6 +3211,36 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     }
     try { document.activeElement.blur(); await M.db.doc("vinculos/" + M.uid).set({pid: links[M.uid], deck}); }
     catch(err){ $("meErr").textContent = "No se pudo guardar. Revisa tu conexión e intenta de nuevo." + errDetail(err); }
+  });
+  // Intercambia a dos jugadores en una ronda: asientos y todo lo anotado en el resultado de sus mesas
+  function intercambiarEnRonda(ri, a, b){
+    const sw = id => id === a ? b : id === b ? a : id;
+    const swObj = o => { if (!o) return o; const n = {}; Object.keys(o).forEach(k => n[sw(k)] = o[k]); return n; };
+    S.rounds[ri].tables.forEach(t => {
+      t.seats = t.seats.map(sw);
+      const r = t.result; if (!r) return;
+      if (r.w) r.w = sw(r.w);
+      ["a", "j", "x"].forEach(f => { if (Array.isArray(r[f])) r[f] = r[f].map(sw); });
+      ["k", "b"].forEach(f => { if (r[f]) r[f] = swObj(r[f]); });
+    });
+  }
+  $("ficha").addEventListener("click", e => {
+    if (!M.admin && M.mode === "live") return;
+    const b = e.target.closest("[data-swap]");
+    if (b){
+      const a = b.dataset.swap, ri = +b.dataset.ri, sel = $("ficha").querySelector(`[data-swap-sel="${ri}"]`), otro = sel && sel.value;
+      if (!otro) { sel && sel.focus(); return; }
+      if (!confirm(`Ronda ${ri + 1}: ¿cambiar a ${pname(a)} por ${pname(otro)}?\n\nSe intercambian sus mesas y resultados de esa ronda. El standing se recalcula.`)) return;
+      intercambiarEnRonda(ri, a, otro); document.activeElement.blur(); commit(); return;
+    }
+    const aj = e.target.closest("[data-ajuste]");
+    if (aj){
+      const id = aj.dataset.ajuste, v = parseInt($("ajPts").value, 10) || 0, mot = ($("ajMot").value || "").trim();
+      if (v && !mot){ $("ajMot").focus(); $("ajMot").placeholder = "Escribe el motivo del ajuste"; return; }
+      S.ajustes = Object.assign({}, S.ajustes || {});
+      if (v) S.ajustes[id] = {pts:v, motivo:mot, por:M.email || "organizador", at:Date.now()}; else delete S.ajustes[id];
+      document.activeElement.blur(); commit();
+    }
   });
   $("standBody").addEventListener("click", e => {
     const tr = e.target.closest("tr[data-p]"); if (!tr) return;

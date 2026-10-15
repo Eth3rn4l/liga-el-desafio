@@ -2063,14 +2063,15 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   // Ganadores anteriores (pizarras del salón de la fama de la tienda). Las ligas sin mes usan una clave "2000-NN" solo para ordenarlas.
   const SALON_HIST = {
-    precon: [["2026-01", "", "Nicolás Núñez"], ["2026-02", "", "Héctor Riquelme"], ["2026-03", "", "Nicolás Núñez"], ["2026-04", "", "Paulo Olovarria"],
-             ["2026-05", "", "José Garrido"], ["2026-06", "", "Yves Caodevile", "Ganó Nicolás Núñez (ya clasificado): entró el 2.º"], ["2026-07", "", "Eric Riquelme"]],
+    precon: [["2000-01", "Liga Año 0", "Nicolás Núñez", "", 0], ["2000-02", "Liga de Verano", "Héctor Riquelme", "", 0],
+             ["2026-03", "", "Nicolás Núñez", "", 1], ["2026-04", "", "Paulo Olovarria", "", 1], ["2026-05", "", "José Garrido", "", 1],
+             ["2026-06", "", "Yves Caodevile", "Ganó Nicolás Núñez (ya clasificado): entró el 2.º", 1], ["2026-07", "", "Eric Riquelme", "", null]],
     b3: [["2026-04", "", "José Garrido"], ["2026-05", "", "Nicolás Núñez"], ["2026-06", "", "Felipe Flores"], ["2026-07", "", "José Garrido"], ["2026-08", "", "José Garrido"], ["2026-09", "", "Marco Camargo"]]
   };
   const etiquetaSalon = m => m.etiqueta || monthLabel(m.mes);
   const salonLista = () => (CAL.salon || []).slice().sort((a, b) => a.mes.localeCompare(b.mes));
   function gruposSalon(){
-    const L = salonLista(), fijos = L.filter(m => m.grupo), libres = L.filter(m => !m.grupo), G = {};
+    const L = salonLista().filter(m => m.grupo !== 0), fijos = L.filter(m => m.grupo), libres = L.filter(m => !m.grupo), G = {};
     const base = fijos.reduce((a, m) => Math.max(a, m.grupo), 0);
     fijos.forEach(m => (G[m.grupo] = G[m.grupo] || []).push(m));
     libres.forEach((m, i) => { const g = base + 1 + Math.floor(i / 4); (G[g] = G[g] || []).push(m); });
@@ -2121,6 +2122,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         const campSel = adm && (lista || jugada) ? `<div class="sf-admin"><div class="field"><label for="sfCamp${g}">Campeón de esta fecha de ganadores</label><select id="sfCamp${g}" data-salon-camp="${g}"><option value="">${fi.jugada ? "— Jugada, sin registrar —" : "— Sin jugar —"}</option>${nombres.map(nm => `<option ${fi.campeon && fold(fi.campeon) === fold(nm) ? "selected" : ""}>${esc(nm)}</option>`).join("")}</select></div></div>` : "";
         html += `<div class="sf-grupo${lista && !jugada ? " lista" : ""}"><div class="sf-head"><h3>Fecha de ganadores #${g}</h3>${estado}</div><div class="sf-podio">${slots}</div>${campSel}</div>`;
       }
+      const ant = L.filter(m => m.grupo === 0);
+      if (ant.length) html += `<div class="sf-grupo"><div class="sf-head"><h3>Ligas anteriores</h3><span class="sf-pill">Antes de las fechas de ganadores</span></div><div class="sf-podio">${ant.map(m => tarjeta(m, false)).join("")}</div></div>`;
     }
     if (adm){
       const ultimo = (() => { const ms = [...new Set(allEvents().map(mesDe))].sort(); return ms[ms.length - 1] || curMes(); })();
@@ -2130,7 +2133,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="field" style="flex:1;min-width:200px"><label for="sfNom">Ganador</label><input type="text" id="sfNom" autocomplete="off" placeholder="${sug ? "Sugerido: " + esc(sug.nombre) : "Nombre y apellido"}" value=""></div>
         <div class="field"><label for="sfEti">Nombre de la liga (opcional)</label><input type="text" id="sfEti" autocomplete="off" placeholder="Ej: Liga Verano"></div>
         <button class="btn primary" type="button" data-salon-add>Guardar ganador</button></div>
-        ${(() => { const falt = (SALON_HIST[LIGA] || []).filter(([mes, et, nom]) => !(CAL.salon || []).some(x => x.mes === mes && x.nombre === nom && !x.etiqueta && (B3 || x.grupo === 1))).length + ((CAL.salon || []).some(x => /^2000-/.test(x.mes)) ? 1 : 0);
+        ${(() => { const falt = (SALON_HIST[LIGA] || []).filter(([mes, et, nom, nota, gr]) => !(CAL.salon || []).some(x => x.mes === mes && x.nombre === nom && (x.etiqueta || "") === (et || "") && (B3 || (x.grupo == null ? null : x.grupo) === (gr == null ? null : gr)))).length + ((CAL.salon || []).some(x => (!B3 && /^2026-0[12]$/.test(x.mes) && x.manual)) ? 1 : 0);
           return falt ? `<div class="sf-admin"><button class="btn" type="button" data-salon-hist>Cargar ganadores anteriores de la pizarra (${falt})</button></div>` : ""; })()}
         <span class="${salonMsg && salonMsg.ok ? "ok-t" : "err"}" style="font-size:12px">${salonMsg ? esc(salonMsg.t) : ""}</span></div>`;
     }
@@ -2141,8 +2144,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const del = e.target.closest("[data-salon-del]");
     if (e.target.closest("[data-salon-hist]")){
       const H = SALON_HIST[LIGA] || [], claves = new Set(H.map(h => h[0]));
-      const nuevos = H.map(([mes, etiqueta, nombre, nota]) => Object.assign({mes, nombre, at:Date.now(), manual:true}, etiqueta ? {etiqueta} : {}, nota ? {nota} : {}, B3 ? {} : {grupo:1}));
-      CAL.salon = (CAL.salon || []).filter(x => !claves.has(x.mes) && !/^2000-/.test(x.mes)).concat(nuevos);   // 2000-NN: claves antiguas por nombre de liga
+      const nuevos = H.map(([mes, etiqueta, nombre, nota, grupo]) => Object.assign({mes, nombre, at:Date.now(), manual:true}, etiqueta ? {etiqueta} : {}, nota ? {nota} : {}, !B3 && grupo != null ? {grupo} : {}));
+      CAL.salon = (CAL.salon || []).filter(x => !claves.has(x.mes) && !/^2000-/.test(x.mes) && !((x.mes === "2026-01" || x.mes === "2026-02") && x.manual)).concat(nuevos);   // 2000-NN: claves antiguas por nombre de liga
       if (!B3){ CAL.salonFechas = Object.assign({}, CAL.salonFechas || {}); CAL.salonFechas[1] = Object.assign({}, CAL.salonFechas[1], {jugada:true}); } salonMsg = {t:`Se cargaron ${nuevos.length} ganadores anteriores ✓`, ok:true}; saveCal(); renderSalon(); return;
     }
     if (del){ const mes = del.dataset.salonDel, m = (CAL.salon || []).find(x => x.mes === mes); if (!m || !confirm(`¿Quitar a ${m.nombre} (${etiquetaSalon(m)}) del salón de la fama?`)) return; CAL.salon = (CAL.salon || []).filter(x => x.mes !== mes); saveCal(); renderSalon(); return; }

@@ -375,13 +375,15 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     if (liga) LIGA_ID = liga;
     const {data:{session}} = await sb.auth.getSession();
     const u = session && session.user;
-    let admin = false, perfil = null;
+    let admin = false, dev = false, perfil = null;
     if (u){
       const [a, p] = await Promise.all([
         sb.rpc("es_admin"),
         sb.from("perfiles").select("nombre,apellido,apodo").eq("id", u.id).maybeSingle()
       ]);
       admin = !!(a && a.data);
+      // Rol desarrollador (liga de testeo). Si la función aún no existe en Supabase, queda en falso.
+      if (admin){ try { const d = await sb.rpc("es_dev"); dev = !!(d && d.data); } catch(e){} }
       perfil = p && p.data || null;
     }
     // Si la sesión se cierra en otra pestaña, recarga para quedar sin datos privados
@@ -403,7 +405,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
         return out;
       }
     };
-    return {db, user, session, perfil, admin};
+    return {db, user, session, perfil, admin, dev};
   }
   window.Conexion = {connect, ready: !!sb};
 })();

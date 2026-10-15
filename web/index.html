@@ -163,6 +163,10 @@ input[type=number]{width:100%}
 .note.warn-t{color:var(--gold)}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px;border:1px solid var(--red);border-radius:10px;background:rgba(155,29,8,.15)}
 .banner{font-size:13px;color:var(--gold);border:1px dashed rgba(233,180,76,.45);border-radius:10px;padding:8px 12px}
+.test-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#9fd8ff;border:1px solid rgba(110,190,255,.55);background:rgba(60,140,220,.12);font-size:14px}
+.test-banner[hidden]{display:none}
+body.modo-test .brand h1::after{content:" · TESTEO";color:#6ebeff}
+body.display .test-banner{display:none}
 
 /* Modo pantalla: oculta controles del organizador */
 body.display .adm{display:none!important}
@@ -628,10 +632,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <a class="btn ghost" id="lnkOther" href="jugador.html">Portal de jugadores</a>
       <button class="btn" id="btnAccount" type="button" hidden>Entrar</button>
       <button class="btn ghost" id="btnDisplay" type="button">Modo pantalla</button>
+      <button class="btn ghost dev-btn" id="btnTest" type="button" hidden>🧪 Iniciar liga de testeo</button>
     </div>
   </header>
 
   <div class="banner" id="offlineBanner" hidden></div>
+  <div class="banner test-banner" id="testBanner" hidden><span><b>🧪 Liga de testeo</b> · Solo la ve el desarrollador. Nada de lo que hagas aquí cuenta para la liga real, sus estadísticas ni el bot de WhatsApp. Cuando cierres la fecha aparece <b>Finalizar liga testeo</b>, que borra todos los datos de prueba.</span><button class="btn primary" id="btnFinTest2" type="button" hidden>Finalizar liga testeo</button></div>
   <div class="banner adm live-only" id="sampleBanner" hidden>Jugadores de ejemplo. Carga los inscritos reales en el panel del organizador, al final de la página.</div>
 
   <section class="clock live-only" aria-label="Tiempo de ronda">
@@ -648,6 +654,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <button class="btn" id="btnPlus" type="button">+1 min</button>
       <button class="btn" id="btnReset" type="button">Reiniciar reloj</button>
       <button class="btn" id="btnNext" type="button">Siguiente ronda</button>
+      <button class="btn primary" id="btnFinTest" type="button" hidden>🧪 Finalizar liga testeo</button>
     </div>
   </section>
 
@@ -834,10 +841,13 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // Liga activa: ?liga=b3 (Bracket 3, jueves) o ?liga=precon (sábados). Sin parámetro: lunes a jueves Bracket 3, viernes a domingo Precon.
   const LIGA = (() => { const q = new URLSearchParams(location.search).get("liga"); if (q === "b3" || q === "precon") return q; const d = new Date().getDay(); return d >= 1 && d <= 4 ? "b3" : "precon"; })();
   const B3 = LIGA === "b3";
+  // Liga de testeo (solo rol desarrollador): mismos datos que la liga real pero guardados aparte (sufijo _test)
+  const TEST = new URLSearchParams(location.search).get("test") === "1";
+  const LIGA_DATOS = TEST ? LIGA + "_test" : LIGA, SUF = TEST ? "_test" : "";
   const LIGAS = {precon:{nombre:"Liga Precon", dia:"Sábados", dow:6}, b3:{nombre:"Liga Bracket 3", dia:"Jueves", dow:4}};
   const DOW = LIGAS[LIGA].dow, DIA_NOMBRE = B3 ? "jueves" : "sábado";
-  const STATE_DOC = B3 ? "liga/estado_b3" : "liga/estado", CAL_DOC = B3 ? "liga/calendario_b3" : "liga/calendario";
-  const LKEY = "liga-commander-desafio-v2" + (B3 ? "-b3" : "");
+  const STATE_DOC = (B3 ? "liga/estado_b3" : "liga/estado") + SUF, CAL_DOC = (B3 ? "liga/calendario_b3" : "liga/calendario") + SUF;
+  const LKEY = "liga-commander-desafio-v2" + (B3 ? "-b3" : "") + SUF;
   const SAMPLE = ["Matías R.","Camila S.","Benjamín T.","Javiera P.","Tomás A.","Fernanda M.","Ignacio V.","Catalina H.","Joaquín L.","Valentina C.","Diego B.","Antonia F.","Nicolás G.","Isidora N.","Sebastián O.","Martina Q.","Felipe U.","Constanza E.","Cristóbal D.","Josefa Z.","Vicente K.","Florencia W.","Maximiliano Y.","Trinidad I.","Agustín J.","Emilia X.","Lucas P.","Sofía R.","Gaspar M.","Amanda T.","Pablo S.","Renata C."];
   const WARN_LIMIT = 2, WARN_PEN = 1;   // cada 2 warnings en una misma fecha = -1 punto del día
   const warnPen = n => Math.floor((n || 0) / WARN_LIMIT) * WARN_PEN;
@@ -1348,9 +1358,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
 
   /* ---------- Histórico y estadísticas ---------- */
-  const HKEY = "liga-commander-desafio-hist" + (B3 ? "-b3" : "");
+  const HKEY = "liga-commander-desafio-hist" + (B3 ? "-b3" : "") + SUF;
   const BONO_MAZOS = 3, BONO_PTS = 3;
-  const CKEY = "liga-commander-desafio-cal" + (B3 ? "-b3" : "");
+  const CKEY = "liga-commander-desafio-cal" + (B3 ? "-b3" : "") + SUF;
   let CAL = {ligas:{}};          // {ligas: {"2026-10": {mes, fechas:["2026-10-10", ...]}}}
   // Correos de jugadores: tabla "contactos", visible solo para organizadores (clave = nombre normalizado)
   let contactos = {}, emailMoviendo = false;
@@ -1418,7 +1428,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function currentEvent(){
     if (!S || S.phase === "inscripcion" || !S.rounds.some(r => r.tables.some(t => t.result))) return null;
     const done = S.rounds.length === S.cfg.rounds && S.rounds.every(r => r.tables.every(t => t.result));
-    const ev = {id: S.archivedId || "actual", liga: LIGA, mes: curMes(), fecha: (S.archivedId && hist[S.archivedId] && hist[S.archivedId].fecha) || S.fecha || lastSaturday(),
+    const ev = {id: S.archivedId || "actual", liga: LIGA_DATOS, mes: curMes(), fecha: (S.archivedId && hist[S.archivedId] && hist[S.archivedId].fecha) || S.fecha || lastSaturday(),
       enCurso: !done, ejemplo: !!S.sample, rondas: S.cfg.rounds,
       jugadores: standings(S).map(x => { const d = deckOf(x.id); return {nombre:x.name, k:d ? d.k || "" : "", ci:d ? ciFor(d.c, d.ci) : undefined, cmd:d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "", pts:x.pts, w:x.w, kills:x.k, s:x.s, pj:x.pj, buch:x.buch, neg:x.neg || undefined, drop:isDrop(x.id) || undefined, tarde:isLate(x.id) || undefined}; }),
       sorteo: ((S.sorteo && S.sorteo.ganadores) || []).map(pname)};
@@ -2583,6 +2593,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
 
   /* ---------- Render ---------- */
   function render(){
+    devUI();
     document.body.classList.toggle("is-admin", ADMUI());
     document.body.classList.toggle("portal", PORTAL);
     document.body.classList.toggle("insc-phase", !!(S && S.phase === "inscripcion"));
@@ -2695,6 +2706,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       nb.textContent = `Armar ronda ${S.cur + 2}`; nb.classList.remove("primary"); nb.title = "";
     }
     $("sampleBanner").hidden = !S.sample;
+    $("btnFinTest").hidden = $("btnFinTest2").hidden = !(TEST && M.dev && isClosed());
     $("offlineBanner").hidden = !(M.mode === "local" && M.reason);
     $("offlineBanner").textContent = M.reason ? M.reason + " Puedes usar el reloj, las mesas y el standing en este equipo; los jugadores no verán los cambios en sus celulares." : "";
     fillCfg();
@@ -2988,6 +3000,34 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // Firma de los resultados: si cambian después del cierre, se puede actualizar
   const resultsSig = () => JSON.stringify(S.rounds.map(r => r.tables.map(t => [t.seats, t.result ? sig(t.result) : null])));
   const isClosed = () => !!(S && S.closedSig && S.closedSig === resultsSig() && S.archivedId);
+  /* ---------- Rol desarrollador: liga de testeo ---------- */
+  const urlLiga = test => location.pathname + "?liga=" + LIGA + (test ? "&test=1" : "") + location.hash;
+  function devUI(){
+    document.body.classList.toggle("modo-test", TEST);
+    const b = $("btnTest"); if (b){ b.hidden = !M.dev; b.textContent = TEST ? "Volver a la liga real" : "🧪 Iniciar liga de testeo"; }
+    $("testBanner").hidden = !TEST;
+  }
+  $("btnTest").addEventListener("click", () => {
+    if (!M.dev) return;
+    if (TEST){ location.href = urlLiga(false); return; }
+    if (confirm(`¿Iniciar una liga de testeo de la ${LIGAS[LIGA].nombre}?\n\nSe abre aparte: puedes cargar jugadores, armar mesas, iniciar rondas y usar el sorteo sin tocar la liga real.`)) location.href = urlLiga(true);
+  });
+  async function finalizarTest(){
+    if (!TEST || !M.dev) return;
+    if (!confirm("¿Finalizar la liga de testeo?\n\nSe borran todos los datos de prueba (jugadores, mesas, resultados, fechas guardadas e inscripciones de prueba) y vuelves a la liga real.")) return;
+    if (M.mode === "live" && M.db){
+      const borrar = p => p.catch(() => {});
+      await borrar(M.db.doc(STATE_DOC).delete());
+      await borrar(M.db.doc(CAL_DOC).delete());
+      for (const id of Object.keys(hist)) await borrar(M.db.doc("historial/" + id).delete());
+      for (const [t, obj] of [["vinculos", linkData], ["votos", votes], ["inscripciones", regs]])
+        for (const id of Object.keys(obj || {})) await borrar(M.db.doc(t + "/" + id).delete());
+    }
+    [LKEY, HKEY, CKEY].forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
+    location.href = urlLiga(false);
+  }
+  $("btnFinTest").addEventListener("click", finalizarTest);
+  $("btnFinTest2").addEventListener("click", finalizarTest);
   async function closeLiga(){
     if (!M.admin && M.mode === "live") return;
     const upd = !!S.closedSig;
@@ -3133,13 +3173,15 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (!window.Conexion || !window.Conexion.ready){ startLocal("No se pudo cargar la conexión con el servidor."); return; }
     const watchdog = setTimeout(() => { if (M.mode === "connecting") startLocal("La conexión en vivo no respondió."); }, 15000);
     let c = null;
-    try { c = await within(window.Conexion.connect(LIGA), 12000, null); } catch(e){}
+    try { c = await within(window.Conexion.connect(LIGA_DATOS), 12000, null); } catch(e){}
     if (M.mode !== "connecting") return;
     clearTimeout(watchdog);
     if (!c){ startLocal("No se pudo conectar con el servidor de la liga."); return; }
     const {db, user} = c;
     M.db = db; M.user = user; M.perfil = c.perfil;
-    M.admin = c.admin;
+    M.admin = c.admin; M.dev = !!(c.admin && c.dev);
+    // La liga de testeo solo la abre el rol desarrollador
+    if (TEST && !M.dev){ location.replace(location.pathname + "?liga=" + LIGA + location.hash); return; }
     M.uid = c.session ? c.session.user.id : null;
     M.email = c.session ? (c.session.user.email || "").toLowerCase() : null;
     const acc = $("btnAccount"); acc.hidden = false;
@@ -3164,7 +3206,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       }, fail);
       db.doc(CAL_DOC).onSnapshot(s => { const d = s.exists ? s.data() : null; CAL = Object.assign({ligas:{}}, d || {}); if (ready){ render(); if (view === "stats") renderStats(); } }, () => {});
       db.collection("vinculos").onSnapshot(q => { links = {}; linkData = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.pid){ links[d.id] = v.pid; linkData[d.id] = v; } }); if (ready){ render(); autoApply(); } }, () => {});
-      db.collection("historial").onSnapshot(q => { hist = {}; q.docs.forEach(d => { const v = d.data(); if (v && (v.liga || "precon") === LIGA) hist[d.id] = Object.assign({id:d.id}, v); }); if (view === "stats") renderStats(); }, () => {});
+      db.collection("historial").onSnapshot(q => { hist = {}; q.docs.forEach(d => { const v = d.data(); if (v && (v.liga || "precon") === LIGA_DATOS) hist[d.id] = Object.assign({id:d.id}, v); }); if (view === "stats") renderStats(); }, () => {});
       db.collection("inscripciones").onSnapshot(q => { regs = {}; q.docs.forEach(d => { const v = d.data(); if (v) regs[d.id] = v; }); if (ready) render(); }, () => {});
       if (c.admin) db.collection("contactos").onSnapshot(q => { contactos = {}; q.docs.forEach(d => { const v = d.data(); if (v) contactos[d.id] = v; }); if (ready){ render(); if (view === "stats") renderStats(); } }, () => {});
       db.collection("votos").onSnapshot(q => { votes = {}; q.docs.forEach(d => { const v = d.data(); if (v) votes[d.id] = v; }); if (ready){ render(); autoApply(); } }, () => {});
@@ -3185,8 +3227,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     $("ligaLinks").innerHTML = Object.entries(LIGAS).map(([k, x]) => `<a class="dl ${k === LIGA ? "on" : ""}" href="${page || "./"}?liga=${k}">${x.nombre}<small>${x.dia}${k === "b3" ? " · Mazos propios, solo comandante" : " · Mazos preconstruidos"}</small></a>`).join("");
     $("menuTabs").appendChild(document.querySelector(".top .tabs"));
     const acts = $("menuActions");
-    ["conn", "btnAccount", "lnkOther", "btnDisplay"].forEach(id => { const el = $(id); if (el) acts.appendChild(el); });
-    const other = $("lnkOther"); if (other) other.href = other.getAttribute("href").split("?")[0] + "?liga=" + LIGA;
+    ["conn", "btnAccount", "lnkOther", "btnDisplay", "btnTest"].forEach(id => { const el = $(id); if (el) acts.appendChild(el); });
+    const other = $("lnkOther"); if (other) other.href = other.getAttribute("href").split("?")[0] + "?liga=" + LIGA + (TEST ? "&test=1" : "");
     const open = on => { $("menuDrawer").hidden = !on; $("menuBack").hidden = !on; $("btnMenu").setAttribute("aria-expanded", on); if (on) setTimeout(() => $("btnMenuClose").focus(), 30); };
     $("btnMenu").addEventListener("click", () => open(true));
     $("btnMenuClose").addEventListener("click", () => open(false));

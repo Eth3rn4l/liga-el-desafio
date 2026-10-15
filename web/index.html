@@ -1951,6 +1951,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   const tvLabel = () => { const b = $("btnTvSorteo"); if (b) b.textContent = view === "live" ? "🎡 Sorteo" : "⏱ Liga en vivo"; };
   function setView(v){
     if (v === "warn" && !ADMUI()) v = "live";
+    if (v === "sorteo" && !ADMUI()) v = "live";   // el sorteo solo lo ven los organizadores
     view = v;
     document.body.classList.toggle("view-stats", v === "stats");
     document.body.classList.toggle("view-sorteo", v === "sorteo");
@@ -2736,6 +2737,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     document.body.classList.toggle("insc-phase", !!(S && S.phase === "inscripcion"));
     if (view === "stats") setTimeout(renderStats, 0);
     const wt = document.querySelector('.tab[data-view="warn"]'); if (wt) wt.hidden = !ADMUI();
+    const stb = document.querySelector('.tab[data-view="sorteo"]'); if (stb) stb.hidden = !ADMUI();
+    if (!ADMUI() && view === "sorteo") setView("live");
     renderCal(); renderJornada(); renderLate();
     if (view === "warn"){ if (!ADMUI()) setView("live"); else setTimeout(renderWarn, 0); }
     if (view === "sorteo") setTimeout(renderSorteo, 0);

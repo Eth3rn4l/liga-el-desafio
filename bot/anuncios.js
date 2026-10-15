@@ -121,7 +121,7 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
       const sg = sigRes(t.result);
       if (prev === sg) return;
       m.mesas[k] = sg;
-      if (!silencioso) msgs.push(textoMesa(S, ri, ti, t, !!m.hecho["fin" + k]));
+      // El resultado de cada mesa ya no se publica en el grupo (queda en la página)
       m.hecho["fin" + k] = 1;
     });
     if (completa(r)) {

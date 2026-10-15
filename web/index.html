@@ -510,6 +510,22 @@ canvas.confeti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:no
 .drawer .dl{display:flex;flex-direction:column;gap:2px;color:var(--fg);text-decoration:none;font-family:var(--f-display);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .drawer .dl small{font-family:var(--f-body);font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:12px}
 .drawer #conn{align-self:flex-start}
+/* Menú lateral: entra deslizándose desde la derecha y el fondo se oscurece de a poco */
+.drawer:not([hidden]){animation:drawerIn .32s cubic-bezier(.22,1,.36,1) both}
+.drawer-back:not([hidden]){animation:backIn .25s ease both}
+.drawer.closing{animation:drawerOut .22s cubic-bezier(.4,0,1,1) both}
+.drawer-back.closing{animation:backOut .22s ease both}
+.drawer:not([hidden]) > *{animation:drawerItem .35s cubic-bezier(.22,1,.36,1) both}
+.drawer:not([hidden]) > :nth-child(2){animation-delay:.05s}
+.drawer:not([hidden]) > :nth-child(3){animation-delay:.09s}
+.drawer:not([hidden]) > :nth-child(4){animation-delay:.13s}
+.drawer.closing > *{animation:none}
+@keyframes drawerIn{from{transform:translateX(100%)}to{transform:none}}
+@keyframes drawerOut{from{transform:none}to{transform:translateX(100%)}}
+@keyframes backIn{from{opacity:0}to{opacity:1}}
+@keyframes backOut{from{opacity:1}to{opacity:0}}
+@keyframes drawerItem{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.drawer:not([hidden]),.drawer-back:not([hidden]),.drawer.closing,.drawer-back.closing,.drawer:not([hidden]) > *{animation:none}}
 .tv-bar{position:fixed;top:10px;right:12px;z-index:130;display:none;gap:8px}
 body.display .tv-bar{display:flex}
 .tv-bar .btn{opacity:.15;transition:opacity .2s}
@@ -3387,7 +3403,18 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const acts = $("menuActions");
     ["conn", "btnAccount", "lnkOther", "btnDisplay", "btnTest"].forEach(id => { const el = $(id); if (el) acts.appendChild(el); });
     const other = $("lnkOther"); if (other) other.href = other.getAttribute("href").split("?")[0] + "?liga=" + LIGA + (TEST ? "&test=1" : "");
-    const open = on => { $("menuDrawer").hidden = !on; $("menuBack").hidden = !on; $("btnMenu").setAttribute("aria-expanded", on); if (on) setTimeout(() => $("btnMenuClose").focus(), 30); };
+    let cierre = null;
+    const open = on => {
+      const d = $("menuDrawer"), bk = $("menuBack");
+      $("btnMenu").setAttribute("aria-expanded", on);
+      clearTimeout(cierre);
+      if (on){ d.classList.remove("closing"); bk.classList.remove("closing"); d.hidden = false; bk.hidden = false; setTimeout(() => $("btnMenuClose").focus(), 30); return; }
+      if (d.hidden) return;
+      // Cierre animado: se desliza hacia afuera y recién ahí se oculta
+      const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      d.classList.add("closing"); bk.classList.add("closing");
+      cierre = setTimeout(() => { d.hidden = true; bk.hidden = true; d.classList.remove("closing"); bk.classList.remove("closing"); }, reduce ? 0 : 220);
+    };
     $("btnMenu").addEventListener("click", () => open(true));
     $("btnMenuClose").addEventListener("click", () => open(false));
     $("menuBack").addEventListener("click", () => open(false));

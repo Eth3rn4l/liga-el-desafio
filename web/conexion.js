@@ -121,7 +121,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
         <span class="err" id="aErr"></span>
         <button class="btn primary" type="submit">Crear cuenta</button>
       </form>
-      <div class="links"><button class="lnk" type="button" data-go="login">Ya tengo cuenta</button></div>`}),
+      <div class="links"><button class="lnk" type="button" data-go="login">Ya tengo cuenta</button><a class="lnk" href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></div>`}),
     code: () => ({eyebrow: ctx.mode === "recovery" ? "Recuperar contraseña" : "Verifica tu correo", title:"Ingresa el código", body:`
       <p class="hint" style="font-size:14px">Te enviamos un código de ${R.codigoLargo} dígitos a <b style="color:var(--fg)">${esc(ctx.email)}</b>. Vence en ${R.codigoMin} minutos. Si no lo ves, revisa spam.</p>
       <form id="fCode" novalidate>

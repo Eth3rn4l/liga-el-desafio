@@ -2068,6 +2068,22 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
              ["2026-06", "", "Yves Caodevile", "Ganó Nicolás Núñez (ya clasificado): entró el 2.º", 1], ["2026-07", "", "Eric Riquelme", "", null]],
     b3: [["2026-04", "", "José Garrido"], ["2026-05", "", "Nicolás Núñez"], ["2026-06", "", "Felipe Flores"], ["2026-07", "", "José Garrido"], ["2026-08", "", "José Garrido"], ["2026-09", "", "Marco Camargo"]]
   };
+  // Ganadores de la pizarra: se cargan (o se corrigen) solos cuando un organizador abre la página
+  let calListo = false, histAuto = false;
+  function histDesactualizado(){
+    return (SALON_HIST[LIGA] || []).some(([mes, et, nom, nota, gr]) => !(CAL.salon || []).some(x => x.mes === mes && x.nombre === nom && (x.etiqueta || "") === (et || "") && (B3 || (x.grupo == null ? null : x.grupo) === (gr == null ? null : gr))))
+      || (!B3 && (CAL.salon || []).some(x => x.manual && (x.mes === "2026-01" || x.mes === "2026-02")));
+  }
+  function cargarHistSalon(){
+    const H = SALON_HIST[LIGA] || [], claves = new Set(H.map(h => h[0]));
+    const nuevos = H.map(([mes, etiqueta, nombre, nota, grupo]) => Object.assign({mes, nombre, at:Date.now(), manual:true}, etiqueta ? {etiqueta} : {}, nota ? {nota} : {}, !B3 && grupo != null ? {grupo} : {}));
+    CAL.salon = (CAL.salon || []).filter(x => !claves.has(x.mes) && !/^2000-/.test(x.mes) && !((x.mes === "2026-01" || x.mes === "2026-02") && x.manual)).concat(nuevos);
+    if (!B3){ CAL.salonFechas = Object.assign({}, CAL.salonFechas || {}); CAL.salonFechas[1] = Object.assign({}, CAL.salonFechas[1], {jugada:true}); }
+  }
+  function autoHistSalon(){
+    if (histAuto || !calListo || !ADMUI() || M.mode !== "live" || !histDesactualizado()) return;
+    histAuto = true; cargarHistSalon(); saveCal();
+  }
   const etiquetaSalon = m => m.etiqueta || monthLabel(m.mes);
   const salonLista = () => (CAL.salon || []).slice().sort((a, b) => a.mes.localeCompare(b.mes));
   function gruposSalon(){
@@ -2133,8 +2149,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="field" style="flex:1;min-width:200px"><label for="sfNom">Ganador</label><input type="text" id="sfNom" autocomplete="off" placeholder="${sug ? "Sugerido: " + esc(sug.nombre) : "Nombre y apellido"}" value=""></div>
         <div class="field"><label for="sfEti">Nombre de la liga (opcional)</label><input type="text" id="sfEti" autocomplete="off" placeholder="Ej: Liga Verano"></div>
         <button class="btn primary" type="button" data-salon-add>Guardar ganador</button></div>
-        ${(() => { const falt = (SALON_HIST[LIGA] || []).filter(([mes, et, nom, nota, gr]) => !(CAL.salon || []).some(x => x.mes === mes && x.nombre === nom && (x.etiqueta || "") === (et || "") && (B3 || (x.grupo == null ? null : x.grupo) === (gr == null ? null : gr)))).length + ((CAL.salon || []).some(x => (!B3 && /^2026-0[12]$/.test(x.mes) && x.manual)) ? 1 : 0);
-          return falt ? `<div class="sf-admin"><button class="btn" type="button" data-salon-hist>Cargar ganadores anteriores de la pizarra (${falt})</button></div>` : ""; })()}
+        ${histDesactualizado() ? `<div class="sf-admin"><button class="btn" type="button" data-salon-hist>Actualizar ganadores anteriores de la pizarra</button></div>` : ""}
         <span class="${salonMsg && salonMsg.ok ? "ok-t" : "err"}" style="font-size:12px">${salonMsg ? esc(salonMsg.t) : ""}</span></div>`;
     }
     box.innerHTML = html;
@@ -2142,12 +2157,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   $("salon").addEventListener("click", e => {
     if (!M.admin && M.mode === "live") return;
     const del = e.target.closest("[data-salon-del]");
-    if (e.target.closest("[data-salon-hist]")){
-      const H = SALON_HIST[LIGA] || [], claves = new Set(H.map(h => h[0]));
-      const nuevos = H.map(([mes, etiqueta, nombre, nota, grupo]) => Object.assign({mes, nombre, at:Date.now(), manual:true}, etiqueta ? {etiqueta} : {}, nota ? {nota} : {}, !B3 && grupo != null ? {grupo} : {}));
-      CAL.salon = (CAL.salon || []).filter(x => !claves.has(x.mes) && !/^2000-/.test(x.mes) && !((x.mes === "2026-01" || x.mes === "2026-02") && x.manual)).concat(nuevos);   // 2000-NN: claves antiguas por nombre de liga
-      if (!B3){ CAL.salonFechas = Object.assign({}, CAL.salonFechas || {}); CAL.salonFechas[1] = Object.assign({}, CAL.salonFechas[1], {jugada:true}); } salonMsg = {t:`Se cargaron ${nuevos.length} ganadores anteriores ✓`, ok:true}; saveCal(); renderSalon(); return;
-    }
+    if (e.target.closest("[data-salon-hist]")){ cargarHistSalon(); salonMsg = {t:"Ganadores anteriores actualizados ✓", ok:true}; saveCal(); renderSalon(); return; }
     if (del){ const mes = del.dataset.salonDel, m = (CAL.salon || []).find(x => x.mes === mes); if (!m || !confirm(`¿Quitar a ${m.nombre} (${etiquetaSalon(m)}) del salón de la fama?`)) return; CAL.salon = (CAL.salon || []).filter(x => x.mes !== mes); saveCal(); renderSalon(); return; }
     if (e.target.closest("[data-salon-add]")){
       const mes = ($("sfMes").value || "").trim(); let nom = ($("sfNom").value || "").trim();
@@ -2850,7 +2860,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
 
   /* ---------- Render ---------- */
   function render(){
-    devUI(); try { pintarDias(); } catch(e){}
+    devUI(); try { pintarDias(); } catch(e){} try { autoHistSalon(); } catch(e){}
     document.body.classList.toggle("is-admin", ADMUI());
     document.body.classList.toggle("portal", PORTAL);
     document.body.classList.toggle("insc-phase", !!(S && S.phase === "inscripcion"));
@@ -3482,7 +3492,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         S = d && d.players ? normalize(d) : null; ready = true;
         render(); autoApply();
       }, fail);
-      db.doc(CAL_DOC).onSnapshot(s => { const d = s.exists ? s.data() : null; CAL = Object.assign({ligas:{}}, d || {}); if (ready){ render(); if (view === "stats") renderStats(); if (view === "salon") renderSalon(); } }, () => {});
+      db.doc(CAL_DOC).onSnapshot(s => { const d = s.exists ? s.data() : null; CAL = Object.assign({ligas:{}}, d || {}); calListo = true; if (ready){ render(); if (view === "stats") renderStats(); if (view === "salon") renderSalon(); } }, () => {});
       db.collection("vinculos").onSnapshot(q => { links = {}; linkData = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.pid){ links[d.id] = v.pid; linkData[d.id] = v; } }); if (ready){ render(); autoApply(); } }, () => {});
       db.collection("historial").onSnapshot(q => { hist = {}; q.docs.forEach(d => { const v = d.data(); if (v && (v.liga || "precon") === LIGA_DATOS) hist[d.id] = Object.assign({id:d.id}, v); }); if (view === "stats") renderStats(); }, () => {});
       db.collection("inscripciones").onSnapshot(q => { regs = {}; q.docs.forEach(d => { const v = d.data(); if (v) regs[d.id] = v; }); if (ready) render(); }, () => {});

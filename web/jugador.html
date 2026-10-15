@@ -140,6 +140,10 @@ th.l,td.l{text-align:left}
 td.pos{font-family:var(--f-num);font-size:16px;color:var(--muted);width:40px}
 tr.top3 td.pos{color:var(--gold)}
 tr.top1 td.pos{color:var(--gold);font-weight:600}
+/* Top 4 del standing: nombre destacado */
+tr.t4 td.pos{color:var(--gold)}
+tr.t4 td.nm{color:var(--gold);font-weight:700}
+tr.t4 td.nm .tag,tr.t4 td.nm .wmark{font-weight:400}
 td.nm{font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis}
 td.pts{font-family:var(--f-num);font-size:18px;font-weight:500;color:var(--fg)}
 td.mesa-c{color:var(--muted);font-family:var(--f-num)}
@@ -331,7 +335,31 @@ td.nm .cmd{max-width:220px}
 .reg-act button:hover{color:var(--fg);border-color:var(--muted)}
 .insc-close{justify-content:flex-start}
 .insc-phase .controls{display:none!important}
-body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only,body.view-reglas .live-only{display:none!important}
+body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only,body.view-reglas .live-only,body.view-salon .live-only{display:none!important}
+/* Salón de la fama */
+.salon{display:flex;flex-direction:column;gap:18px}
+.salon-intro{color:var(--muted);font-size:14px;margin:4px 0 0;max-width:760px}
+.sf-grupo{border:1px solid var(--line);border-radius:16px;padding:16px;background:var(--surface)}
+.sf-grupo.lista{border-color:rgba(233,180,76,.6);box-shadow:0 0 0 1px rgba(233,180,76,.25) inset}
+.sf-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.sf-head h3{margin:0}
+.sf-pill{font-family:var(--f-num);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.sf-pill.lista{color:var(--gold);border-color:rgba(233,180,76,.6)}
+.sf-pill.jugada{color:#fff;background:var(--red-hi,#e2472c);border-color:transparent}
+.sf-podio{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.sf-podio{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sf-slot{border-radius:14px;padding:14px 12px;text-align:center;background:var(--surface-2);border:1px solid var(--line);display:flex;flex-direction:column;gap:4px;align-items:center;min-height:132px;justify-content:center;position:relative}
+.sf-slot .tro{font-size:28px;line-height:1}
+.sf-slot .mes{font-family:var(--f-num);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.sf-slot b{font-size:16px;line-height:1.2}
+.sf-slot small{color:var(--muted);font-size:12px}
+.sf-slot.vacio{border-style:dashed;color:var(--muted)}
+.sf-slot.vacio .tro{opacity:.35;filter:grayscale(1)}
+.sf-slot.campeon{border-color:var(--gold);background:linear-gradient(180deg,rgba(233,180,76,.18),var(--surface-2))}
+.sf-slot .x{position:absolute;top:6px;right:8px;background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px}
+.sf-admin{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
+.sf-admin .field{margin:0}
+.sf-admin input,.sf-admin select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--fg);font:inherit;color-scheme:dark;width:100%}
 .warn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .warn-list li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid transparent}
 .warn-list li.w1{border-color:rgba(233,180,76,.5)}
@@ -487,9 +515,9 @@ body.display .tv-bar{display:flex}
 .tv-bar .btn{opacity:.15;transition:opacity .2s}
 .tv-bar .btn:hover,.tv-bar .btn:focus-visible{opacity:1}
 /* Modo pantalla · estadísticas y reglas: se desplazan dentro de la pantalla */
-body.display.view-stats #stats,body.display.view-reglas #reglas{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}
+body.display.view-stats #stats,body.display.view-reglas #reglas,body.display.view-salon #salon{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}
 body.display.view-stats #stats::-webkit-scrollbar,body.display.view-reglas #reglas::-webkit-scrollbar{display:none}
-body.display.view-sorteo #btnTvSorteo,body.display.view-stats #btnTvSorteo,body.display.view-reglas #btnTvSorteo{opacity:.6}
+body.display.view-sorteo #btnTvSorteo,body.display.view-stats #btnTvSorteo,body.display.view-reglas #btnTvSorteo,body.display.view-salon #btnTvSorteo{opacity:.6}
 .tv-exit{display:none}
 /* Modo pantalla · sorteo: solo la ruleta y el botón de girar */
 body.display.view-sorteo .sorteo-side,body.display.view-sorteo #sorteoSub,body.display.view-sorteo .clock{display:none!important}
@@ -625,6 +653,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <button type="button" class="tab" data-view="live" aria-current="page">Liga en vivo</button>
       <button type="button" class="tab" data-view="stats">Estadísticas</button>
       <button type="button" class="tab" data-view="sorteo">Sorteo</button>
+      <button type="button" class="tab" data-view="salon">Salón de la fama</button>
       <button type="button" class="tab" data-view="warn" hidden>Warnings</button>
       <button type="button" class="tab" data-view="reglas">Reglas</button>
     </nav>
@@ -698,6 +727,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
 
   <div class="empty live-only" id="emptyState" hidden></div>
   <section id="stats" class="stats" hidden></section>
+  <section id="salon" class="salon" hidden></section>
   <section id="warn" class="stats" hidden></section>
   <section id="reglas" class="reglas" hidden>
     <div id="reglasPrecon"></div>
@@ -1586,7 +1616,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="stand-scroll"><table><thead><tr><th class="l">#</th><th class="l">Jugador</th><th>Pts</th><th title="Puntos negativos: penalizaciones y warnings">Neg</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>S</th><th>PJ</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${standVis.map((p, i) => {
           const top = Object.entries(p.decks).sort((a, b) => b[1] - a[1])[0];
           const pk = fold(p.nombre).trim();
-          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${STADM() && editPlayer === pk ? " sel" : ""}" ${STADM() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${STADM() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td class="l" style="color:var(--muted)">${top ? (DECK[top[0]] ? `<span class="deck-set">${setIcon(DECK[top[0]].set)}${esc(DECK[top[0]].name)}</span>` : `<span class="deck-set">${(c => c != null ? `<span class="ci">${ciPips(c)}</span>` : "")(ciFor(top[0].replace(/^c:/, "")))}${esc(top[0].replace(/^c:/, ""))}</span>`) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${STADM() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú ves a los ${stand.length}.` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
+          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${i < 4 ? " t4" : ""}${STADM() && editPlayer === pk ? " sel" : ""}" ${STADM() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${i + 1}</td><td class="l nm">${esc(p.nombre)}${STADM() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.s}</td><td>${p.pj}</td><td class="l" style="color:var(--muted)">${top ? (DECK[top[0]] ? `<span class="deck-set">${setIcon(DECK[top[0]].set)}${esc(DECK[top[0]].name)}</span>` : `<span class="deck-set">${(c => c != null ? `<span class="ci">${ciPips(c)}</span>` : "")(ciFor(top[0].replace(/^c:/, "")))}${esc(top[0].replace(/^c:/, ""))}</span>`) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${STADM() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú ves a los ${stand.length}.` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
       ${STADM() && editPlayer ? editStatsHTML(evsAll, statMonth) : ""}
       <div class="stats-grid">
         <div class="card"><div class="sec-head" style="margin:0"><h3>Jugadores con más kills</h3>${seg}</div><p class="card-sub" style="margin:0"><b>${killsTot}</b> kills en total ${rankScope === "all" ? "en el histórico" : "en el " + (statMonth === "all" ? "período" : "mes")}</p>${bars(playerKills)}</div>
@@ -1804,7 +1834,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function saveCal(){
     if (M.mode === "live" && M.admin) M.db.doc(CAL_DOC).set(JSON.parse(JSON.stringify(CAL))).catch(e => { const el = $("calErr"); if (el) el.textContent = "No se pudo guardar el calendario: " + (e && e.message || e); });
     else if (M.mode === "local"){ try { localStorage.setItem(CKEY, JSON.stringify(CAL)); } catch(e){} }
-    render(); if (view === "stats") renderStats();
+    render(); if (view === "stats") renderStats(); if (view === "salon") renderSalon();
   }
   function renderCal(){
     const box = $("calAdmin"); if (!box || typing(box)) return;
@@ -1926,6 +1956,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     document.body.classList.toggle("view-sorteo", v === "sorteo");
     document.body.classList.toggle("view-warn", v === "warn");
     document.body.classList.toggle("view-reglas", v === "reglas");
+    document.body.classList.toggle("view-salon", v === "salon");
+    $("salon").hidden = v !== "salon";
     $("reglas").hidden = v !== "reglas";
     $("warn").hidden = v !== "warn";
     document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false"));
@@ -1935,7 +1967,89 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (v === "sorteo") renderSorteo();
     if (v === "warn") renderWarn();
     if (v === "reglas") renderReglas();
+    if (v === "salon") renderSalon();
   }
+  /* ---------- Salón de la fama: el 1.º de cada mes entra; cada 4 ganadores se juega una fecha de ganadores ---------- */
+  // Standing mensual (mismo cálculo que Estadísticas: puntos + bono de variedad; desempate kills, Buchholz, victorias)
+  function standMes(mes){
+    const evs = allEvents(); cuentaList = evs;
+    const P = {};
+    evs.filter(e => cuenta(e) && mesDe(e) === mes).forEach(e => e.jugadores.forEach(j => {
+      const key = fold(j.nombre).trim(); const p = P[key] = P[key] || {nombre:j.nombre, base:0, kills:0, buch:0, w:0, fechas:0, d:new Set()};
+      p.fechas++; p.base += j.pts; p.kills += j.kills; p.buch += j.buch || 0; p.w += j.w;
+      const dk = j.k || (j.cmd ? "c:" + j.cmd : ""); if (dk) p.d.add(dk);
+    }));
+    Object.values(P).forEach(p => p.pts = p.base + (p.d.size >= BONO_MAZOS ? BONO_PTS : 0));
+    return Object.values(P).sort((a, b) => b.pts - a.pts || b.kills - a.kills || b.buch - a.buch || b.w - a.w || a.nombre.localeCompare(b.nombre));
+  }
+  const salonLista = () => (CAL.salon || []).slice().sort((a, b) => a.mes.localeCompare(b.mes));
+  // Al cerrar la última fecha del mes, el 1.º del standing mensual entra al salón (si se actualiza el cierre, se recalcula)
+  function asignarSalon(ev){
+    if (!ev) return null;
+    const mes = mesDe(ev), info = fechaInfo(ev, allEvents());
+    if (info.extra || info.n !== info.total) return null;
+    const top = standMes(mes)[0]; if (!top) return null;
+    const prev = (CAL.salon || []).find(x => x.mes === mes);
+    if (prev && prev.manual) return null;   // lo fijó el organizador a mano
+    CAL.salon = (CAL.salon || []).filter(x => x.mes !== mes).concat([{mes, nombre:top.nombre, pts:top.pts, kills:top.kills, fechas:top.fechas, at:Date.now()}]);
+    saveCal();
+    return top;
+  }
+  let salonMsg = null;
+  function renderSalon(){
+    const box = $("salon"); if (!box || view !== "salon" || typing(box)) return;
+    const L = salonLista(), adm = ADMUI() && !document.body.classList.contains("display");
+    const G = CAL.salonFechas || {};
+    const grupos = Math.max(1, Math.ceil(L.length / 4) + (L.length && L.length % 4 === 0 ? 1 : 0));
+    const intro = B3
+      ? "El 1.º del standing de cada mes entra al salón de la fama. Cada 4 ganadores se arma una <b>Fecha de ganadores</b>."
+      : "El 1.º del standing de cada mes entra al salón de la fama. Cada 4 ganadores se arma una <b>Fecha de ganadores</b> donde se juega por un <b>playmat personalizado de la Liga Precon</b>, normalmente un sábado después de la liga.";
+    let html = `<div class="stats-head"><div><h2>Salón de la fama · ${esc(LIGAS[LIGA].nombre)}</h2><p class="salon-intro">${intro} El ganador entra apenas se cierra la última fecha del mes.</p></div></div>`;
+    for (let g = 0; g < grupos; g++){
+      const miembros = L.slice(g * 4, g * 4 + 4), gi = G[g] || {}, lista = miembros.length === 4;
+      const estado = gi.campeon ? `<span class="sf-pill jugada">Campeón: ${esc(gi.campeon)}</span>` : lista ? '<span class="sf-pill lista">Lista para jugar</span>' : `<span class="sf-pill">${miembros.length}/4 ganadores</span>`;
+      const slots = [0, 1, 2, 3].map(k => {
+        const m = miembros[k];
+        if (!m) return `<div class="sf-slot vacio"><span class="tro">🏆</span><small>Por definir</small></div>`;
+        const camp = gi.campeon && fold(gi.campeon) === fold(m.nombre);
+        return `<div class="sf-slot${camp ? " campeon" : ""}">${adm ? `<button class="x" type="button" data-salon-del="${esc(m.mes)}" title="Quitar del salón" aria-label="Quitar a ${esc(m.nombre)} del salón">×</button>` : ""}<span class="tro">${camp ? "👑" : "🏆"}</span><span class="mes">${esc(monthLabel(m.mes))}</span><b>${esc(m.nombre)}</b>${m.pts != null ? `<small>${m.pts} pts${m.kills != null ? " · " + m.kills + " K" : ""}</small>` : ""}</div>`;
+      }).join("");
+      const campSel = adm && lista ? `<div class="sf-admin"><div class="field"><label for="sfCamp${g}">Campeón de esta fecha de ganadores</label><select id="sfCamp${g}" data-salon-camp="${g}"><option value="">— Sin jugar —</option>${miembros.map(m => `<option ${gi.campeon && fold(gi.campeon) === fold(m.nombre) ? "selected" : ""}>${esc(m.nombre)}</option>`).join("")}</select></div></div>` : "";
+      html += `<div class="sf-grupo${lista && !gi.campeon ? " lista" : ""}"><div class="sf-head"><h3>Fecha de ganadores #${g + 1}</h3>${estado}</div><div class="sf-podio">${slots}</div>${campSel}</div>`;
+    }
+    if (adm){
+      const ultimo = (() => { const ms = [...new Set(allEvents().map(mesDe))].sort(); return ms[ms.length - 1] || curMes(); })();
+      const sug = standMes(ultimo)[0];
+      html += `<div class="card"><h3>Organizador · agregar o corregir un ganador</h3><p class="note" style="margin:0">El ganador se asigna solo al cerrar la última fecha del mes. Aquí puedes agregar ganadores de meses anteriores o corregir uno; si el mes ya tiene ganador, se reemplaza.</p>
+        <div class="sf-admin"><div class="field"><label for="sfMes">Mes</label><input type="month" id="sfMes" value="${esc(ultimo)}"></div>
+        <div class="field" style="flex:1;min-width:200px"><label for="sfNom">Ganador</label><input type="text" id="sfNom" autocomplete="off" placeholder="${sug ? "Sugerido: " + esc(sug.nombre) : "Nombre y apellido"}" value=""></div>
+        <button class="btn primary" type="button" data-salon-add>Guardar ganador</button></div>
+        <span class="${salonMsg && salonMsg.ok ? "ok-t" : "err"}" style="font-size:12px">${salonMsg ? esc(salonMsg.t) : ""}</span></div>`;
+    }
+    box.innerHTML = html;
+  }
+  $("salon").addEventListener("click", e => {
+    if (!M.admin && M.mode === "live") return;
+    const del = e.target.closest("[data-salon-del]");
+    if (del){ const mes = del.dataset.salonDel, m = (CAL.salon || []).find(x => x.mes === mes); if (!m || !confirm(`¿Quitar a ${m.nombre} (${monthLabel(mes)}) del salón de la fama?`)) return; CAL.salon = (CAL.salon || []).filter(x => x.mes !== mes); saveCal(); renderSalon(); return; }
+    if (e.target.closest("[data-salon-add]")){
+      const mes = ($("sfMes").value || "").trim(); let nom = ($("sfNom").value || "").trim();
+      if (!/^\d{4}-\d{2}$/.test(mes)){ salonMsg = {t:"Elige el mes."}; renderSalon(); return; }
+      const st = standMes(mes), auto = !nom && st[0];
+      if (!nom && st[0]) nom = st[0].nombre;
+      if (!nom){ salonMsg = {t:"Escribe el nombre del ganador (ese mes no tiene fechas guardadas)."}; renderSalon(); return; }
+      const x = st.find(p => fold(p.nombre) === fold(nom));
+      CAL.salon = (CAL.salon || []).filter(y => y.mes !== mes).concat([{mes, nombre:x ? x.nombre : nom, pts:x ? x.pts : null, kills:x ? x.kills : null, fechas:x ? x.fechas : null, at:Date.now(), manual:!auto}]);
+      salonMsg = {t:`${x ? x.nombre : nom} quedó en el salón (${monthLabel(mes)}) ✓`, ok:true};
+      saveCal(); renderSalon();
+    }
+  });
+  $("salon").addEventListener("change", e => {
+    const sel = e.target.closest("[data-salon-camp]"); if (!sel || (!M.admin && M.mode === "live")) return;
+    const g = sel.dataset.salonCamp; CAL.salonFechas = Object.assign({}, CAL.salonFechas || {});
+    if (sel.value) CAL.salonFechas[g] = {campeon:sel.value, at:Date.now()}; else delete CAL.salonFechas[g];
+    sel.blur(); saveCal(); renderSalon();
+  });
   // Reglas de la Liga Precon: se arman con la configuración vigente de la fecha (rondas, minutos y puntos)
   function renderReglas(){
     const box = $("reglasPrecon"); if (!box) return;
@@ -2700,7 +2814,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       $("moveHint").textContent = moveSel ? `Moviendo a ${pname(moveSel)}: toca otro jugador para intercambiarlos o el título de una mesa para llevarlo ahí. Toca de nuevo su nombre para cancelar.` : "Para mover jugadores: arrástralos a otra mesa o sobre otro jugador para intercambiarlos. En el celular, tócalo y luego toca el destino. Las mesas con resultado se reabren primero.";
     } else { const mh = $("moveHint"); if (mh) mh.hidden = true; }
     $("standBody").innerHTML = stand.map((x, i) =>
-      `<tr data-p="${x.id}" class="${i === 0 && x.pts > 0 ? "top1" : i < 3 && x.pts > 0 ? "top3" : ""}${x.id === focus ? " sel" : ""}${x.id === myPid ? " mine-row" : ""}"><td class="l pos">${i + 1}</td><td class="l nm">${esc(x.name)}${isDrop(x.id) ? ' <span class="tag drop" title="Dejó la fecha: no juega las próximas rondas, conserva sus puntos">Drop</span>' : isLate(x.id) ? ` <span class="tag late" title="Se sumó en la ronda ${S.players.find(p => p.id === x.id).late + 1}">Tardío</span>` : ""}${ADMUI() && x.warn ? `<span class="wmark" title="Warnings en esta fecha">⚠ ${x.warn}</span>` : ""}${cmdLine(x.id)}</td>
+      `<tr data-p="${x.id}" class="${i === 0 && x.pts > 0 ? "top1" : i < 3 && x.pts > 0 ? "top3" : ""}${i < 4 && x.pts > 0 ? " t4" : ""}${x.id === focus ? " sel" : ""}${x.id === myPid ? " mine-row" : ""}"><td class="l pos">${i + 1}</td><td class="l nm">${esc(x.name)}${isDrop(x.id) ? ' <span class="tag drop" title="Dejó la fecha: no juega las próximas rondas, conserva sus puntos">Drop</span>' : isLate(x.id) ? ` <span class="tag late" title="Se sumó en la ronda ${S.players.find(p => p.id === x.id).late + 1}">Tardío</span>` : ""}${ADMUI() && x.warn ? `<span class="wmark" title="Warnings en esta fecha">⚠ ${x.warn}</span>` : ""}${cmdLine(x.id)}</td>
        <td class="pts">${x.pts}${(n => n ? `<span class="pen" title="Puntos negativos de la fecha${ADMUI() && x.pen ? " (incluye " + x.pen + " por warnings)" : ""}">−${n}</span>` : "")(ADMUI() ? x.neg : x.neg - x.pen)}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td class="buch">${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
@@ -3074,6 +3188,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     S.archivedId = id; S.closedSig = resultsSig(); S.closedAt = Date.now();
     if (S.timer.running) S.timer = {running:false, endAt:0, left:Math.max(0, S.timer.endAt - Date.now())};
     commit(); window.scrollTo({top:0, behavior:"smooth"});
+    // Última fecha del mes: el 1.º del standing mensual entra al salón de la fama
+    const top = asignarSalon(currentEvent());
+    if (top) setTimeout(() => alert(`🏆 ${top.nombre} es el ganador de ${monthLabel(mesDe(currentEvent()))} y entra al Salón de la fama de la ${LIGAS[LIGA].nombre}.`), 300);
   }
   // Guarda la fecha actual en el histórico (si tiene resultados) antes de abrir otra
   async function saveFechaToHist(){
@@ -3242,7 +3359,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         S = d && d.players ? normalize(d) : null; ready = true;
         render(); autoApply();
       }, fail);
-      db.doc(CAL_DOC).onSnapshot(s => { const d = s.exists ? s.data() : null; CAL = Object.assign({ligas:{}}, d || {}); if (ready){ render(); if (view === "stats") renderStats(); } }, () => {});
+      db.doc(CAL_DOC).onSnapshot(s => { const d = s.exists ? s.data() : null; CAL = Object.assign({ligas:{}}, d || {}); if (ready){ render(); if (view === "stats") renderStats(); if (view === "salon") renderSalon(); } }, () => {});
       db.collection("vinculos").onSnapshot(q => { links = {}; linkData = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.pid){ links[d.id] = v.pid; linkData[d.id] = v; } }); if (ready){ render(); autoApply(); } }, () => {});
       db.collection("historial").onSnapshot(q => { hist = {}; q.docs.forEach(d => { const v = d.data(); if (v && (v.liga || "precon") === LIGA_DATOS) hist[d.id] = Object.assign({id:d.id}, v); }); if (view === "stats") renderStats(); }, () => {});
       db.collection("inscripciones").onSnapshot(q => { regs = {}; q.docs.forEach(d => { const v = d.data(); if (v) regs[d.id] = v; }); if (ready) render(); }, () => {});

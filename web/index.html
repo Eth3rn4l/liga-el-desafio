@@ -3229,7 +3229,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     } else {
       acc.textContent = PORTAL ? "Entrar" : "Organizador";
       acc.onclick = () => window.Auth.open("login");
-      if (PORTAL) window.Auth.open("login");
+      // ?cuenta=crear (link de los QR) abre directo "Crear cuenta"
+      if (PORTAL) window.Auth.open(new URLSearchParams(location.search).get("cuenta") === "crear" ? "signup" : "login");
     }
     M.mode = "live";
     let ready = false;

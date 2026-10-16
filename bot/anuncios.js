@@ -14,21 +14,21 @@ const ckills = (r, p) => (r.c && r.c[p]) || 0;   // kills de comandante: +1 cada
 
 function puntos(r, p, c) {
   if (!r || dq(r, p)) return 0;
-  let x = gana(r, p) ? c.win : kills(r, p) * c.kill + (vivo(r, p) ? c.surv : 0) + Math.min(c.cmdCap == null ? 3 : c.cmdCap, ckills(r, p) * (c.cmdKill == null ? 1 : c.cmdKill));
+  // Igual que la página y el Excel: ganar o empatar + kills + kills de comandante (con su tope), y tope por mesa
+  let x = (gana(r, p) ? c.win : vivo(r, p) ? c.surv : 0) + kills(r, p) * c.kill + Math.min(c.cmdCap == null ? 3 : c.cmdCap, ckills(r, p) * (c.cmdKill == null ? 1 : c.cmdKill));
   if (joven(r, p)) x += c.joven || 0;
   return Math.min(c.cap, x) - bruto(r, p) * (c.bruto || 0);
 }
 
-// Misma regla que la página: puntos, luego kills, luego Buchholz
-function standing(S, hasta) {
-  hasta = hasta == null ? S.rounds.length : hasta;
+// Misma regla que la página (copia del Excel): Buchholz desde la ronda 2 y orden por intercambio sobre la lista desordenada de la fecha
+function statsHasta(S, hasta) {
   const c = S.cfg, rec = {};
   S.players.forEach((p, i) => rec[p.id] = { id: p.id, name: p.name, pts: 0, w: 0, k: 0, pj: 0, opps: [], ord: i });
   S.rounds.slice(0, hasta).forEach(r => r.tables.forEach(t => {
     if (!t.result) return;
     t.seats.forEach(id => {
       const x = rec[id]; if (!x) return;
-      x.pj++; x.pts += puntos(t.result, id, c); x.k += kills(t.result, id);
+      x.pj++; x.pts += puntos(t.result, id, c); x.k += kills(t.result, id) + ckills(t.result, id);
       if (gana(t.result, id)) x.w++;
       t.seats.forEach(o => { if (o !== id) x.opps.push(o); });
     });
@@ -38,9 +38,24 @@ function standing(S, hasta) {
   list.forEach(x => { x.pts -= Math.floor((W[x.id] || 0) / WARN_LIMIT) * WARN_PEN; });
   const AJ = S.ajustes || {};
   list.forEach(x => { if (AJ[x.id]) x.pts += (+AJ[x.id].pts || 0); });   // ajuste manual del organizador
-  list.forEach(x => { x.buch = x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0); });
-  list.sort((a, b) => b.pts - a.pts || b.k - a.k || b.buch - a.buch || a.ord - b.ord);
-  return list;
+  list.forEach(x => { x.buch = hasta > 1 ? x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0) : 0; });
+  return rec;
+}
+function standing(S, hasta) {
+  hasta = hasta == null ? S.rounds.length : hasta;
+  const set = new Set(S.players.map(p => p.id));
+  let order = (S.orden || []).filter(id => set.has(id)); const en = new Set(order);
+  S.players.forEach(p => { if (!en.has(p.id)) order.push(p.id); });
+  for (let r = 1; r <= hasta; r++) {
+    const R = statsHasta(S, r), L = order.slice();
+    for (let i = 0; i < L.length - 1; i++) for (let j = i + 1; j < L.length; j++) {
+      const a = R[L[i]], b = R[L[j]];
+      if (b.pts > a.pts || (b.pts === a.pts && b.k > a.k) || (b.pts === a.pts && b.k === a.k && b.buch > a.buch)) { const t = L[i]; L[i] = L[j]; L[j] = t; }
+    }
+    order = L;
+  }
+  const R = statsHasta(S, hasta);
+  return order.map(id => R[id]);
 }
 
 const sigRes = r => JSON.stringify([r.w || null, r.k || {}, (r.a || []).slice().sort(), r.j || [], r.b || {}, r.x || [], r.c || {}]);

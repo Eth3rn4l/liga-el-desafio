@@ -1462,7 +1462,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const selfRegs = Object.entries(regs).filter(([, r]) => r && r.first);
     selfRegs.forEach(([uid, r]) => S.players.push(Object.assign({id:"u_" + uid, first:r.first, last:r.last, name:fullName(r), deck:r.deck}, r.email ? {email:r.email} : {})));
     if (S.players.length < 3) return;
-    S.phase = "juego"; S.cur = 0; S.rounds = []; S.fecha = S.fecha || fechaCalendarioHoy(); S.rounds.push(buildRound(S, 0));
+    S.phase = "juego"; S.cur = 0; S.rounds = []; S.fecha = S.fecha || fechaCalendarioHoy();
+    S.orden = shuffleExcel(S.players.map(p => p.id));   // DesordenarAleatoriamente del Excel al generar la ronda 1
+    S.rounds.push(buildRound(S, 0));
     S.timer = {running:false, endAt:0, left:S.cfg.min * 60000};
     commit();
     if (M.mode === "live"){
@@ -2229,9 +2231,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <dt>+${c.win}</dt><dd><b>Ganar la mesa</b>El ganador recibe ${c.win} puntos.</dd>
         <dt>+${c.kill}</dt><dd><b>Eliminar a un jugador</b>Por cada jugador eliminado.</dd>
         <dt>+${c.surv}</dt><dd><b>Sobrevivir a la mesa</b>Seguir vivo al terminar el tiempo (empate).</dd>
-        <dt>+${CMDK(c)}</dt><dd><b>Kill de comandante</b>Punto extra por cada jugador eliminado con daño de comandante (máximo ${CMDCAP(c)} por mesa).</dd>
+        <dt>+${CMDK(c)}</dt><dd><b>Kill de comandante</b>Por cada jugador eliminado con daño de comandante (máximo ${CMDCAP(c)} puntos por mesa).</dd>
       </dl>
-      <p class="note" style="margin:0">Máximo ${c.cap} puntos por jugador en cada mesa. Ganar ya da ${c.win}: las kills del ganador cuentan para el desempate.</p>
+      <p class="note" style="margin:0">Máximo ${c.cap} puntos por jugador en cada mesa. Las kills del ganador también se anotan: cuentan para el desempate.</p>
     </div>
     <div class="card"><h3>Mazos permitidos</h3><ul>
       <li>Solo <b>mazos preconstruidos de Commander</b> del catálogo de la liga, el que aparece al inscribirte. Incluye los mazos de colaboraciones como Doctor Who, Fallout, Warhammer 40,000, Final Fantasy o Marvel.</li>
@@ -2563,7 +2565,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function points(res, pid, c){
     if (!res) return 0;
     if (dq(res, pid)) return 0;
-    let p = isWin(res, pid) ? c.win : kills(res, pid) * c.kill + (alive(res, pid) ? c.surv : 0) + Math.min(CMDCAP(c), ckills(res, pid) * CMDK(c));
+    // Como el Excel: ganar o empatar, más kills × puntos por kill, más kills de comandante (con su tope), y el total con tope por mesa
+    let p = (isWin(res, pid) ? c.win : alive(res, pid) ? c.surv : 0) + kills(res, pid) * c.kill + Math.min(CMDCAP(c), ckills(res, pid) * CMDK(c));
     if (young(res, pid)) p += c.joven || 0;
     return Math.min(c.cap, p) - brute(res, pid) * (c.bruto || 0);
   }
@@ -2578,7 +2581,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   const sig = res => JSON.stringify(norm(res));
   function validate(d, seats){
-    const sumK = seats.reduce((s, p) => s + kills(d, p), 0);
+    const sumK = seats.reduce((s, p) => s + kills(d, p) + ckills(d, p), 0);
     const dead = seats.length - d.a.length;
     if (sumK > dead) return `Hay ${sumK} kills pero solo ${dead} eliminados. Revisa los números.`;
     if (!d.w && d.a.length === 1) return "Si queda un solo jugador vivo, márcalo como ganador.";
@@ -2598,160 +2601,164 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
 
   /* ---------- Mesas ---------- */
+  /* Motor de mesas y standing: copia fiel del Excel de la liga (macros VBA) */
+  // Mesas como el Excel: de 4; si sobra 1 → dos de 4 pasan a tres de 3 (con menos de 8: dos de 3);
+  // si sobran 2 → una de 4 pasa a dos de 3 (con 2 jugadores: una de 3); si sobran 3 → una de 3.
+  // Devuelve la capacidad de cada mesa; se llenan en orden (con 5 jugadores: 3 y 2).
   function podSizes(n){
-    if (n < 6) return [n];
-    const pods = Math.ceil(n / 4), threes = pods * 4 - n;
-    return Array(pods - threes).fill(4).concat(Array(threes).fill(3));
+    let n4 = Math.floor(n / 4), n3 = 0; const r = n % 4;
+    if (r === 1){ if (n4 >= 2){ n4 -= 2; n3 = 3; } else { n4 = 0; n3 = 2; } }
+    else if (r === 2){ if (n4 >= 1){ n4 -= 1; n3 = 2; } else n3 = 1; }
+    else if (r === 3) n3 = 1;
+    return Array(n4).fill(4).concat(Array(n3).fill(3));
   }
-  // Rondas al azar: motor aleatorio del Excel. Rondas por standing: suizo del Excel (evita rivales repetidos y mismo comandante).
+  // Int(n * Rnd) del VBA → 0..n-1
+  const rndIdx = n => Math.floor(n * Math.random());
+  // DesordenarAleatoriamente / Shuffle_IntArray: For i = n To 2 · j = Int(i * Rnd) + 1 · intercambia i y j
+  function shuffleExcel(arr){
+    const a = arr.slice();
+    for (let i = a.length; i >= 2; i--){ const j = rndIdx(i) + 1, t = a[i - 1]; a[i - 1] = a[j - 1]; a[j - 1] = t; }
+    return a;
+  }
+  const cmdKey = c => { const k = String(c || "").trim().toUpperCase(); return k === "DESCONOCIDO" ? "" : k; };
+  // ALEATORIO: todas al azar · SUIZO DESAFIO: rondas 1 y 2 al azar · SUIZO: todas con el motor suizo (la 1 sobre la lista desordenada)
   function isRandomRound(cfg, idx){
     const mode = (cfg && cfg.pairing) || "suizo";
-    return mode === "azar" || idx < (mode === "desafio" ? 2 : 1);
+    return mode === "azar" || (mode === "desafio" && idx < 2);
+  }
+  // Orden de la lista de jugadores (ListaJugadores): se desordena al iniciar la fecha; los que llegan tarde van al final
+  function ordenBase(st){
+    const set = new Set(st.players.map(p => p.id));
+    const o = (st.orden || []).filter(id => set.has(id)), en = new Set(o);
+    st.players.forEach(p => { if (!en.has(p.id)) o.push(p.id); });
+    return o;
+  }
+  // OrdenarJugadoresRanking: ordenamiento por intercambio del VBA (puntos, luego kills, luego Buchholz)
+  function ordenarExcel(order, R){
+    const L = order.slice();
+    for (let i = 0; i < L.length - 1; i++) for (let j = i + 1; j < L.length; j++){
+      const a = R[L[i]], b = R[L[j]];
+      if (b.pts > a.pts || (b.pts === a.pts && b.k > a.k) || (b.pts === a.pts && b.k === a.k && b.buch > a.buch)){ const t = L[i]; L[i] = L[j]; L[j] = t; }
+    }
+    return L;
   }
   function buildRound(st, idx){
-    const ids = st.players.filter(p => (st.dropped || {})[p.id] == null).map(p => p.id);
+    const ids = standings(st, idx).map(x => x.id).filter(id => (st.dropped || {})[id] == null);   // IndicesActivos
     const sizes = podSizes(ids.length);
-    const met = {};
-    st.rounds.slice(0, idx).forEach(r => r.tables.forEach(t => t.seats.forEach(a => t.seats.forEach(b => { if (a !== b) met[a + "|" + b] = (met[a + "|" + b] || 0) + 1; }))));
+    const met = {};   // MatrizConflictos: rivales de las rondas anteriores de esta fecha
+    st.rounds.slice(0, idx).forEach(r => r.tables.forEach(t => t.seats.forEach(a => t.seats.forEach(b => { if (a !== b) met[a + "|" + b] = 1; }))));
     const cmd = {};
-    ids.forEach(id => { const d = deckOf(id); const c = d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : ""; cmd[id] = c ? fold(c).trim() : ""; });
-    const podCost = pod => { let c = 0; for (let i = 0; i < pod.length; i++) for (let j = i + 1; j < pod.length; j++){
-      if (cmd[pod[i]] && cmd[pod[i]] === cmd[pod[j]]) c += 1000;   // mismo comandante: casi prohibido
-      c += (met[pod[i] + "|" + pod[j]] || 0) * 10;                  // rivales repetidos
-    } return c; };
-    const cut = order => { const pods = []; let k = 0; sizes.forEach(n => { pods.push(order.slice(k, k + n)); k += n; }); return pods; };
-    // En suizo cada jugador tiene su "mesa de nivel": moverlo lejos de ella cuesta, pero menos que repetir rival
-    const home = {};
-    const costAt = (pod, pi) => podCost(pod) + pod.reduce((s, id) => s + (home[id] == null ? 0 : Math.abs(home[id] - pi) * 2), 0);
-    const total = pods => pods.reduce((s, p, i) => s + costAt(p, i), 0);
-    const improve = pods => {
-      for (let pass = 0; pass < 15; pass++){
-        let changed = false;
-        for (let a = 0; a < pods.length; a++) for (let b = a + 1; b < pods.length; b++){
-          const A = pods[a], B = pods[b];
-          for (let i = 0; i < A.length; i++) for (let j = 0; j < B.length; j++){
-            const before = costAt(A, a) + costAt(B, b);
-            [A[i], B[j]] = [B[j], A[i]];
-            if (costAt(A, a) + costAt(B, b) < before) changed = true; else [A[i], B[j]] = [B[j], A[i]];
-          }
-        }
-        if (!changed) break;
-      }
-      return pods;
-    };
-    // Se prueban varios puntos de partida y se queda con el de menor costo
-    const search = (start, tries) => {
-      let best = null, bestCost = Infinity; const t0 = performance.now();
-      for (let t = 0; t < tries && bestCost > 0 && (t < 5 || performance.now() - t0 < 700); t++){
-        const cand = improve(start(t)), c = total(cand);
-        if (c < bestCost){ best = cand.map(p => p.slice()); bestCost = c; }
-      }
-      return best;
-    };
-    let pods;
-    if (isRandomRound(st.cfg, idx)){
-      pods = randomExcel(ids, sizes, cmd, met);
-    } else {
-      // Rondas por standing: igual que el Excel (evita rivales repetidos y mismo comandante con las reglas de reemplazo)
-      pods = swissExcel(st, idx, ids, sizes, cmd, met);
-    }
-    return {tables: pods.map(p => ({seats: shuffle(p), result: null}))};
+    const P = {}; st.players.forEach(p => P[p.id] = p);
+    ids.forEach(id => { const d = st === S ? deckOf(id) : P[id] && P[id].deck; cmd[id] = cmdKey(d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : ""); });
+    const pods = isRandomRound(st.cfg, idx) ? randomExcel(ids, sizes, cmd, met) : swissExcel(st, idx, ids, sizes, cmd, met);
+    return {tables: pods.filter(p => p.length).map(p => ({seats: p.slice(), result: null}))};
   }
-
-  // Motor aleatorio igual al Excel: 100 intentos; en cada uno se desordena, se sienta a cada jugador en la primera mesa
-  // sin conflicto y luego se hacen 300 intercambios al azar, conservando los que no empeoran el puntaje.
-  // Puntaje: cada par que ya jugó junto −500, cada par con el mismo comandante −300, cada par nuevo +1.
+  // AsignarMesas_AleatorioConMaximosOponentesNuevos (100 intentos × 300 intercambios, como en INSCRIPCION D3/D4)
+  const EXCEL_INTENTOS = 100, EXCEL_SWAPS = 300;
   function randomExcel(ids, sizes, cmd, met){
-    const sameCmd = (a, b) => !!cmd[a] && cmd[a] === cmd[b];
+    const n = ids.length, nT = sizes.length;
     const jug = (a, b) => !!met[a + "|" + b];
-    const parScore = (a, b) => (jug(a, b) ? -500 : 1) + (sameCmd(a, b) ? -300 : 0);
-    const mesaScore = m => { let v = 0; for (let i = 0; i < m.length; i++) for (let j = i + 1; j < m.length; j++) v += parScore(m[i], m[j]); return v; };
-    const conflicto = (id, m) => m.some(o => jug(id, o) || sameCmd(id, o));
-    let best = null, bestV = -Infinity;
-    for (let intento = 0; intento < 100; intento++){
-      const mesas = sizes.map(() => []);
-      shuffle(ids).forEach(id => {
-        let m = mesas.findIndex((x, i) => x.length < sizes[i] && !conflicto(id, x));
-        if (m < 0) m = mesas.findIndex((x, i) => x.length < sizes[i]);
-        mesas[m].push(id);
+    const mismo = (a, b) => !!cmd[a] && cmd[a] === cmd[b];
+    // ContarConflictosEnMesa: rival previo +1, mismo comandante +10
+    const conflictos = (mesa, id) => mesa.reduce((s, o) => o === id ? s : s + (jug(id, o) ? 1 : 0) + (mismo(id, o) ? 10 : 0), 0);
+    // CalcularScoreTotal: par repetido −500 (si no, +1) y mismo comandante −300
+    const score = M => { let v = 0; M.forEach(m => { for (let i = 0; i < m.length - 1; i++) for (let j = i + 1; j < m.length; j++){ v += jug(m[i], m[j]) ? -500 : 1; if (mismo(m[i], m[j])) v -= 300; } }); return v; };
+    let best = sizes.map(() => []), bestV = -99999999;
+    for (let at = 0; at < EXCEL_INTENTOS; at++){
+      const orden = shuffleExcel(Array.from({length:n}, (_, i) => i));
+      const M = sizes.map(() => []);
+      orden.forEach(i => {
+        const id = ids[i]; let bt = -1, minC = 9999;
+        for (let t = 0; t < nT; t++){
+          if (M[t].length < sizes[t]){ const c = conflictos(M[t], id); if (c === 0){ bt = t; break; } if (c < minC){ minC = c; bt = t; } }
+        }
+        if (bt < 0) bt = M.findIndex((m, t) => m.length < sizes[t]);
+        M[bt].push(id);
       });
-      if (mesas.length > 1) for (let n = 0; n < 300; n++){
-        const a = Math.floor(Math.random() * mesas.length); let b = Math.floor(Math.random() * (mesas.length - 1)); if (b >= a) b++;
-        const i = Math.floor(Math.random() * mesas[a].length), j = Math.floor(Math.random() * mesas[b].length);
-        const antes = mesaScore(mesas[a]) + mesaScore(mesas[b]);
-        [mesas[a][i], mesas[b][j]] = [mesas[b][j], mesas[a][i]];
-        if (mesaScore(mesas[a]) + mesaScore(mesas[b]) < antes) [mesas[a][i], mesas[b][j]] = [mesas[b][j], mesas[a][i]];
+      let cur = score(M);
+      for (let s = 0; s < EXCEL_SWAPS; s++){
+        const t1 = rndIdx(nT), t2 = rndIdx(nT);
+        if (t1 !== t2 && M[t1].length > 0 && M[t2].length > 0){
+          const p1 = rndIdx(M[t1].length), p2 = rndIdx(M[t2].length), a = M[t1][p1], b = M[t2][p2];
+          M[t1][p1] = b; M[t2][p2] = a;
+          const nv = score(M);
+          if (nv >= cur) cur = nv; else { M[t1][p1] = a; M[t2][p2] = b; }
+        }
       }
-      const v = mesas.reduce((s, m) => s + mesaScore(m), 0);
-      if (v > bestV){ bestV = v; best = mesas.map(m => m.slice()); }
+      if (cur > bestV){ bestV = cur; best = M.map(m => m.slice()); }
     }
     return best;
   }
-  // Suizo como el Excel de la liga: las mesas se llenan en orden estricto del standing (puntos, kills, Buchholz).
-  // Si un jugador choca en su mesa (mismo comandante o rival repetido) solo se cambia por alguien en triple empate
-  // (oro: sin choques · plata: rival repetido · bronce: mismo comandante). Después, de la última mesa a la primera,
-  // se intenta arreglar cada choque cambiándolo por alguien de otra mesa con los mismos puntos, solo si queda limpio para ambos.
+  // AsignarMesas_Clasico_FFA: las mesas se llenan en el orden de la lista. Si un jugador choca con su mesa (mismo comandante,
+  // o rival previo desde la ronda 2), se cambia por alguien más abajo con exactamente los mismos puntos, kills y Buchholz
+  // (en la ronda 1, cualquiera): oro sin choques · plata rival repetido · bronce mismo comandante.
+  // Después RepararConflictosInterMesas (desde la ronda 2).
   function swissExcel(st, idx, ids, sizes, cmd, met){
-    const act = new Set(ids), R = {};
-    const order = standings(st, idx).filter(r => act.has(r.id));
-    order.forEach(r => R[r.id] = r);
-    const arr = order.map(r => r.id);
-    const sameCmd = (a, b) => !!cmd[a] && cmd[a] === cmd[b];
-    const rep_ = (a, b) => !!met[a + "|" + b];
-    const pods = []; let ptr = 0;
-    sizes.forEach(n => {
+    const R = {}; standings(st, idx).forEach(r => R[r.id] = r);
+    const ronda = idx + 1, conHist = ronda >= 2;
+    const mismo = (a, b) => !!cmd[a] && cmd[a] === cmd[b];
+    const jug = (a, b) => !!met[a + "|" + b];
+    const arr = ids.slice(); let ptr = 0;
+    sizes.forEach(cap => {
       const mesa = [];
-      for (let s_ = 0; s_ < n && ptr < arr.length; s_++){
+      for (let s_ = 0; s_ < cap; s_++){
+        if (ptr >= arr.length) break;
         let p = arr[ptr];
-        if (mesa.some(o => sameCmd(p, o) || rep_(p, o))){
+        if (mesa.some(o => mismo(p, o) || (conHist && jug(p, o)))){
           const q0 = R[p]; let oro = -1, plata = -1, bronce = -1;
           for (let c = ptr + 1; c < arr.length; c++){
             const q = arr[c], r = R[q];
-            // Como el Excel: solo se cambia con alguien justo debajo con los mismos puntos, kills y Buchholz
-            if (!(r.pts === q0.pts && r.k === q0.k && r.buch === q0.buch)) break;
-            const cc = mesa.some(o => sameCmd(q, o)), hh = mesa.some(o => rep_(q, o));
+            if (!(ronda === 1 || (r.pts === q0.pts && r.k === q0.k && Math.abs(r.buch - q0.buch) < 0.01))) break;
+            const cc = mesa.some(o => mismo(q, o)), hh = conHist && mesa.some(o => jug(q, o));
             if (!cc && !hh){ oro = c; break; }
-            if (!cc && hh && plata < 0) plata = c;
-            if (cc && !hh && bronce < 0) bronce = c;
+            else if (!cc && hh && plata < 0) plata = c;
+            else if (cc && !hh && bronce < 0) bronce = c;
           }
           const f = oro >= 0 ? oro : plata >= 0 ? plata : bronce;
-          if (f >= 0){ [arr[ptr], arr[f]] = [arr[f], arr[ptr]]; p = arr[ptr]; }
+          if (f >= 0){ const q = arr[f]; arr[f] = p; arr[ptr] = q; p = q; }
         }
         mesa.push(p); ptr++;
       }
-      pods.push(mesa);
     });
-    const limpio = (mesa, skip, nuevo) => mesa.every((o, k) => k === skip || !(rep_(nuevo, o) || sameCmd(nuevo, o)));
-    const cambiado = new Set();   // como el Excel: un solo intercambio por jugador
-    for (let m = pods.length - 1; m >= 0; m--){
-      for (let p = pods[m].length - 1; p >= 0; p--){
-        const pid = pods[m][p];
-        if (cambiado.has(pid)) continue;
-        if (pods[m].every((o, k) => k === p || !(rep_(pid, o) || sameCmd(pid, o)))) continue;
+    // Mesas(m) como colecciones del VBA
+    const M = []; let k = 0;
+    sizes.forEach(cap => { const m = []; for (let i = 0; i < cap && k < arr.length; i++) m.push(arr[k++]); M.push(m); });
+    if (!conHist) return M;
+    const limpio = (m, ign, nuevo) => M[m].every((o, i) => i === ign || !(jug(nuevo, o) || mismo(nuevo, o)));
+    // Remove p + Add Before:=IIf(p > count, count, p) del VBA (si era el último, queda en el penúltimo lugar)
+    const reemplazar = (m, i, nuevo) => { M[m].splice(i, 1); const pos = i >= M[m].length ? Math.max(0, M[m].length - 1) : i; M[m].splice(pos, 0, nuevo); };
+    for (let m = M.length - 1; m >= 0; m--){
+      const capM = M[m].length;
+      for (let p = capM - 1; p >= 0; p--){
+        const pid = M[m][p];
+        let choque = false;
+        for (let i = 0; i < capM; i++) if (i !== p && (jug(pid, M[m][i]) || mismo(pid, M[m][i]))){ choque = true; break; }
+        if (!choque) continue;
         let hecho = false;
-        for (let t = 0; t < pods.length && !hecho; t++){
+        for (let t = 0; t < M.length && !hecho; t++){
           if (t === m) continue;
-          for (let tp = 0; tp < pods[t].length; tp++){
-            const tid = pods[t][tp];
-            if (cambiado.has(tid) || R[tid].pts !== R[pid].pts) continue;
-            if (limpio(pods[m], p, tid) && limpio(pods[t], tp, pid)){ pods[m][p] = tid; pods[t][tp] = pid; cambiado.add(pid); cambiado.add(tid); hecho = true; break; }
+          for (let tp = 0; tp < M[t].length; tp++){
+            const tid = M[t][tp];
+            if (R[tid].pts !== R[pid].pts) continue;
+            if (limpio(m, p, tid) && limpio(t, tp, pid)){ reemplazar(m, p, tid); reemplazar(t, tp, pid); hecho = true; break; }
           }
         }
       }
     }
-    return pods;
+    return M;
   }
 
   /* ---------- Standing ---------- */
-  function standings(st, upto){
-    upto = upto == null ? st.rounds.length : upto;
+  // Puntos, kills (normales + de comandante) y Buchholz hasta la ronda "upto". Como el Excel, el Buchholz es 0 hasta terminar la ronda 1
+  // y suma los puntos actuales de cada rival enfrentado.
+  function statsHasta(st, upto){
     const c = st.cfg, rec = {};
     st.players.forEach((p, i) => rec[p.id] = {id:p.id, name:p.name, pts:0, w:0, k:0, s:0, pj:0, neg:0, opps:[], ord:i});
     st.rounds.slice(0, upto).forEach(r => r.tables.forEach(t => {
       if (!t.result) return;
       t.seats.forEach(id => {
         const x = rec[id]; if (!x) return;
-        x.pj++; x.pts += points(t.result, id, c); x.k += kills(t.result, id); if (!dq(t.result, id)) x.neg += brute(t.result, id) * (c.bruto || 0);
+        x.pj++; x.pts += points(t.result, id, c); x.k += kills(t.result, id) + ckills(t.result, id); if (!dq(t.result, id)) x.neg += brute(t.result, id) * (c.bruto || 0);
         if (isWin(t.result, id)) x.w++; else if (alive(t.result, id)) x.s++;
         t.seats.forEach(o => { if (o !== id) x.opps.push(o); });
       });
@@ -2762,10 +2769,20 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     // Ajuste manual del organizador (corrección de puntos con motivo)
     const AJ = st.ajustes || {};
     list.forEach(x => { const a = AJ[x.id]; x.adj = a ? (+a.pts || 0) : 0; if (x.adj){ x.pts += x.adj; if (x.adj < 0) x.neg += -x.adj; } });
-    list.forEach(x => { x.buch = x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0); });
-    list.sort((a, b) => b.pts - a.pts || b.k - a.k || b.buch - a.buch || a.ord - b.ord);
-    return list;
+    const conBuch = upto > 1;
+    list.forEach(x => { x.buch = conBuch ? x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0) : 0; });
+    return rec;
   }
+  // Orden como el Excel: la lista desordenada al inicio se reordena (por intercambio) al cerrar cada ronda
+  function standings(st, upto){
+    upto = upto == null ? st.rounds.length : upto;
+    let order = ordenBase(st);
+    for (let r = 1; r <= upto; r++) order = ordenarExcel(order, statsHasta(st, r));
+    const R = statsHasta(st, upto);
+    return order.map(id => R[id]);
+  }
+  // Solo para pruebas del motor (no cambia nada en la página): ?motor=1
+  if (/[?&]motor=1/.test(location.search)) window.__motor = {podSizes, buildRound, standings, points, shuffleExcel, swissExcel, randomExcel};
   const pname = id => { const p = S && S.players.find(p => p.id === id); return p ? p.name : "?"; };
   function fichaHTML(pid, stand){
     const pos = stand.findIndex(x => x.id === pid), me = stand[pos];
@@ -2785,7 +2802,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         const r = t.result, vs = t.seats.filter(s => s !== pid).map(s => esc(pname(s))).join(", ");
         let tag = '<span class="res">En juego</span>';
         if (r){
-          const kk = kills(r, pid) ? kills(r, pid) + " kill" + (kills(r, pid) > 1 ? "s" : "") : "";
+          const kk = [kills(r, pid) ? kills(r, pid) + " kill" + (kills(r, pid) > 1 ? "s" : "") : "", ckills(r, pid) ? ckills(r, pid) + " cmd kill" + (ckills(r, pid) > 1 ? "s" : "") : ""].filter(Boolean).join(" · ");
           const det = (isWin(r, pid) ? ["Ganó", kk].filter(Boolean).join(" · ") : [kk, alive(r, pid) ? "vivo" : ""].filter(Boolean).join(" · ") || "Eliminado") + (young(r, pid) ? " · muy joven" : "") + (dq(r, pid) ? " · no es tu lugar" : "");
           tag = `<span class="res ${isWin(r, pid) ? "w" : alive(r, pid) ? "d" : ""}">${(v => v < 0 ? "−" + -v : "+" + v)(points(r, pid, S.cfg))} · ${det}${brute(r, pid) && !dq(r, pid) ? ` · −${brute(r, pid) * (S.cfg.bruto || 0)} bruto` : ""}</span>`;
         }
@@ -2815,8 +2832,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     k = Math.max(0, Math.min(t.seats.length - 1, k | 0));
     if (k) d.k[pid] = k; else delete d.k[pid];
     if (brute(d, pid) > k) d.b[pid] = k;
-    if (d.c && ckills(d, pid) > k){ if (k) d.c[pid] = k; else delete d.c[pid]; }
-    const sumK = t.seats.reduce((s, p) => s + kills(d, p), 0), dead = t.seats.length - d.a.length;
+    const sumK = t.seats.reduce((s, p) => s + kills(d, p) + ckills(d, p), 0), dead = t.seats.length - d.a.length;
     if (sumK > dead) return `Quedarían ${sumK} kills en la mesa pero solo ${dead} eliminados. Baja las kills de otro jugador primero o revisa quién quedó vivo.`;
     t.result = norm(d); return "";
   }
@@ -2891,7 +2907,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <button type="button" class="tg ${w ? "on win" : ""}" data-act="win" data-p="${p}" aria-pressed="${w}">Ganó</button>
           <button type="button" class="tg ${al ? "on" : ""}" data-act="alive" data-p="${p}" aria-pressed="${al}">${al ? "Vivo" : "Eliminado"}</button>
           <span class="kc"><button type="button" data-act="k-" data-p="${p}" aria-label="Quitar kill a ${esc(pname(p))}">−</button><b>${k}</b><span>kills</span><button type="button" data-act="k+" data-p="${p}" aria-label="Sumar kill a ${esc(pname(p))}">+</button></span>
-          <span class="kc" title="Kills hechas con daño de comandante (suman 1 punto extra cada una, máximo ${CMDCAP(S.cfg)})"><button type="button" data-act="c-" data-p="${p}" aria-label="Quitar kill de comandante a ${esc(pname(p))}">−</button><b>${ckills(d, p)}</b><span>de cmd</span><button type="button" data-act="c+" data-p="${p}" aria-label="Sumar kill de comandante a ${esc(pname(p))}">+</button></span>
+          <span class="kc" title="Kills por daño de comandante (columna Cmd Kills del Excel): cada una suma ${CMDK(S.cfg)} punto, máximo ${CMDCAP(S.cfg)} por mesa"><button type="button" data-act="c-" data-p="${p}" aria-label="Quitar kill de comandante a ${esc(pname(p))}">−</button><b>${ckills(d, p)}</b><span>cmd kills</span><button type="button" data-act="c+" data-p="${p}" aria-label="Sumar kill de comandante a ${esc(pname(p))}">+</button></span>
           ${B3 ? `<button type="button" class="tg ${young(d, p) ? "on young" : ""}" data-act="young" data-p="${p}" aria-pressed="${young(d, p)}" ${al ? "disabled" : ""} title="Eliminado antes de terminar su 6.º turno">Muy joven</button>
           <span class="kc" title="Eliminaciones que hizo antes de que la víctima terminara su 6.º turno"><button type="button" data-act="b-" data-p="${p}" aria-label="Quitar eliminación temprana a ${esc(pname(p))}">−</button><b>${brute(d, p)}</b><span>tempranas</span><button type="button" data-act="b+" data-p="${p}" aria-label="Sumar eliminación temprana a ${esc(pname(p))}">+</button></span>
           <button type="button" class="tg ${dq(d, p) ? "on dq" : ""}" data-act="dq" data-p="${p}" aria-pressed="${dq(d, p)}" title="Controló la mesa o hizo combo antes del turno 7 del primer jugador">No es tu lugar</button>` : ""}
@@ -2900,7 +2916,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     }).join("");
     const err = validate(d, seats);
     // Aviso (no bloquea): hay eliminados sin kill asignada, típico al marcar solo "Ganó"
-    const muertos = seats.length - d.a.length, sumK = seats.reduce((s_, p) => s_ + kills(d, p), 0);
+    const muertos = seats.length - d.a.length, sumK = seats.reduce((s_, p) => s_ + kills(d, p) + ckills(d, p), 0);
     const aviso = !err && sumK < muertos ? `Hay ${muertos} ${muertos === 1 ? "eliminado" : "eliminados"} y ${sumK === 0 ? "ninguna kill anotada" : "solo " + sumK + (sumK === 1 ? " kill anotada" : " kills anotadas")}. Si alguien los eliminó, súmale sus kills con “+” (cuentan para el desempate y las estadísticas).` : "";
     return `<div class="ed" data-key="${key}">${rows}
       ${aviso ? `<p class="ed-aviso">${esc(aviso)}</p>` : ""}
@@ -2914,8 +2930,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       if (d.a.includes(p)){ d.a = d.a.filter(x => x !== p); if (d.w === p) d.w = null; }
       else { d.a.push(p); if (d.w && d.w !== p) d.w = null; }
     } else if (act === "k+"){ d.k[p] = Math.min(seats.length - 1, kills(d, p) + 1); }
-    else if (act === "k-"){ d.k[p] = Math.max(0, kills(d, p) - 1); if (brute(d, p) > kills(d, p)) d.b[p] = kills(d, p); if (ckills(d, p) > kills(d, p)) d.c[p] = kills(d, p); }
-    else if (act === "c+"){ d.c[p] = Math.min(seats.length - 1, ckills(d, p) + 1); if (kills(d, p) < d.c[p]) d.k[p] = d.c[p]; }
+    else if (act === "k-"){ d.k[p] = Math.max(0, kills(d, p) - 1); if (brute(d, p) > kills(d, p)) d.b[p] = kills(d, p); }
+    else if (act === "c+"){ d.c[p] = Math.min(seats.length - 1, ckills(d, p) + 1); }
     else if (act === "c-"){ d.c[p] = Math.max(0, ckills(d, p) - 1); }
     else if (act === "young"){ d.j = young(d, p) ? d.j.filter(x => x !== p) : d.j.concat([p]); }
     else if (act === "b+"){ d.b[p] = Math.min(kills(d, p), brute(d, p) + 1); }
@@ -3292,7 +3308,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function impPlan(txt, ri){
     const rows = impParse(txt), round = S.rounds[ri], out = {mesas:[], err:[], avisos:[], warns:[], armar:false};
     if (!rows.length){ out.err.push("No encontré filas con “Mesa N” y un jugador. Pega las filas desde Excel (con los títulos) o lee la imagen."); return out; }
-    rows.forEach(r => { if (r.win && r.tie) r.win = false; if (r.ck > r.k) r.k = r.ck; });   // como el Excel: si se marcan ganó y empató, cuenta el empate
+    rows.forEach(r => { if (r.win && r.tie) r.win = false; });   // como el Excel: si se marcan ganó y empató, cuenta el empate
     const grupos = {}; rows.forEach(r => (grupos[r.mesa] = grupos[r.mesa] || []).push(r));
     const vistos = new Set(), G = [];
     Object.keys(grupos).map(Number).sort((a, b) => a - b).forEach(n => {
@@ -3330,7 +3346,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       const res = {w:ws.length === 1 ? ws[0].pid : null, a:(ws.length === 1 ? [ws[0].pid] : []).concat(ties.map(it => it.pid)), k:{}, c:{}};
       items.forEach(it => { if (it.k) res.k[it.pid] = Math.min(seats.length - 1, it.k); if (it.ck) res.c[it.pid] = Math.min(seats.length - 1, it.ck); });
       if (!res.w && !res.a.length) out.avisos.push(`Mesa ${ti + 1}: sin ganador ni empate marcados; todos quedan eliminados.`);
-      const sumK = seats.reduce((s, p) => s + kills(res, p), 0), dead = seats.length - res.a.length;
+      const sumK = seats.reduce((s, p) => s + kills(res, p) + ckills(res, p), 0), dead = seats.length - res.a.length;
       if (sumK > dead) out.err.push(`Mesa ${n}: ${sumK} kills pero solo ${dead} eliminados.`);
       // La planilla manda: el resultado anterior se reemplaza completo (también “muy joven”, bruto y “no es tu lugar”)
       items.filter(it => it.warn).forEach(it => out.warns.push(it.pid));
@@ -3342,7 +3358,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const box = $("impPrev"), ri = VR(), plan = impPlan($("impTxt").value, ri);
     const fila = (pid, res, it) => { if (!res) return `<li><span>${esc(pname(pid))}${it && !it.exacto ? ` <small class="note">(“${esc(it.nombre)}”)</small>` : ""}</span><span class="res">En juego</span></li>`;
       const w = isWin(res, pid), a = alive(res, pid), k = kills(res, pid), ck = ckills(res, pid);
-      return `<li><span>${esc(pname(pid))}${it && !it.exacto ? ` <small class="note">(“${esc(it.nombre)}”)</small>` : ""}</span><span class="res ${w ? "w" : a ? "d" : ""}">${w ? "Ganó" : a ? "Empató" : "Eliminado"}${k ? " · " + k + " kill" + (k > 1 ? "s" : "") : ""}${ck ? " (" + ck + " de cmd)" : ""} · ${(v => v < 0 ? "−" + -v : "+" + v)(points(res, pid, S.cfg))}</span></li>`; };
+      return `<li><span>${esc(pname(pid))}${it && !it.exacto ? ` <small class="note">(“${esc(it.nombre)}”)</small>` : ""}</span><span class="res ${w ? "w" : a ? "d" : ""}">${w ? "Ganó" : a ? "Empató" : "Eliminado"}${k ? " · " + k + " kill" + (k > 1 ? "s" : "") : ""}${ck ? " · " + ck + " cmd kill" + (ck > 1 ? "s" : "") : ""} · ${(v => v < 0 ? "−" + -v : "+" + v)(points(res, pid, S.cfg))}</span></li>`; };
     box.innerHTML = (plan.err.length ? `<div class="imp-err"><b>Revisa esto antes de importar:</b><ul>${plan.err.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
       + (plan.avisos.length ? `<div class="imp-av"><ul>${plan.avisos.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
       + `<div class="imp-mesas">${plan.mesas.map(m => {

@@ -3194,12 +3194,17 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const ex = cands.filter(c => c.n === q); if (ex.length) return {p:(ex.find(c => enRonda.has(c.p.id)) || ex[0]).p, exacto:true};
     let best = null;
     cands.forEach(c => {
-      const d = lev(q, c.n), r = 1 - d / Math.max(q.length, c.n.length);
+      const d = lev(q, c.n); let r = 1 - d / Math.max(q.length, c.n.length);
       const tq = q.split(" "), tc = c.n.split(" ");
       const tok = tq.length > 1 && tc.length > 1 && tq[0] === tc[0] && tq[tq.length - 1][0] === tc[tc.length - 1][0] ? .1 : 0;
       // Nombres distintos con el mismo apellido (Kenny / José Cifuentes) no se confunden
-      if (tq.length > 1 && tc.length > 1 && lev(tq[0], tc[0]) > Math.max(1, Math.floor(Math.min(tq[0].length, tc[0].length) / 3))) return;
-      const sc = r + tok + (enRonda.has(c.p.id) ? .05 : 0);
+      // Apodos del mismo nombre (Seba / Sebastián, ManuS / Manuel): comparten al menos 3 letras al inicio y el mismo apellido
+      const pref = (a, b) => { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; };
+      const mismoAp = tq.length > 1 && tc.length > 1 && tq[tq.length - 1] === tc[tc.length - 1];
+      const apodo = mismoAp && pref(tq[0], tc[0]) >= 3;
+      if (!apodo && tq.length > 1 && tc.length > 1 && lev(tq[0], tc[0]) > Math.max(1, Math.floor(Math.min(tq[0].length, tc[0].length) / 3))) return;
+      const sc = (apodo ? Math.max(r, .9) : r) + tok + (enRonda.has(c.p.id) ? .05 : 0);
+      if (apodo) r = Math.max(r, .9);
       if (!best || sc > best.sc) best = {p:c.p, sc, r};
     });
     return best && best.r + .1 >= .72 ? {p:best.p, exacto:false} : null;

@@ -10,10 +10,11 @@ const joven = (r, p) => (r.j || []).includes(p);
 const bruto = (r, p) => (r.b && r.b[p]) || 0;
 const dq = (r, p) => (r.x || []).includes(p);
 const gana = (r, p) => r.w === p;
+const ckills = (r, p) => (r.c && r.c[p]) || 0;   // kills de comandante: +1 cada una, con tope propio (igual que la página)
 
 function puntos(r, p, c) {
   if (!r || dq(r, p)) return 0;
-  let x = gana(r, p) ? c.win : kills(r, p) * c.kill + (vivo(r, p) ? c.surv : 0);
+  let x = gana(r, p) ? c.win : kills(r, p) * c.kill + (vivo(r, p) ? c.surv : 0) + Math.min(c.cmdCap == null ? 3 : c.cmdCap, ckills(r, p) * (c.cmdKill == null ? 1 : c.cmdKill));
   if (joven(r, p)) x += c.joven || 0;
   return Math.min(c.cap, x) - bruto(r, p) * (c.bruto || 0);
 }
@@ -42,7 +43,7 @@ function standing(S, hasta) {
   return list;
 }
 
-const sigRes = r => JSON.stringify([r.w || null, r.k || {}, (r.a || []).slice().sort(), r.j || [], r.b || {}, r.x || []]);
+const sigRes = r => JSON.stringify([r.w || null, r.k || {}, (r.a || []).slice().sort(), r.j || [], r.b || {}, r.x || [], r.c || {}]);
 const completa = r => !!r && r.tables.length > 0 && r.tables.every(t => t.result);
 const medalla = i => ["🥇", "🥈", "🥉"][i] || `${i + 1}.`;
 

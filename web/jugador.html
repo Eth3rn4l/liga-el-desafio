@@ -2751,7 +2751,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         let tag = '<span class="res">En juego</span>';
         if (r){
           const kk = kills(r, pid) ? kills(r, pid) + " kill" + (kills(r, pid) > 1 ? "s" : "") : "";
-          const det = isWin(r, pid) ? ["Ganó", kk].filter(Boolean).join(" · ") : [kk, alive(r, pid) ? "vivo" : ""].filter(Boolean).join(" · ") || "Eliminado";
+          const det = (isWin(r, pid) ? ["Ganó", kk].filter(Boolean).join(" · ") : [kk, alive(r, pid) ? "vivo" : ""].filter(Boolean).join(" · ") || "Eliminado") + (young(r, pid) ? " · muy joven" : "") + (dq(r, pid) ? " · no es tu lugar" : "");
           tag = `<span class="res ${isWin(r, pid) ? "w" : alive(r, pid) ? "d" : ""}">${(v => v < 0 ? "−" + -v : "+" + v)(points(r, pid, S.cfg))} · ${det}${brute(r, pid) && !dq(r, pid) ? ` · −${brute(r, pid) * (S.cfg.bruto || 0)} bruto` : ""}</span>`;
         }
         return `<li><span class="r">R${ri + 1} · M${ti + 1}</span><span class="vs">vs ${vs}</span>${tag}</li>`;
@@ -3291,9 +3291,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       if (!res.w && !res.a.length) out.avisos.push(`Mesa ${ti + 1}: sin ganador ni empate marcados; todos quedan eliminados.`);
       const sumK = seats.reduce((s, p) => s + kills(res, p), 0), dead = seats.length - res.a.length;
       if (sumK > dead) out.err.push(`Mesa ${n}: ${sumK} kills pero solo ${dead} eliminados.`);
-      // Conserva lo propio de Bracket 3 que no viene en la planilla (eliminado joven / “no es tu lugar”), si el jugador sigue eliminado
-      if (prev){ ["j", "x"].forEach(f => { const v = (prev[f] || []).filter(p => !res.a.includes(p)); if (v.length) res[f] = v; });
-                 const b = {}; Object.keys(prev.b || {}).forEach(p => { const v = Math.min(prev.b[p], kills(res, p)); if (v > 0) b[p] = v; }); if (Object.keys(b).length) res.b = b; }
+      // La planilla manda: el resultado anterior se reemplaza completo (también “muy joven”, bruto y “no es tu lugar”)
       items.filter(it => it.warn).forEach(it => out.warns.push(it.pid));
       out.mesas.push({n, ti, items, seats, res:norm(res), antes:prev, faltan});
     });

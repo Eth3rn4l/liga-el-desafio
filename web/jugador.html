@@ -779,7 +779,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       </div>
       <div class="imp adm" id="impBox" hidden>
         <div class="imp-h"><b class="imp-t">Importar resultados a la <select id="impRonda" aria-label="Ronda a importar"></select></b><button class="btn ghost" id="btnImpX" type="button" aria-label="Cerrar">✕</button></div>
-        <p class="note" style="margin:0">Sube una captura de la planilla (Mesa · Jugador · GANÓ · EMPATÓ · Kills) para pasarla a texto, o copia las celdas desde Excel (con la fila de títulos) y pégalas abajo. Elige arriba a qué ronda van los resultados.</p>
+        <p class="note" style="margin:0">Sube una captura de la planilla (Mesa · Jugador · GANÓ · EMPATÓ · Kills) para pasarla a texto, o copia las celdas desde Excel (con la fila de títulos) y pégalas abajo. Si solo pegas las mesas (sin x ni kills), la ronda se arma así y las mesas quedan en juego. Elige arriba a qué ronda van los resultados.</p>
         <div class="imp-row"><label class="btn" for="impFile">🖼 Leer imagen</label><input type="file" id="impFile" accept="image/*" hidden><span class="note" id="impEst" style="margin:0"></span></div>
         <textarea id="impTxt" rows="7" spellcheck="false" placeholder="Mesa&#9;Jugador&#9;Ganó&#9;Empató&#9;Kills&#10;Mesa 1&#9;Marco Camargo&#9;x&#9;&#9;3&#10;Mesa 1&#9;David Lunt&#10;…&#10;&#10;También sirve: Mesa 2 Felipe Flores empató"></textarea>
         <div id="impPrev"></div>
@@ -3197,6 +3197,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       const d = lev(q, c.n), r = 1 - d / Math.max(q.length, c.n.length);
       const tq = q.split(" "), tc = c.n.split(" ");
       const tok = tq.length > 1 && tc.length > 1 && tq[0] === tc[0] && tq[tq.length - 1][0] === tc[tc.length - 1][0] ? .1 : 0;
+      // Nombres distintos con el mismo apellido (Kenny / José Cifuentes) no se confunden
+      if (tq.length > 1 && tc.length > 1 && lev(tq[0], tc[0]) > Math.max(1, Math.floor(Math.min(tq[0].length, tc[0].length) / 3))) return;
       const sc = r + tok + (enRonda.has(c.p.id) ? .05 : 0);
       if (!best || sc > best.sc) best = {p:c.p, sc, r};
     });
@@ -3206,7 +3208,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // Texto → filas {mesa, nombre, win, tie, k, warn}
   function impParse(txt){
     const lines = String(txt || "").replace(/\r/g, "").split("\n");
-    let cols = null; const rows = [];
+    let cols = null, mesaAct = null; const rows = [];
     for (const raw of lines){
       if (!raw.trim()) continue;
       const cells = raw.includes("\t") ? raw.split("\t") : raw.includes(";") ? raw.split(";") : raw.includes("|") ? raw.split("|") : null;
@@ -3226,7 +3228,11 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
                    k:c.k >= 0 ? (parseInt(String(cells[c.k]).replace(/\D/g, ""), 10) || 0) : 0, warn:c.warn >= 0 && marca(cells[c.warn])});
       } else {
         // Texto libre: "Mesa 1 Marco Camargo ganó 3" / "Mesa 2 Felipe Flores empató" / "Mesa 3 Luna Lopez 1 kill"
-        const m = /^\s*mesa\s*(\d+)\s*[:\-.]?\s*(.+)$/i.exec(raw); if (!m) continue;
+        // o un título "MESA 1" seguido de los jugadores en líneas aparte (">> Marco Camargo", "- David Lunt", "• …")
+        const tit = /^\s*mesa\s*(\d+)\s*[:\-.]?\s*$/i.exec(raw); if (tit){ mesaAct = +tit[1]; continue; }
+        let m = /^\s*mesa\s*(\d+)\s*[:\-.]?\s*(.+)$/i.exec(raw);
+        if (!m && mesaAct != null && !/^\s*ronda\b/i.test(raw)){ const nm = raw.replace(/^\s*(>+|[-•*·]|\d+[.)])\s*/, "").trim(); if (nm) m = [raw, mesaAct, nm]; }
+        if (!m) continue;
         let rest = m[2], win = false, tie = false, warn = false, k = 0;
         const pal = (re, fn) => { rest = rest.replace(new RegExp("(^|\\s)(" + re + ")(?=\\s|$|[,.;:])", "ig"), () => { fn(); return " "; }); };
         pal("gan[oó]|ganador|win", () => win = true); pal("empat[oó]|empate|vivo|draw", () => tie = true); pal("warn(?:ing)?", () => warn = true);
@@ -3266,6 +3272,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     G.forEach(({n, items, ti, seats, prev}) => {
       const faltan = seats.filter(id => !items.some(it => it.pid === id));
       if (faltan.length) out.avisos.push(`Mesa ${ti + 1}: no vienen ${faltan.map(pname).join(", ")}; quedan como eliminados sin kills.`);
+      // Sin ninguna marca (ni x ni kills): solo se arma la mesa y queda en juego
+      if (!items.some(it => it.win || it.tie || it.k)){
+        if (!out.armar && prev) out.avisos.push(`Mesa ${ti + 1}: no trae resultados; se mantiene el resultado ya anotado.`);
+        items.filter(it => it.warn).forEach(it => out.warns.push(it.pid));
+        out.mesas.push({n, ti, items, seats, res:out.armar ? null : prev, antes:null, faltan, enJuego:true}); return;
+      }
       const ws = items.filter(it => it.win), ties = items.filter(it => it.tie && !it.win);
       if (ws.length > 1) out.err.push(`Mesa ${n}: hay ${ws.length} ganadores marcados.`);
       if (ws.length && ties.length) out.err.push(`Mesa ${n}: tiene un ganador y también empates marcados.`);
@@ -3284,7 +3296,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   function impPreview(){
     const box = $("impPrev"), ri = VR(), plan = impPlan($("impTxt").value, ri);
-    const fila = (pid, res, it) => { const w = isWin(res, pid), a = alive(res, pid), k = kills(res, pid);
+    const fila = (pid, res, it) => { if (!res) return `<li><span>${esc(pname(pid))}${it && !it.exacto ? ` <small class="note">(“${esc(it.nombre)}”)</small>` : ""}</span><span class="res">En juego</span></li>`;
+      const w = isWin(res, pid), a = alive(res, pid), k = kills(res, pid);
       return `<li><span>${esc(pname(pid))}${it && !it.exacto ? ` <small class="note">(“${esc(it.nombre)}”)</small>` : ""}</span><span class="res ${w ? "w" : a ? "d" : ""}">${w ? "Ganó" : a ? "Empató" : "Eliminado"}${k ? " · " + k + " kill" + (k > 1 ? "s" : "") : ""} · ${(v => v < 0 ? "−" + -v : "+" + v)(points(res, pid, S.cfg))}</span></li>`; };
     box.innerHTML = (plan.err.length ? `<div class="imp-err"><b>Revisa esto antes de importar:</b><ul>${plan.err.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
       + (plan.avisos.length ? `<div class="imp-av"><ul>${plan.avisos.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
@@ -3292,7 +3305,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           return `<div class="imp-m"><h4>Mesa ${m.ti + 1}${m.antes ? ' <span class="tag">reemplaza el resultado anotado</span>' : ""}</h4><ul>${m.seats.map(pid => fila(pid, m.res, m.items.find(it => it.pid === pid))).join("")}</ul></div>`; }).join("")}</div>`
       + (plan.warns.length ? `<label class="imp-wl"><input type="checkbox" id="impWarn" checked> Sumar 1 warning a: ${plan.warns.map(p => esc(pname(p))).join(", ")}</label>` : "");
     $("btnImpGo").disabled = !!plan.err.length || !plan.mesas.length;
-    $("btnImpGo").textContent = `Importar ${plan.mesas.length} ${plan.mesas.length === 1 ? "mesa" : "mesas"} a la ronda ${ri + 1}`;
+    $("btnImpGo").textContent = plan.mesas.every(m => m.enJuego) ? (plan.armar ? `Armar las mesas de la ronda ${ri + 1}` : "Las mesas ya coinciden") : `Importar ${plan.mesas.length} ${plan.mesas.length === 1 ? "mesa" : "mesas"} a la ronda ${ri + 1}`;
+    if (plan.mesas.every(m => m.enJuego) && !plan.armar) $("btnImpGo").disabled = true;
     return plan;
   }
   // Imagen → texto con Tesseract.js (se carga solo al usarlo). Las columnas se ubican por la posición de los títulos.
@@ -3395,7 +3409,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const reemp = plan.mesas.filter(m => m.antes).length;
     if (!confirm(`¿Importar los resultados de ${plan.mesas.length} ${plan.mesas.length === 1 ? "mesa" : "mesas"} a la ronda ${ri + 1}?${plan.armar ? `\n\nLa ronda ${ri + 1} se rearma con las mesas de la planilla y se reemplazan todos sus resultados.` : reemp ? `\n\n${reemp} ${reemp === 1 ? "mesa ya tenía resultado y se reemplaza" : "mesas ya tenían resultado y se reemplazan"}.` : ""}${plan.armar && ri < S.cur ? "\n\nLas rondas siguientes no cambian." : ""}`)) return;
     if (plan.armar) S.rounds[ri].tables = plan.mesas.map(m => ({seats:m.seats.slice(), result:m.res}));
-    else plan.mesas.forEach(m => { S.rounds[ri].tables[m.ti].result = m.res; });
+    else plan.mesas.forEach(m => { if (!m.enJuego) S.rounds[ri].tables[m.ti].result = m.res; });
     if (plan.warns.length && $("impWarn") && $("impWarn").checked){ S.warnings = Object.assign({}, S.warnings || {}); plan.warns.forEach(p => S.warnings[p] = (S.warnings[p] || 0) + 1); }
     $("impTxt").value = ""; $("impPrev").innerHTML = ""; $("impEst").textContent = `Importado: ${plan.mesas.length} ${plan.mesas.length === 1 ? "mesa" : "mesas"} en la ronda ${ri + 1}.`; $("btnImpGo").disabled = true;
     commit();

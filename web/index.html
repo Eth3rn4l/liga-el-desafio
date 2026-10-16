@@ -3238,42 +3238,46 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   // Filas → plan por mesa de la ronda ri, con errores y avisos
   function impPlan(txt, ri){
-    const rows = impParse(txt), round = S.rounds[ri], out = {mesas:[], err:[], avisos:[], warns:[]};
+    const rows = impParse(txt), round = S.rounds[ri], out = {mesas:[], err:[], avisos:[], warns:[], armar:false};
     if (!rows.length){ out.err.push("No encontré filas con “Mesa N” y un jugador. Pega las filas desde Excel (con los títulos) o lee la imagen."); return out; }
     const grupos = {}; rows.forEach(r => (grupos[r.mesa] = grupos[r.mesa] || []).push(r));
-    const usadas = new Set(), vistos = new Set();
+    const vistos = new Set(), G = [];
     Object.keys(grupos).map(Number).sort((a, b) => a - b).forEach(n => {
-      const g = grupos[n], items = [];
-      g.forEach(r => {
+      const items = [];
+      grupos[n].forEach(r => {
         const j = impJugador(r.nombre, ri);
-        if (!j){ out.err.push(`Mesa ${n}: no encontré a “${r.nombre}” entre los jugadores.`); return; }
+        if (!j){ out.err.push(`Mesa ${n}: no encontré a “${r.nombre}” entre los jugadores inscritos. Inscríbelo primero o corrige el nombre.`); return; }
         if (vistos.has(j.p.id)){ out.err.push(`${j.p.name} aparece dos veces.`); return; }
         vistos.add(j.p.id); items.push(Object.assign({pid:j.p.id, exacto:j.exacto}, r));
       });
-      if (!items.length) return;
-      const cuenta = {}; items.forEach(it => { const ti = round.tables.findIndex(t => t.seats.includes(it.pid)); if (ti >= 0) cuenta[ti] = (cuenta[ti] || 0) + 1; });
-      const ti = +(Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0] || [-1])[0];
-      if (ti < 0){ out.err.push(`Mesa ${n}: esos jugadores no están en ninguna mesa de la ronda ${ri + 1}.`); return; }
-      if (usadas.has(ti)){ out.err.push(`Mesa ${n}: sus jugadores son de la Mesa ${ti + 1}, que ya aparece en otro grupo.`); return; }
-      usadas.add(ti);
-      const t = round.tables[ti], fuera = items.filter(it => !t.seats.includes(it.pid));
-      fuera.forEach(it => out.err.push(`Mesa ${n}: ${pname(it.pid)} no juega en esa mesa en la ronda ${ri + 1} (está en ${(i => i >= 0 ? "la Mesa " + (i + 1) : "ninguna mesa")(round.tables.findIndex(x => x.seats.includes(it.pid)))}). Corrígelo primero con “Cambiar por…” o arrastrándolo.`));
-      const faltan = t.seats.filter(id => !items.some(it => it.pid === id));
+      if (items.length) G.push({n, items});
+    });
+    // ¿Las mesas de la planilla son las mismas de la ronda? Si no, se arman como en la planilla
+    const usadas = new Set();
+    G.forEach(g => { const ti = round.tables.findIndex(t => g.items.every(it => t.seats.includes(it.pid))); g.ti = ti >= 0 && !usadas.has(ti) ? ti : -1; if (g.ti >= 0) usadas.add(g.ti); });
+    out.armar = G.some(g => g.ti < 0);
+    if (out.armar){
+      out.avisos.push(`Las mesas de la planilla no coinciden con las de la ronda ${ri + 1}: al importar, la ronda ${ri + 1} queda armada como en la planilla.`);
+      const sin = round.tables.flatMap(t => t.seats).filter(id => !vistos.has(id));
+      if (sin.length) out.avisos.push(`No vienen en la planilla y quedan sin mesa en la ronda ${ri + 1}: ${sin.map(pname).join(", ")}.`);
+      G.forEach((g, i) => { g.ti = i; g.seats = g.items.map(it => it.pid); g.prev = null; });
+    } else G.forEach(g => { g.seats = round.tables[g.ti].seats.slice(); g.prev = round.tables[g.ti].result; });
+    G.forEach(({n, items, ti, seats, prev}) => {
+      const faltan = seats.filter(id => !items.some(it => it.pid === id));
       if (faltan.length) out.avisos.push(`Mesa ${ti + 1}: no vienen ${faltan.map(pname).join(", ")}; quedan como eliminados sin kills.`);
       const ws = items.filter(it => it.win), ties = items.filter(it => it.tie && !it.win);
       if (ws.length > 1) out.err.push(`Mesa ${n}: hay ${ws.length} ganadores marcados.`);
       if (ws.length && ties.length) out.err.push(`Mesa ${n}: tiene un ganador y también empates marcados.`);
       const res = {w:ws.length === 1 ? ws[0].pid : null, a:ws.length === 1 ? [ws[0].pid] : ties.map(it => it.pid), k:{}};
-      items.forEach(it => { if (it.k) res.k[it.pid] = Math.min(t.seats.length - 1, it.k); });
+      items.forEach(it => { if (it.k) res.k[it.pid] = Math.min(seats.length - 1, it.k); });
       if (!res.w && !res.a.length) out.avisos.push(`Mesa ${ti + 1}: sin ganador ni empate marcados; todos quedan eliminados.`);
-      const sumK = t.seats.reduce((s, p) => s + kills(res, p), 0), dead = t.seats.length - res.a.length;
+      const sumK = seats.reduce((s, p) => s + kills(res, p), 0), dead = seats.length - res.a.length;
       if (sumK > dead) out.err.push(`Mesa ${n}: ${sumK} kills pero solo ${dead} eliminados.`);
       // Conserva lo propio de Bracket 3 que no viene en la planilla (eliminado joven / “no es tu lugar”), si el jugador sigue eliminado
-      const prev = t.result;
       if (prev){ ["j", "x"].forEach(f => { const v = (prev[f] || []).filter(p => !res.a.includes(p)); if (v.length) res[f] = v; });
                  const b = {}; Object.keys(prev.b || {}).forEach(p => { const v = Math.min(prev.b[p], kills(res, p)); if (v > 0) b[p] = v; }); if (Object.keys(b).length) res.b = b; }
       items.filter(it => it.warn).forEach(it => out.warns.push(it.pid));
-      out.mesas.push({n, ti, items, res:norm(res), antes:prev, faltan});
+      out.mesas.push({n, ti, items, seats, res:norm(res), antes:prev, faltan});
     });
     return out;
   }
@@ -3283,8 +3287,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       return `<li><span>${esc(pname(pid))}${it && !it.exacto ? ` <small class="note">(“${esc(it.nombre)}”)</small>` : ""}</span><span class="res ${w ? "w" : a ? "d" : ""}">${w ? "Ganó" : a ? "Empató" : "Eliminado"}${k ? " · " + k + " kill" + (k > 1 ? "s" : "") : ""} · ${(v => v < 0 ? "−" + -v : "+" + v)(points(res, pid, S.cfg))}</span></li>`; };
     box.innerHTML = (plan.err.length ? `<div class="imp-err"><b>Revisa esto antes de importar:</b><ul>${plan.err.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
       + (plan.avisos.length ? `<div class="imp-av"><ul>${plan.avisos.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "")
-      + `<div class="imp-mesas">${plan.mesas.map(m => { const t = S.rounds[ri].tables[m.ti];
-          return `<div class="imp-m"><h4>Mesa ${m.ti + 1}${m.antes ? ' <span class="tag">reemplaza el resultado anotado</span>' : ""}</h4><ul>${t.seats.map(pid => fila(pid, m.res, m.items.find(it => it.pid === pid))).join("")}</ul></div>`; }).join("")}</div>`
+      + `<div class="imp-mesas">${plan.mesas.map(m => {
+          return `<div class="imp-m"><h4>Mesa ${m.ti + 1}${m.antes ? ' <span class="tag">reemplaza el resultado anotado</span>' : ""}</h4><ul>${m.seats.map(pid => fila(pid, m.res, m.items.find(it => it.pid === pid))).join("")}</ul></div>`; }).join("")}</div>`
       + (plan.warns.length ? `<label class="imp-wl"><input type="checkbox" id="impWarn" checked> Sumar 1 warning a: ${plan.warns.map(p => esc(pname(p))).join(", ")}</label>` : "");
     $("btnImpGo").disabled = !!plan.err.length || !plan.mesas.length;
     $("btnImpGo").textContent = `Importar ${plan.mesas.length} ${plan.mesas.length === 1 ? "mesa" : "mesas"} a la ronda ${ri + 1}`;
@@ -3379,8 +3383,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (!M.admin && M.mode === "live") return;
     const ri = VR(), plan = impPreview(); if (plan.err.length || !plan.mesas.length) return;
     const reemp = plan.mesas.filter(m => m.antes).length;
-    if (!confirm(`Importar los resultados de ${plan.mesas.length} ${plan.mesas.length === 1 ? "mesa" : "mesas"} a la ronda ${ri + 1}?${reemp ? `\n\n${reemp} ${reemp === 1 ? "mesa ya tenía resultado y se reemplaza" : "mesas ya tenían resultado y se reemplazan"}.` : ""}`)) return;
-    plan.mesas.forEach(m => { S.rounds[ri].tables[m.ti].result = m.res; });
+    if (!confirm(`¿Importar los resultados de ${plan.mesas.length} ${plan.mesas.length === 1 ? "mesa" : "mesas"} a la ronda ${ri + 1}?${plan.armar ? `\n\nLa ronda ${ri + 1} se rearma con las mesas de la planilla y se reemplazan todos sus resultados.` : reemp ? `\n\n${reemp} ${reemp === 1 ? "mesa ya tenía resultado y se reemplaza" : "mesas ya tenían resultado y se reemplazan"}.` : ""}${plan.armar && ri < S.cur ? "\n\nLas rondas siguientes no cambian." : ""}`)) return;
+    if (plan.armar) S.rounds[ri].tables = plan.mesas.map(m => ({seats:m.seats.slice(), result:m.res}));
+    else plan.mesas.forEach(m => { S.rounds[ri].tables[m.ti].result = m.res; });
     if (plan.warns.length && $("impWarn") && $("impWarn").checked){ S.warnings = Object.assign({}, S.warnings || {}); plan.warns.forEach(p => S.warnings[p] = (S.warnings[p] || 0) + 1); }
     $("impTxt").value = ""; $("impPrev").innerHTML = ""; $("impEst").textContent = `Importado: ${plan.mesas.length} ${plan.mesas.length === 1 ? "mesa" : "mesas"} en la ronda ${ri + 1}.`; $("btnImpGo").disabled = true;
     commit();

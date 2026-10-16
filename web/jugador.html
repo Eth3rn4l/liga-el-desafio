@@ -378,6 +378,7 @@ body.display .corr{display:none}
 .imp-btn{margin-left:auto;padding:6px 12px;font-size:13px}
 .imp{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px;display:flex;flex-direction:column;gap:10px}
 .imp-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.imp-t{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.imp-t select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 10px;color:var(--fg);font:inherit;font-weight:700}
 .imp-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .imp textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--fg);font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;resize:vertical;tab-size:14;white-space:pre;overflow:auto}
 .imp-err{border:1px solid var(--red-hi);background:rgba(155,29,8,.18);border-radius:10px;padding:8px 12px;font-size:14px}
@@ -777,8 +778,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <button class="btn ghost adm imp-btn" id="btnImp" type="button">📥 Importar resultados</button>
       </div>
       <div class="imp adm" id="impBox" hidden>
-        <div class="imp-h"><b>Importar resultados · <span id="impRonda">Ronda 1</span></b><button class="btn ghost" id="btnImpX" type="button" aria-label="Cerrar">✕</button></div>
-        <p class="note" style="margin:0">Sube una captura de la planilla (Mesa · Jugador · GANÓ · EMPATÓ · Kills) para pasarla a texto, o copia las celdas desde Excel (con la fila de títulos) y pégalas abajo. Se importa a la ronda que estás viendo; para otra ronda, elígela arriba en los números de ronda.</p>
+        <div class="imp-h"><b class="imp-t">Importar resultados a la <select id="impRonda" aria-label="Ronda a importar"></select></b><button class="btn ghost" id="btnImpX" type="button" aria-label="Cerrar">✕</button></div>
+        <p class="note" style="margin:0">Sube una captura de la planilla (Mesa · Jugador · GANÓ · EMPATÓ · Kills) para pasarla a texto, o copia las celdas desde Excel (con la fila de títulos) y pégalas abajo. Elige arriba a qué ronda van los resultados.</p>
         <div class="imp-row"><label class="btn" for="impFile">🖼 Leer imagen</label><input type="file" id="impFile" accept="image/*" hidden><span class="note" id="impEst" style="margin:0"></span></div>
         <textarea id="impTxt" rows="7" spellcheck="false" placeholder="Mesa&#9;Jugador&#9;Ganó&#9;Empató&#9;Kills&#10;Mesa 1&#9;Marco Camargo&#9;x&#9;&#9;3&#10;Mesa 1&#9;David Lunt&#10;…&#10;&#10;También sirve: Mesa 2 Felipe Flores empató"></textarea>
         <div id="impPrev"></div>
@@ -2991,7 +2992,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const myPid = M.uid ? links[M.uid] : null;
 
     $("mesasTitle").textContent = "Mesas · Ronda " + (vr + 1) + (pasada ? " (anterior)" : "");
-    if (!$("impBox").hidden && $("impRonda").textContent !== "Ronda " + (vr + 1)){ $("impRonda").textContent = "Ronda " + (vr + 1); if ($("impTxt").value.trim()) impPreview(); }
+    if (!$("impBox").hidden) impRondas(vr);
     $("mesasMeta").textContent = `${round.tables.filter(t => t.result).length}/${round.tables.length} cerradas · ${S.players.length} jugadores`;
     $("tables").innerHTML = (pasada ? `<div class="banner ronda-ant">Estás viendo la <b>ronda ${vr + 1}</b>. Puedes corregir sus resultados con “Corregir”: el standing se recalcula, pero las mesas de las rondas siguientes no cambian. <button type="button" class="btn ghost" data-vround="${S.cur}">Volver a la ronda ${S.cur + 1}</button></div>` : "") + round.tables.map((t, ti) => {
       const r = t.result, pr = !pasada && !r && proposal(ti);
@@ -3370,9 +3371,18 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       impPreview();
     } catch(err){ st.textContent = (err && err.message) || "No se pudo leer la imagen."; }
   }
+  // Selector de ronda del importador (rondas ya creadas); cambiarlo muestra esa ronda en las mesas
+  function impRondas(vr, forzar){
+    const sel = $("impRonda"), n = S.cur + 1, html = Array.from({length:n}, (_, i) => `<option value="${i}">ronda ${i + 1}${i === S.cur ? " (actual)" : ""}</option>`).join("");
+    const cambio = sel.dataset.n !== String(n) || sel.value !== String(vr);
+    if (sel.dataset.n !== String(n)){ sel.innerHTML = html; sel.dataset.n = String(n); }
+    sel.value = String(vr);
+    if ((cambio || forzar) && $("impTxt").value.trim()) impPreview();
+  }
+  $("impRonda").addEventListener("change", e => { const i = +e.target.value; vRound = i >= S.cur ? null : i; moveSel = null; render(); });
   function impAbrir(on){
     const box = $("impBox"); box.hidden = on === undefined ? !box.hidden : !on;
-    if (!box.hidden){ $("impRonda").textContent = "Ronda " + (VR() + 1); if ($("impTxt").value.trim()) impPreview(); }
+    if (!box.hidden){ impRondas(VR(), true); }
   }
   $("btnImp").addEventListener("click", () => impAbrir());
   $("btnImpX").addEventListener("click", () => impAbrir(false));

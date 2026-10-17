@@ -10,7 +10,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { anunciar } = require("./anuncios");
+const { anunciar, textoInscripcion } = require("./anuncios");
 const { imagenesMesas } = require("./imagenes");
 
 const DIR = __dirname;
@@ -37,6 +37,28 @@ function buscarNavegador() {
 }
 const NAVEGADOR = buscarNavegador();
 const SIMULAR = ARG.includes("--simular");
+// Liga que maneja el bot en esta sesión: --liga precon | b3 | ambas (si no se indica, se pregunta al iniciar)
+const argVal = k => (i => i >= 0 ? (ARG[i + 1] || "") : null)(ARG.indexOf(k));
+let LIGA_SEL = null, INVITAR = ARG.includes("--invitar");
+const SEL = { precon: ["precon", "precon_test"], b3: ["b3", "b3_test"], ambas: ["precon", "b3", "precon_test", "b3_test"] };
+const usaLiga = liga => !LIGA_SEL || LIGA_SEL.includes(liga);
+function pregunta(txt) {
+  return new Promise(res => { const rl = require("readline").createInterface({ input: process.stdin, output: process.stdout }); rl.question(txt, r => { rl.close(); res(String(r || "").trim()); }); });
+}
+async function elegirLiga() {
+  let v = (argVal("--liga") || "").toLowerCase();
+  if (!SEL[v] && process.stdin.isTTY && !ARG.includes("--grupos")) {
+    console.log("\n¿Qué liga va a manejar el bot?\n  1) Liga Precon\n  2) Liga Bracket 3\n  3) Las dos");
+    let r = ""; while (!["1", "2", "3"].includes(r)) r = await pregunta("Escribe 1, 2 o 3 y presiona Enter: ");
+    v = { 1: "precon", 2: "b3", 3: "ambas" }[r];
+    if (!ARG.includes("--prueba")) {
+      const s = await pregunta("¿Mandar ahora al grupo el mensaje para inscribirse? (s/n): ");
+      INVITAR = /^s/i.test(s);
+    }
+  }
+  LIGA_SEL = SEL[v] || SEL.ambas;
+  console.log(`${hora()} Liga: ${v === "precon" ? "Precon" : v === "b3" ? "Bracket 3" : "las dos"}${INVITAR ? " · se manda el mensaje de inscripción" : ""}`);
+}
 const LIGAS = { precon: { estado: "estado", cal: "calendario" }, b3: { estado: "estado_b3", cal: "calendario_b3" },
   // Ligas de testeo del desarrollador: solo se leen si tienen grupo en config.json ("precon_test" / "b3_test")
   precon_test: { estado: "estado_test", cal: "calendario_test" }, b3_test: { estado: "estado_b3_test", cal: "calendario_b3_test" } };
@@ -136,6 +158,7 @@ async function revisar() {
   try { datos = await leerLiga(); } catch (e) { console.error(`${hora()} no se pudo leer la liga:`, e.message); return; }
   for (const [liga, ids] of Object.entries(LIGAS)) {
     if (!SIMULAR && !destinos[liga]) continue;          // liga sin grupo configurado
+    if (!usaLiga(liga)) continue;                       // liga no elegida al iniciar
     const S = datos[ids.estado], cal = datos[ids.cal] || {};
     if (!S) continue;
     const top = cal.topPublico == null ? (CFG.top || 10) : cal.topPublico;
@@ -143,6 +166,11 @@ async function revisar() {
     const silencioso = primera && !mem[liga] && !ARG.includes("--anunciar-todo");
     const { mensajes, memoria } = anunciar(liga, S, { top, portal: CFG.portal }, mem[liga], silencioso);
     mem[liga] = memoria;
+    // Mensaje de inscripción a pedido (al iniciar el bot): solo si la fecha tiene las inscripciones abiertas
+    if (primera && INVITAR && !liga.endsWith("_test")) {
+      if (S.phase === "inscripcion") { if (!mensajes.some(t => typeof t === "string" && /inscripciones abiertas/.test(t))) cola.push({ liga, msg: textoInscripcion(liga, S, CFG.portal), S }); }
+      else console.log(`${hora()} ${liga}: la fecha ya empezó (no está en inscripciones), no se manda el mensaje de inscripción.`);
+    }
     mensajes.forEach(msg => cola.push({ liga, msg, S }));
   }
   primera = false;
@@ -157,6 +185,7 @@ async function iniciar() {
 }
 
 if (SIMULAR) {
+  LIGA_SEL = SEL[(argVal("--liga") || "").toLowerCase()] || null;
   if (ESTADO_ARCH) { (async () => { await revisar(); while (enviando || cola.length) await espera(200); if (navegador) await navegador.close(); process.exit(0); })(); return; }
   iniciar(); return;
 }
@@ -226,7 +255,7 @@ client.on("ready", async () => {
     process.exit(0);
   }
   for (const [liga, valor] of Object.entries(CFG.grupos || {})) {
-    if (!valor || /NOMBRE EXACTO/.test(valor)) continue;
+    if (!valor || /NOMBRE EXACTO/.test(valor) || !usaLiga(liga)) continue;
     const g = await idDeGrupo(valor, cargar);
     if (g) { destinos[liga] = g.id; console.log(`${hora()} ${liga} → ${g.nombre}`); }
     else console.error(`${hora()} No encontré el grupo "${valor}" para ${liga}. Revisa el nombre o usa el link de invitación del grupo.`);
@@ -238,4 +267,4 @@ client.on("ready", async () => {
   }
   iniciar();
 });
-client.initialize();
+(async () => { if (!ARG.includes("--grupos")) await elegirLiga(); client.initialize(); })();

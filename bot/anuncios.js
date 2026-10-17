@@ -105,9 +105,16 @@ function textoCierre(S, liga, top, portal) {
   return lineas.join("\n");
 }
 
+const urlPortal = (liga, base) => base ? base + "?liga=" + liga.replace("_test", "") + (liga.endsWith("_test") ? "&test=1" : "") : "";
+// Mensaje para inscribirse en la fecha (se manda solo al abrir inscripciones, o a pedido al iniciar el bot)
+function textoInscripcion(liga, S, base) {
+  const portal = urlPortal(liga, base);
+  return `*${NOMBRE_LIGA[liga]}: inscripciones abiertas*${S && S.fecha ? " para el " + S.fecha.split("-").reverse().join("/") : ""}.${portal ? "\nInscríbete en " + portal : ""}`;
+}
+
 // Devuelve {mensajes, memoria}. Con silencioso=true solo registra lo que ya existe (al arrancar el bot a mitad de fecha).
 function anunciar(liga, S, cfgBot, memoria, silencioso) {
-  const top = cfgBot.top, portal = cfgBot.portal ? cfgBot.portal + "?liga=" + liga.replace("_test", "") + (liga.endsWith("_test") ? "&test=1" : "") : "";
+  const top = cfgBot.top, portal = urlPortal(liga, cfgBot.portal);
   const msgs = [];
   if (!S || !S.players) return { mensajes: msgs, memoria };
   const clave = S.fecha || "sin-fecha";
@@ -115,7 +122,7 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
   const una = (k, fn) => { if (m.hecho[k]) return; m.hecho[k] = 1; if (!silencioso) { const t = fn(); if (t) msgs.push(t); } };
 
   if (S.phase === "inscripcion") {
-    una("insc", () => `*${NOMBRE_LIGA[liga]}: inscripciones abiertas*${S.fecha ? " para el " + S.fecha.split("-").reverse().join("/") : ""}.${portal ? "\nInscríbete en " + portal : ""}`);
+    una("insc", () => textoInscripcion(liga, S, cfgBot.portal));
     return { mensajes: msgs, memoria: m };
   }
   const nm = id => (S.players.find(p => p.id === id) || {}).name || "?";
@@ -155,4 +162,4 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
   return { mensajes: msgs, memoria: m };
 }
 
-module.exports = { anunciar, standing, puntos };
+module.exports = { anunciar, standing, puntos, textoInscripcion };

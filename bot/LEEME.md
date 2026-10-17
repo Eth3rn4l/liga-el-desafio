@@ -39,6 +39,13 @@ Solo **lee** la liga; no puede cambiar nada.
 
 Doble clic en **INICIAR-BOT.bat** y deja esa ventana abierta (puedes minimizarla).
 
+Al abrirlo pregunta:
+
+1. **Qué liga va a manejar**: 1 Precon, 2 Bracket 3 o 3 las dos. Solo publica lo de esa liga.
+2. **Si manda ahora el mensaje para inscribirse** (S/N): manda al grupo el aviso de inscripciones abiertas con el link, si la fecha está en inscripciones.
+
+Si el bot se reinicia solo, mantiene la liga elegida y no repite el mensaje de inscripción.
+
 - Si se cae o se corta internet, se vuelve a abrir solo a los 15 segundos.
 - Si lo abres con la fecha ya empezada, **no repite** lo que ya pasó.
 - Para detenerlo, cierra la ventana.

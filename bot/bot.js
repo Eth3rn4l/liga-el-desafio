@@ -19,6 +19,23 @@ const MEM_FILE = path.join(DIR, "memoria.json");
 if (!fs.existsSync(CFG_FILE)) { console.error("Falta config.json: copia config.ejemplo.json como config.json y complétalo."); process.exit(1); }
 const CFG = JSON.parse(fs.readFileSync(CFG_FILE, "utf8"));
 const ARG = process.argv.slice(2);
+// Navegador para WhatsApp Web: el de config.json, el que descarga puppeteer o, si no está, el Chrome o Edge instalado en el PC
+function buscarNavegador() {
+  const existe = f => { try { return !!f && fs.existsSync(f); } catch (e) { return false; } };
+  if (existe(CFG.chromePath)) return CFG.chromePath;
+  try { const f = require("puppeteer").executablePath(); if (existe(f)) return undefined; } catch (e) {}
+  const pf = process.env["ProgramFiles"] || "C:\\Program Files", pf86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)", la = process.env.LOCALAPPDATA || "";
+  const cands = [
+    path.join(pf, "Google", "Chrome", "Application", "chrome.exe"), path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
+    path.join(la, "Google", "Chrome", "Application", "chrome.exe"),
+    path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"), path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
+    "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+  ];
+  const f = cands.find(existe);
+  if (f) console.log("Usando el navegador instalado:", f);
+  return f;
+}
+const NAVEGADOR = buscarNavegador();
 const SIMULAR = ARG.includes("--simular");
 const LIGAS = { precon: { estado: "estado", cal: "calendario" }, b3: { estado: "estado_b3", cal: "calendario_b3" },
   // Ligas de testeo del desarrollador: solo se leen si tienen grupo en config.json ("precon_test" / "b3_test")
@@ -49,7 +66,7 @@ let enviando = false;
 let navegador = null;          // Chrome para dibujar las imágenes (el de WhatsApp, o uno propio al simular)
 async function obtenerNavegador() {
   if (!SIMULAR && client && client.pupBrowser) return client.pupBrowser;
-  if (!navegador) navegador = await require("puppeteer").launch({ headless: true, executablePath: CFG.chromePath || undefined, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] });
+  if (!navegador) navegador = await require("puppeteer").launch({ headless: true, executablePath: NAVEGADOR, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] });
   return navegador;
 }
 // Envío robusto: sin "marcar como leído" (falla en algunas versiones de WhatsApp Web) y, si aun así falla, por el chat directamente
@@ -152,7 +169,7 @@ client = new Client({
   authStrategy: new LocalAuth({ dataPath: path.join(DIR, "sesion-whatsapp") }),
   ...(NUMERO ? { pairWithPhoneNumber: { phoneNumber: NUMERO, showNotification: true } } : {}),
   // En un servidor Linux (p. ej. ARM de Oracle) se usa el Chromium del sistema: "chromePath": "/usr/bin/chromium"
-  puppeteer: { headless: true, executablePath: CFG.chromePath || undefined, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] }
+  puppeteer: { headless: true, executablePath: NAVEGADOR, args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] }
 });
 client.on("qr", qr => {
   console.log("\nEscanea este código con el WhatsApp del número del bot:");

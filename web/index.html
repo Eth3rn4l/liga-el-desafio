@@ -375,6 +375,8 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .corr-aj label{grid-column:1/-1;font-size:13px;color:var(--muted)}
 @media (max-width:600px){.corr-aj{grid-template-columns:1fr 1fr}.corr-aj label{grid-column:1/-1}}
 body.display .corr{display:none}
+.corr-drop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px;color:var(--muted);padding-top:8px;border-top:1px solid var(--line)}
+.btn.mini{padding:3px 8px;font-size:11px}
 .imp-btn{margin-left:auto;padding:6px 12px;font-size:13px}
 .imp{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px;display:flex;flex-direction:column;gap:10px}
 .imp-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -2392,7 +2394,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const seg = Math.PI * 2 / n, TWO = Math.PI * 2;
     const jitter = ((sp.j || 0.5) - 0.5) * seg * 0.7;
     const target = -(i + 0.5) * seg + jitter;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // La ruleta es el espectáculo: gira completa aunque el equipo tenga activado "reducir animaciones"
+    // (Windows sin efectos de animación, ahorro de batería), que antes la dejaba en 1,2 segundos.
+    const reduce = false;
     const start = wheelRot, base = start - (start % TWO);
     let end = base + target; while (end < start) end += TWO;
     end += (reduce ? 1 : 9) * TWO;
@@ -2846,6 +2850,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <p class="note">¿Quedó alguien en la mesa equivocada? Elige quién jugó realmente en su lugar: se intercambian sus asientos y resultados en esa ronda. Abajo de cada ronda puedes corregir si ganó, quedó vivo o fue eliminado, y sus kills. El standing se recalcula.</p>
       ${filas ? `<ul class="corr-list">${filas}</ul>` : '<p class="note">Aún no juega ninguna ronda.</p>'}
       <div class="corr-aj"><label for="ajPts">Ajuste manual de puntos</label><input type="number" id="ajPts" step="1" min="-30" max="30" value="${aj.pts || 0}"><input type="text" id="ajMot" maxlength="80" placeholder="Motivo (ej: error al anotar la mesa 3)" value="${esc(aj.motivo || "")}"><button class="btn primary" type="button" data-ajuste="${esc(pid)}">Guardar ajuste</button></div>
+      ${S.phase !== "inscripcion" ? `<div class="corr-drop"><span>${isDrop(pid) ? "<b>Retirado de la liga.</b> No entra en las próximas rondas; conserva sus puntos." : "¿Se fue en medio de la fecha? Sale de su mesa (si aún no tiene resultado), queda en “Sin mesa” y no entra en las próximas rondas. Conserva sus puntos."}</span><button class="btn ${isDrop(pid) ? "" : "danger"}" type="button" data-drop-ficha="${esc(pid)}">${isDrop(pid) ? "Reincorporar" : "Drop"}</button></div>` : ""}
       ${me && me.adj ? `<p class="note" style="margin:0">Ajuste actual: <b>${me.adj > 0 ? "+" : "−"}${Math.abs(me.adj)} pts</b>${aj.motivo ? " · " + esc(aj.motivo) : ""}</p>` : ""}</div>`;
   }
 
@@ -3072,9 +3077,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
 
     if (ADMUI() && !pasada && !document.body.classList.contains("display")){
       const seated = new Set(round.tables.flatMap(t => t.seats));
-      const libres = S.players.filter(p => !seated.has(p.id) && !isDrop(p.id));
+      const libres = S.players.filter(p => !seated.has(p.id) && !isDrop(p.id)).concat(S.players.filter(p => !seated.has(p.id) && isDrop(p.id)));
       $("tables").insertAdjacentHTML("beforeend", `<article class="mesa bucket" data-t="new"><div class="mesa-h"><b>Sin mesa${libres.length ? " · " + libres.length : ""}</b><span class="tag">Suelta aquí para sacar de la mesa</span></div>
-        <ol class="seats">${libres.map(p => `<li class="seat${moveSel === p.id ? " picked" : ""}" data-pid="${p.id}" draggable="true" title="Arrastra a una mesa"><span class="n">·</span><span class="nm-wrap"><span class="nm">${esc(p.name)}</span>${cmdLine(p.id)}</span><span class="pt">${isLate(p.id) ? "Tardío" : ""}</span></li>`).join("") || '<li class="seat-empty">Nadie sin mesa. Arrastra aquí a un jugador para sacarlo de su mesa.</li>'}</ol>
+        <ol class="seats">${libres.map(p => `<li class="seat${moveSel === p.id ? " picked" : ""}${isDrop(p.id) ? " dropped" : ""}" data-pid="${p.id}" draggable="true" title="Arrastra a una mesa"><span class="n">·</span><span class="nm-wrap"><span class="nm">${esc(p.name)}</span>${cmdLine(p.id)}</span><span class="pt">${isDrop(p.id) ? `<button type="button" class="btn ghost mini" data-drop="${p.id}" title="Volver a incluirlo; luego arrástralo a una mesa">Reincorporar</button>` : isLate(p.id) ? "Tardío" : ""}</span></li>`).join("") || '<li class="seat-empty">Nadie sin mesa. Arrastra aquí a un jugador para sacarlo de su mesa.</li>'}</ol>
         <button type="button" class="btn ghost new-table" data-newtable>+ Nueva mesa con el jugador elegido</button></article>`);
       $("moveHint").hidden = false;
       $("moveHint").textContent = moveSel ? `Moviendo a ${pname(moveSel)}: toca otro jugador para intercambiarlos o el título de una mesa para llevarlo ahí. Toca de nuevo su nombre para cancelar.` : "Para mover jugadores: arrástralos a otra mesa o sobre otro jugador para intercambiarlos. En el celular, tócalo y luego toca el destino. Las mesas con resultado se reabren primero.";
@@ -3189,7 +3194,18 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function setDrop(id, on){
     if (!M.admin || !S) return;
     const d = Object.assign({}, S.dropped || {});
-    if (on) d[id] = S.phase === "inscripcion" ? 0 : S.cur; else delete d[id];
+    if (on){
+      d[id] = S.phase === "inscripcion" ? 0 : S.cur;
+      // Se fue en medio de la fecha: sale de su mesa de la ronda actual (si aún no tiene resultado) y queda en "Sin mesa"
+      const r = S.phase !== "inscripcion" && S.rounds[S.cur];
+      if (r){
+        const ti = r.tables.findIndex(t => t.seats.includes(id));
+        if (ti >= 0 && !r.tables[ti].result){
+          r.tables[ti].seats = r.tables[ti].seats.filter(x => x !== id); delete drafts["adm:" + S.cur + ":" + ti];
+          r.tables = r.tables.filter(t => t.seats.length || t.result);
+        }
+      }
+    } else delete d[id];
     S.dropped = d; commit();
   }
   function renderDecks(){
@@ -3593,6 +3609,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       const err = corregirResultado(ri, ti, pid, est, k);
       if (err){ alert(err); return; }
       document.activeElement.blur(); commit(); return;
+    }
+    const df = e.target.closest("[data-drop-ficha]");
+    if (df){
+      const id = df.dataset.dropFicha, on = !isDrop(id);
+      if (on && !confirm(`¿Drop de ${pname(id)}?\n\nSale de su mesa de esta ronda (si todavía no tiene resultado), queda en “Sin mesa” y no se le arma mesa en las próximas rondas. Conserva sus puntos.`)) return;
+      setDrop(id, on); return;
     }
     const aj = e.target.closest("[data-ajuste]");
     if (aj){

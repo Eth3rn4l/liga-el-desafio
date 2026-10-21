@@ -246,6 +246,7 @@ body:not(.is-admin) .adm{display:none!important}
 select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;max-width:100%}
 .hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .hist li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;font-size:14px}
+@media (max-width:520px){.hist li{grid-template-columns:minmax(0,1fr) auto}.hist .r{grid-column:1/-1}}
 .hist .r{font-family:var(--f-num);color:var(--muted);letter-spacing:.1em}
 .hist .vs{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
 .res{font-family:var(--f-num);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
@@ -2853,7 +2854,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           const det = (isWin(r, pid) ? ["Ganó", kk].filter(Boolean).join(" · ") : [kk, alive(r, pid) ? "vivo" : ""].filter(Boolean).join(" · ") || "Eliminado") + (young(r, pid) ? " · muy joven" : "") + (dq(r, pid) ? " · no es tu lugar" : "");
           tag = `<span class="res ${isWin(r, pid) ? "w" : alive(r, pid) ? "d" : ""}">${(v => v < 0 ? "−" + -v : "+" + v)(points(r, pid, S.cfg))} · ${det}${brute(r, pid) && !dq(r, pid) ? ` · −${brute(r, pid) * (S.cfg.bruto || 0)} bruto` : ""}</span>`;
         }
-        return `<li><span class="r">R${ri + 1} · M${ti + 1}</span><span class="vs">vs ${vs}</span>${tag}</li>`;
+        return `<li><span class="r">Ronda ${ri + 1} · Mesa ${ti + 1}</span><span class="vs">vs ${vs}</span>${tag}</li>`;
       }).join("")}</ul>
       <h3>Rivales enfrentados (${rivals.length})</h3>
       <div class="chips">${rivals.map(r => `<span>${esc(pname(r))}</span>`).join("") || '<span>Ninguno aún</span>'}</div>${ADMUI() ? corregirHTML(pid, h, me) : ""}`;

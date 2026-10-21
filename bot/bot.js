@@ -202,11 +202,10 @@ let pausado = false, gruposMenu = null;
 const DIR_IMG = path.join(DIR, "imagenes-para-enviar");
 // Opciones que se muestran → acción interna
 const MENU_GRUPO = [
-  ["1", "Mesas de la ronda actual", "1"],
-  ["2", "Mensaje para inscribirse", "3"],
+  ["1", "Mensaje para inscribirse", "3"],
+  ["2", "Mesas de la ronda actual", "1"],
   ["3", "Standing", "5"],
-  ["4", "Mensaje escrito por ti", "7"],
-  ["5", "Imagen (Código de la mesa u otra)", "8"],
+  ["4", "Imágenes (Código de la mesa u otra)", "8"],
   ["0", "Volver", null]
 ];
 // Pantalla limpia en cada menú: solo queda el menú y el último aviso

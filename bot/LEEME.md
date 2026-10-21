@@ -70,15 +70,11 @@ Escribe el número del grupo para entrar. Además:
 
 | N° | Qué manda |
 |---|---|
-| 1 | Las mesas de la ronda actual (imágenes) |
-| 2 | Las mesas de la ronda actual (texto) |
-| 3 | El mensaje para inscribirse |
-| 4 | Los resultados de las mesas ya reportadas de la ronda actual |
-| 5 | El standing (pregunta cuántos jugadores mostrar) |
-| 6 | El podio (si la fecha aún no se cierra, sale como "Podio parcial") |
-| 7 | Un mensaje que escribes tú (para varias líneas, termina con una línea con solo un punto `.`) |
-| 8 | Una imagen de la carpeta **imagenes-para-enviar** (ya viene el *Código de la Mesa*; puedes agregar más) |
-| 0 | Volver (elegir otra liga) |
+| 1 | El mensaje para inscribirse |
+| 2 | Las mesas de la ronda actual (imágenes) |
+| 3 | El standing (pregunta cuántos jugadores mostrar) |
+| 4 | Una imagen de la carpeta **imagenes-para-enviar** (ya viene el *Código de la Mesa*; puedes agregar más) |
+| 0 | Volver |
 
 Antes de enviar, el bot muestra una vista previa y pregunta **s/n**. Después de enviar sigues dentro del mismo grupo,
 así puedes mandar varias cosas seguidas; con **0** vuelves al menú principal.

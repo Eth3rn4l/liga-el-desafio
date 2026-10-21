@@ -834,6 +834,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <button class="btn" id="btnPlus" type="button">+1 min</button>
       <button class="btn" id="btnReset" type="button">Reiniciar reloj</button>
       <button class="btn" id="btnNext" type="button">Siguiente ronda</button>
+      <button class="btn ghost" id="btnRearmar" type="button" hidden title="Vuelve a sortear las mesas de esta ronda. Solo mientras el reloj no ha partido y no hay resultados.">↺ Volver a armar la ronda</button>
       <button class="btn primary" id="btnFinTest" type="button" hidden>🧪 Finalizar liga testeo</button>
     </div>
   </section>
@@ -3086,8 +3087,31 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     } catch(e){}
   }
   function roundComplete(){ const r = S.rounds[S.cur]; return !!r && r.tables.every(t => t.result); }
+  // Sin partir el reloj ni resultados: se puede volver a armar la ronda.
+  // "Armar ronda N" aparece cuando el reloj llegó a 0 o todas las mesas tienen resultado.
+  const relojSinPartir = () => !!(S && S.timer && !S.timer.running && S.timer.left === S.cfg.min * 60000);
+  const sinResultados = () => { const r = S && S.rounds[S.cur]; return !!r && r.tables.every(t => !t.result); };
+  function botonesRonda(){
+    if (!S || S.phase === "inscripcion") return;
+    const c = S.cfg, last = S.cur === c.rounds - 1, nb = $("btnNext"), cerrada = isClosed(), completa = roundComplete();
+    const tiempo = remaining() <= 0;
+    if (last){
+      nb.hidden = false;
+      nb.disabled = !completa || cerrada;
+      nb.textContent = cerrada ? "Liga cerrada ✓" : S.closedSig ? "Actualizar cierre" : "Cerrar liga";
+      nb.classList.toggle("primary", completa && !cerrada);
+      nb.title = cerrada ? "Fecha cerrada y guardada en el histórico" : completa ? "Guarda la fecha en el histórico y la da por terminada" : "Disponible cuando todas las mesas tengan resultado";
+    } else {
+      nb.hidden = !(completa || tiempo); nb.disabled = false;
+      nb.textContent = `Armar ronda ${S.cur + 2}`; nb.classList.toggle("primary", completa);
+      nb.title = completa ? "" : "Aún hay mesas sin resultado";
+    }
+    $("btnRearmar").hidden = !(ADMUI() && relojSinPartir() && sinResultados());
+    $("btnRearmar").textContent = `↺ Volver a armar la ronda ${S.cur + 1}`;
+  }
   function tick(){
     if (!S) return;
+    try { botonesRonda(); } catch(e){}
     const ms = remaining(), total = S.cfg.min * 60000, d = $("digits"), st = $("status");
     d.textContent = fmt(ms);
     d.className = "digits" + (ms <= 0 ? " over" : ms <= 5 * 60000 ? " danger" : ms <= 10 * 60000 ? " warn" : "");
@@ -3152,7 +3176,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       renderInsc(); renderLinks(); renderDecks(); fillCfg(); fixMissingCI(); precargarCI(); moverCorreos();
       $("sampleBanner").hidden = true;
       $("offlineBanner").hidden = !(M.mode === "local" && M.reason);
-      $("btnNext").disabled = true;
+      $("btnNext").disabled = true; $("btnRearmar").hidden = true;
       tick();
       return;
     }
@@ -3220,17 +3244,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     renderLinks();
     renderDecks();
 
-    const last = S.cur === c.rounds - 1;
-    const nb = $("btnNext"), cerrada = isClosed();
-    if (last){
-      nb.disabled = !roundComplete() || cerrada;
-      nb.textContent = cerrada ? "Liga cerrada ✓" : S.closedSig ? "Actualizar cierre" : "Cerrar liga";
-      nb.classList.toggle("primary", roundComplete() && !cerrada);
-      nb.title = cerrada ? "Fecha cerrada y guardada en el histórico" : roundComplete() ? "Guarda la fecha en el histórico y la da por terminada" : "Disponible cuando se cierre la última mesa";
-    } else {
-      nb.disabled = !roundComplete();
-      nb.textContent = `Armar ronda ${S.cur + 2}`; nb.classList.remove("primary"); nb.title = "";
-    }
+    botonesRonda();
     $("sampleBanner").hidden = !S.sample;
     $("btnFinTest").hidden = $("btnFinTest2").hidden = !(TEST && M.dev && isClosed());
     $("offlineBanner").hidden = !(M.mode === "local" && M.reason);
@@ -3811,9 +3825,22 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   $("btnPlus").addEventListener("click", () => adjust(60000));
   $("btnMinus").addEventListener("click", () => adjust(-60000));
   $("btnReset").addEventListener("click", () => { S.timer = {running:false, endAt:0, left:S.cfg.min * 60000}; Object.keys(alerts).forEach(k => delete alerts[k]); commit(); });
+  $("btnRearmar").addEventListener("click", () => {
+    if (!M.admin || !S || S.phase === "inscripcion" || !relojSinPartir() || !sinResultados()) return;
+    if (!confirm(`¿Volver a armar la ronda ${S.cur + 1}?\n\nSe vuelven a sortear las mesas de esta ronda con el mismo sistema (${PAIRINGS[S.cfg.pairing || "suizo"].split(" · ")[0]}). Los cambios que hiciste a mano en estas mesas se pierden.`)) return;
+    if (S.cur === 0) S.orden = shuffleExcel(S.players.map(p => p.id));   // como reiniciar la fecha en el Excel: lista desordenada de nuevo
+    S.rounds[S.cur] = buildRound(S, S.cur); moveSel = null;
+    Object.keys(drafts).forEach(k => { if (k.startsWith("adm:" + S.cur + ":")) delete drafts[k]; });
+    commit();
+  });
   $("btnNext").addEventListener("click", async () => {
     if (roundComplete() && S.cur === S.cfg.rounds - 1){ closeLiga(); return; }
-    if (!roundComplete() || S.cur >= S.cfg.rounds - 1) return;
+    if (S.cur >= S.cfg.rounds - 1) return;
+    if (!roundComplete()){
+      if (remaining() > 0) return;
+      const faltan = S.rounds[S.cur].tables.map((t, i) => t.result ? null : "Mesa " + (i + 1)).filter(Boolean);
+      if (!confirm(`Todavía no tienen resultado: ${faltan.join(", ")}.\n\nSi armas la ronda ${S.cur + 2} ahora, esos jugadores quedan sin puntos en la ronda ${S.cur + 1} (después puedes corregirlo desde su ficha, pero las mesas de la ronda ${S.cur + 2} ya estarán armadas).\n\n¿Armar la ronda ${S.cur + 2} igual?`)) return;
+    }
     S.cur++; S.rounds[S.cur] = buildRound(S, S.cur); S.rounds.length = S.cur + 1;
     S.timer = {running:false, endAt:0, left:S.cfg.min * 60000};
     commit(); window.scrollTo({top:0, behavior:"smooth"});
@@ -3898,12 +3925,13 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       btn = `<button class="btn primary" type="button" data-guia="next">Armar ronda ${S.cur + 2}</button>`;
     } else if (!empezo && !conRes){
       titulo = `Paso ${S.cur + 2} · Ronda ${S.cur + 1} armada`;
-      txt = `Hay <b>${T.length} ${T.length === 1 ? "mesa" : "mesas"}</b>. Que cada uno busque su mesa (si alguien quedó mal, arrástralo a otra). Cuando estén sentados, inicia el reloj.`;
-      btn = `<button class="btn primary" type="button" data-guia="start">▶ Iniciar ronda ${S.cur + 1}</button>`;
+      txt = `Hay <b>${T.length} ${T.length === 1 ? "mesa" : "mesas"}</b>. Que cada uno busque su mesa (si alguien quedó mal, arrástralo a otra). Cuando estén sentados, inicia el reloj. Si las mesas salieron mal, puedes <b>volver a armar la ronda</b> mientras el reloj no parta.`;
+      btn = `<button class="btn primary" type="button" data-guia="start">▶ Iniciar ronda ${S.cur + 1}</button><button class="btn ghost" type="button" data-guia="rearmar">↺ Volver a armar la ronda ${S.cur + 1}</button>`;
     } else {
       titulo = `Ronda ${S.cur + 1} en juego`;
       txt = `<b>${conRes} de ${T.length}</b> mesas con resultado. Cuando una mesa termine, toca <b>Cargar resultado</b> en esa mesa${faltan.length ? ` · Faltan: ${faltan.map(n => "Mesa " + n).join(", ")}` : ""}.`;
       btn = faltan.length ? `<button class="btn primary" type="button" data-guia="mesa" data-t="${faltan[0] - 1}">Cargar resultado de la Mesa ${faltan[0]}</button>` : "";
+      if (remaining() <= 0 && S.cur < R - 1){ txt += ` El tiempo terminó: cuando carguen los resultados, arma la ronda ${S.cur + 2}. Si una mesa no va a reportar, puedes armarla igual (esa mesa queda sin puntos).`; btn += `<button class="btn ghost" type="button" data-guia="next">Armar ronda ${S.cur + 2} igual</button>`; }
     }
     g.innerHTML = `<div class="g-pasos">${chips}</div><div class="g-main"><div><b class="g-t">${titulo}</b><p>${txt}</p></div><div class="g-acc">${btn}</div></div>`;
   }
@@ -3913,6 +3941,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (a === "closeInsc"){ const x = $("btnCloseInsc"); if (x) x.click(); }
     else if (a === "start") $("btnStart").click();
     else if (a === "next") $("btnNext").click();
+    else if (a === "rearmar") $("btnRearmar").click();
     else if (a === "nueva"){ const adm = $("admin"); adm.open = true; const d = document.querySelector('details.adm-sec[data-sec="nueva"]'); if (d){ d.open = true; d.scrollIntoView({behavior:"smooth", block:"start"}); } }
     else if (a === "mesa"){
       const ti = b.dataset.t, ed = document.querySelector(`[data-op="edit"][data-t="${ti}"]`);

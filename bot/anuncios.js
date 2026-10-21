@@ -113,6 +113,26 @@ function textoInscripcion(liga, S, base) {
   return `*${NOMBRE_LIGA[liga]}: inscripciones abiertas*${S && S.fecha ? " para el " + S.fecha.split("-").reverse().join("/") : ""}.${portal ? "\nInscríbete en " + portal : ""}`;
 }
 
+// Mensaje con las mesas de una ronda (imágenes + texto de respaldo)
+function msgMesas(liga, S, ri) {
+  const r = S.rounds[ri], nm = id => (S.players.find(p => p.id === id) || {}).name || "?";
+  const cab = [`⚔️ *${NOMBRE_LIGA[liga]} · Comienza la ronda ${ri + 1} de ${S.cfg.rounds}*`, `${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`];
+  return {
+    tipo: "mesas", ri,
+    texto: [...cab, "Busca tu nombre y anda a tu mesa. ¡Suerte a todos!"].join("\n"),
+    // En texto: un solo mensaje, cada mesa en negrita y los jugadores con viñetas
+    respaldo: [...cab, ...r.tables.flatMap((t, ti) => ["", `*MESA ${ti + 1}*`, ...t.seats.map(id => `• ${nm(id)}`)]), "", "¡Suerte a todos!"].join("\n")
+  };
+}
+// Resultados de las mesas ya reportadas de una ronda (un solo mensaje)
+function textoResultados(liga, S, ri) {
+  const r = S.rounds[ri]; if (!r || !r.tables) return null;
+  const hechas = r.tables.map((t, ti) => t.result ? textoMesa(S, ri, ti, t) : null).filter(Boolean);
+  if (!hechas.length) return null;
+  const faltan = r.tables.length - hechas.length;
+  return [`📋 *${NOMBRE_LIGA[liga]} · Resultados ronda ${ri + 1}*`, "", hechas.join("\n\n"), faltan ? `\n_${faltan === 1 ? "Falta 1 mesa" : `Faltan ${faltan} mesas`} por reportar._` : ""].join("\n").trim();
+}
+
 // Devuelve {mensajes, memoria}. Con silencioso=true solo registra lo que ya existe (al arrancar el bot a mitad de fecha).
 function anunciar(liga, S, cfgBot, memoria, silencioso) {
   const top = cfgBot.top, portal = urlPortal(liga, cfgBot.portal);
@@ -134,13 +154,7 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
     const t = S.timer || {}, lanzada = ri === S.cur ? (t.running || (t.left != null && t.left < S.cfg.min * 60000)) : true;
     if (lanzada || r.tables.some(x => x.result))
       // Se publica como imágenes de las mesas (4 por imagen); el texto va como descripción y sirve de respaldo
-      una(`r${ri}:armada`, () => ({
-        tipo: "mesas", ri,
-        texto: [`⚔️ *${NOMBRE_LIGA[liga]} · Comienza la ronda ${ri + 1} de ${S.cfg.rounds}*`, `${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`, "Busca tu nombre y anda a tu mesa. ¡Suerte a todos!"].join("\n"),
-        // En texto: un solo mensaje, cada mesa en negrita y los jugadores con viñetas
-        respaldo: [`⚔️ *${NOMBRE_LIGA[liga]} · Comienza la ronda ${ri + 1} de ${S.cfg.rounds}*`, `${S.cfg.min} minutos · ${r.tables.length} ${r.tables.length === 1 ? "mesa" : "mesas"}`,
-          ...r.tables.flatMap((t, ti) => ["", `*MESA ${ti + 1}*`, ...t.seats.map(id => `• ${nm(id)}`)]), "", "¡Suerte a todos!"].join("\n")
-      }));
+      una(`r${ri}:armada`, () => msgMesas(liga, S, ri));
     r.tables.forEach((t, ti) => {
       const k = `r${ri}t${ti}`, prev = m.mesas[k];
       if (!t.result) return;   // mesa reabierta: se espera el nuevo resultado
@@ -163,4 +177,4 @@ function anunciar(liga, S, cfgBot, memoria, silencioso) {
   return { mensajes: msgs, memoria: m };
 }
 
-module.exports = { anunciar, standing, puntos, textoInscripcion };
+module.exports = { anunciar, standing, puntos, textoInscripcion, msgMesas, textoResultados, textoStanding, textoCierre, urlPortal, NOMBRE_LIGA };

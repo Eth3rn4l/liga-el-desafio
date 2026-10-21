@@ -51,6 +51,26 @@ Si el bot se reinicia solo, mantiene la liga elegida y no repite el mensaje de i
 - Para detenerlo, cierra la ventana.
 - El PC no debe suspenderse: el bot desactiva la suspensión mientras está enchufado, pero revisa que no se apague la tapa del notebook (Configuración → Energía → “Al cerrar la tapa: no hacer nada”).
 
+## Comandos del bot (en la ventana negra)
+
+Con el bot andando, escribe un número en su ventana y presiona **Enter**:
+
+| N° | Qué hace |
+|---|---|
+| 1 | Envía al grupo las mesas de la ronda actual (imágenes) |
+| 2 | Envía las mesas de la ronda actual como texto |
+| 3 | Envía el mensaje para inscribirse |
+| 4 | Envía los resultados de las mesas ya reportadas de la ronda actual |
+| 5 | Envía el standing (te pregunta cuántos jugadores mostrar) |
+| 6 | Envía el podio (si la fecha aún no se cierra, sale como "Podio parcial") |
+| 7 | Envía un mensaje que escribes tú (para varias líneas, termina con una línea con solo un punto `.`) |
+| 8 | Pausa / reanuda los mensajes automáticos |
+| 9 | Muestra cómo va la fecha (ronda, mesas reportadas, mensajes en espera) |
+| 0 | Muestra el menú otra vez |
+
+Antes de enviar, el bot muestra una vista previa y pregunta **s/n**. Si maneja las dos ligas, pregunta a cuál.
+Si mandas las mesas a mano (1 o 2), el bot no las vuelve a mandar solo al partir la ronda.
+
 ## Probar sin WhatsApp
 
 En una ventana de comandos dentro de la carpeta: `npm run simular`.

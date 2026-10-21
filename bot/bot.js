@@ -10,7 +10,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { anunciar, textoInscripcion } = require("./anuncios");
+const { anunciar, textoInscripcion, msgMesas, textoResultados, textoStanding, textoCierre, urlPortal, NOMBRE_LIGA } = require("./anuncios");
 const { imagenesMesas } = require("./imagenes");
 
 const DIR = __dirname;
@@ -171,7 +171,8 @@ async function revisar() {
       if (S.phase === "inscripcion") { if (!mensajes.some(t => typeof t === "string" && /inscripciones abiertas/.test(t))) cola.push({ liga, msg: textoInscripcion(liga, S, CFG.portal), S }); }
       else console.log(`${hora()} ${liga}: la fecha ya empezó (no está en inscripciones), no se manda el mensaje de inscripción.`);
     }
-    mensajes.forEach(msg => cola.push({ liga, msg, S }));
+    if (pausado) mensajes.forEach(msg => console.log(`${hora()} [pausado] no se envió a ${liga}: ${typeof msg === "string" ? msg.split("\n")[0] : "mesas de la ronda " + (msg.ri + 1)}`));
+    else mensajes.forEach(msg => cola.push({ liga, msg, S }));
   }
   primera = false;
   guardarMem(mem);
@@ -182,10 +183,135 @@ async function iniciar() {
   console.log(`${hora()} Bot listo. Revisando la liga cada ${CFG.cadaSegundos || 15} s.`);
   await revisar();
   setInterval(revisar, (CFG.cadaSegundos || 15) * 1000);
+  iniciarMenu();
+}
+
+// ---------- Menú de comandos (se escribe el número en la ventana del bot) ----------
+let pausado = false;
+const MENU = [
+  ["1", "Enviar al grupo las mesas de la ronda actual (imágenes)"],
+  ["2", "Enviar al grupo las mesas de la ronda actual (texto)"],
+  ["3", "Enviar el mensaje para inscribirse"],
+  ["4", "Enviar los resultados de la ronda actual"],
+  ["5", "Enviar el standing"],
+  ["6", "Enviar el podio / cierre de la fecha"],
+  ["7", "Enviar un mensaje escrito por ti"],
+  ["8", "Pausar / reanudar los mensajes automáticos"],
+  ["9", "Ver cómo va la fecha"],
+  ["0", "Mostrar este menú"]
+];
+function mostrarMenu() {
+  console.log("\n========== COMANDOS DEL BOT ==========");
+  MENU.forEach(([n, t]) => console.log(`  ${n}) ${t}`));
+  console.log("  Escribe el número y presiona Enter." + (pausado ? "\n  ⏸  Mensajes automáticos EN PAUSA (opción 8 para reanudar)" : ""));
+  console.log("======================================");
+}
+const lineas = []; let esperandoLinea = null, stdinCerrado = false;
+function leerLinea(txt) {
+  if (txt) process.stdout.write(txt);
+  if (lineas.length) return Promise.resolve(lineas.shift());
+  if (stdinCerrado) return Promise.resolve(null);
+  return new Promise(r => esperandoLinea = r);
+}
+const ligasActivas = () => Object.keys(LIGAS).filter(l => usaLiga(l) && (SIMULAR ? !l.endsWith("_test") : destinos[l]));
+async function elegirLigaMenu() {
+  const ls = ligasActivas();
+  if (!ls.length) { console.log("No hay ningún grupo de liga conectado."); return null; }
+  if (ls.length === 1) return ls[0];
+  ls.forEach((l, i) => console.log(`  ${i + 1}) ${NOMBRE_LIGA[l] || l}`));
+  const r = await leerLinea("¿A qué liga? (número, Enter = cancelar): ");
+  const l = ls[(parseInt(r, 10) || 0) - 1];
+  if (!l) console.log("Cancelado.");
+  return l || null;
+}
+const resumen = msg => typeof msg === "string" ? msg : `[${msg.tipo === "mesas" ? "imágenes de las mesas" : "mensaje"}]\n${msg.respaldo || msg.texto}`;
+async function comando(op) {
+  op = String(op || "").trim();
+  if (!op) return;
+  if (op === "0" || /^(m|menu|menú|ayuda|\?)$/i.test(op)) return mostrarMenu();
+  if (op === "8") {
+    pausado = !pausado;
+    console.log(pausado ? `${hora()} ⏸  Mensajes automáticos en PAUSA. Los comandos del menú siguen funcionando.` : `${hora()} ▶  Mensajes automáticos reanudados.`);
+    return;
+  }
+  if (!MENU.some(([n]) => n === op)) { console.log(`No existe la opción "${op}". Escribe 0 para ver el menú.`); return; }
+  const liga = await elegirLigaMenu(); if (!liga) return;
+  let datos;
+  try { datos = await leerLiga(); } catch (e) { console.error("No se pudo leer la liga:", e.message); return; }
+  const S = datos[LIGAS[liga].estado], cal = datos[LIGAS[liga].cal] || {};
+  if (!S || !S.players) { console.log("Esa liga todavía no tiene datos."); return; }
+  const top = cal.topPublico == null ? (CFG.top || 10) : cal.topPublico;
+  const ri = Math.max(0, Math.min(S.cur | 0, (S.rounds || []).length - 1));
+  const ronda = (S.rounds || [])[ri], hayMesas = ronda && ronda.tables && ronda.tables.length;
+  const fecha = S.fecha ? S.fecha.split("-").reverse().join("/") : "sin fecha";
+  if (op === "9") {
+    console.log(`\n${NOMBRE_LIGA[liga]} · ${fecha}`);
+    console.log(`  Fase: ${S.phase === "inscripcion" ? "inscripciones abiertas" : S.closedSig ? "fecha cerrada" : "jugando"} · ${S.players.length} jugadores`);
+    if (hayMesas) console.log(`  Ronda ${ri + 1} de ${S.cfg.rounds}: ${ronda.tables.filter(t => t.result).length} de ${ronda.tables.length} mesas reportadas`);
+    console.log(`  Mensajes en espera: ${cola.length}${pausado ? " · automáticos EN PAUSA" : ""}`);
+    return;
+  }
+  let msgs = [], que = "";
+  if (op === "1" || op === "2") {
+    if (S.phase === "inscripcion" || !hayMesas) { console.log("Todavía no hay mesas armadas en esta liga."); return; }
+    const m = msgMesas(liga, S, ri);
+    msgs = [op === "1" ? m : m.respaldo]; que = `las mesas de la ronda ${ri + 1}`;
+  } else if (op === "3") {
+    msgs = [textoInscripcion(liga, S, CFG.portal)]; que = "el mensaje de inscripción";
+    if (S.phase !== "inscripcion") console.log("Ojo: la fecha ya no está en inscripciones.");
+  } else if (op === "4") {
+    const t = hayMesas && textoResultados(liga, S, ri);
+    if (!t) { console.log(`Todavía no hay mesas reportadas en la ronda ${ri + 1}.`); return; }
+    msgs = [t]; que = `los resultados de la ronda ${ri + 1}`;
+  } else if (op === "5") {
+    if (S.phase === "inscripcion") { console.log("La fecha todavía no empieza: no hay standing."); return; }
+    const r = await leerLinea(`¿Cuántos jugadores mostrar? (Enter = ${top || "todos"}, 0 = todos): `);
+    const n = r === null || r.trim() === "" ? top : (parseInt(r, 10) || 0);
+    msgs = [textoStanding(S, `${NOMBRE_LIGA[liga]} · Standing${S.fecha ? " " + fecha : ""}`, n) + (CFG.portal ? `\n\nStanding completo: ${urlPortal(liga, CFG.portal)}` : "")];
+    que = "el standing";
+  } else if (op === "6") {
+    if (S.phase === "inscripcion") { console.log("La fecha todavía no empieza."); return; }
+    let t = textoCierre(S, liga, top, urlPortal(liga, CFG.portal));
+    if (!S.closedSig) t = t.replace("· Fecha cerrada*", "· Podio parcial*");   // la fecha aún no se cierra
+    msgs = [t]; que = "el podio de la fecha";
+  } else if (op === "7") {
+    console.log("Escribe el mensaje. Para varias líneas, termina con una línea que tenga solo un punto ( . ):");
+    const ls = [];
+    for (;;) { const l = await leerLinea(""); if (l === null || l.trim() === ".") break; ls.push(l); }
+    const t = ls.join("\n").trim();
+    if (!t) { console.log("Mensaje vacío, no se envía."); return; }
+    msgs = [t]; que = "tu mensaje";
+  }
+  console.log(`\n----- Vista previa (${NOMBRE_LIGA[liga]}) -----\n${msgs.map(resumen).join("\n\n")}\n-------------------------------`);
+  const ok = await leerLinea(`¿Enviar ${que} al grupo? (s/n): `);
+  if (!/^s/i.test(ok || "")) { console.log("No se envió."); return; }
+  // Las mesas enviadas a mano no se vuelven a mandar solas al partir la ronda
+  if (op === "1" || op === "2") { const m = mem[liga]; if (m && m.fecha === (S.fecha || "sin-fecha")) { m.hecho[`r${ri}:armada`] = 1; guardarMem(mem); } }
+  msgs.forEach(msg => cola.push({ liga, msg, S }));
+  console.log(`${hora()} En cola: ${que}.`);
+  procesarCola();
+}
+let menuIniciado = false;
+function iniciarMenu() {
+  if (menuIniciado || (!process.stdin.isTTY && !ARG.includes("--menu"))) return;
+  menuIniciado = true;
+  const rl = require("readline").createInterface({ input: process.stdin, terminal: false });
+  rl.on("line", l => { if (esperandoLinea) { const r = esperandoLinea; esperandoLinea = null; r(l); } else lineas.push(l); });
+  rl.on("close", () => { stdinCerrado = true; if (esperandoLinea) { const r = esperandoLinea; esperandoLinea = null; r(null); } });
+  mostrarMenu();
+  (async () => {
+    for (;;) {
+      const l = await leerLinea(lineas.length ? "" : "\nComando (0 = menú): ");
+      if (l === null) break;
+      try { await comando(l); } catch (e) { console.error("Error en el comando:", e.message); }
+    }
+    if (ARG.includes("--menu") && SIMULAR) { while (enviando || cola.length) await espera(200); if (navegador) await navegador.close(); process.exit(0); }
+  })();
 }
 
 if (SIMULAR) {
   LIGA_SEL = SEL[(argVal("--liga") || "").toLowerCase()] || null;
+  if (ESTADO_ARCH && ARG.includes("--menu")) { (async () => { await revisar(); iniciarMenu(); })(); return; }
   if (ESTADO_ARCH) { (async () => { await revisar(); while (enviando || cola.length) await espera(200); if (navegador) await navegador.close(); process.exit(0); })(); return; }
   iniciar(); return;
 }

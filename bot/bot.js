@@ -220,18 +220,21 @@ function leerLinea(txt) {
   if (stdinCerrado) return Promise.resolve(null);
   return new Promise(r => esperandoLinea = r);
 }
-const ligaDeGrupo = id => Object.keys(destinos).find(l => destinos[l] === id && usaLiga(l)) || null;
+const nombresDestino = {};   // liga → nombre del grupo o chat configurado
+// Si la liga real y la de testeo usan el mismo chat, gana la real
+const ligaDeGrupo = id => { const ls = Object.keys(destinos).filter(l => destinos[l] === id && usaLiga(l)); return ls.find(l => !l.endsWith("_test")) || ls[0] || null; };
 const ligasConDatos = () => Object.keys(LIGAS).filter(l => usaLiga(l) && (!l.endsWith("_test") || destinos[l]));
 // Grupos disponibles: en WhatsApp, todos los grupos donde está el bot (los de la liga primero)
 async function cargarGruposMenu(forzar) {
   if (gruposMenu && !forzar) return gruposMenu;
   let gs;
-  if (SIMULAR) gs = [...Object.keys(LIGAS).filter(l => usaLiga(l) && !l.endsWith("_test")).map(l => ({ id: "sim-" + l, nombre: "Grupo " + NOMBRE_LIGA[l] })), { id: "sim-otro", nombre: "Grupo de prueba" }];
+  if (SIMULAR) gs = [{ id: "sim-otro", nombre: "Grupo de amigos (simulado)" }];
   else { const g = await listarGrupos(); gs = (g || []).map(c => ({ id: c.id._serialized, nombre: c.name || "(sin nombre)" })); }
-  if (SIMULAR) Object.keys(LIGAS).forEach(l => { if (!destinos[l] && usaLiga(l) && !l.endsWith("_test")) destinos[l] = "sim-" + l; });
+  if (SIMULAR) Object.keys(LIGAS).forEach(l => { if (!destinos[l] && usaLiga(l)) { destinos[l] = "sim-" + l; nombresDestino[l] = l.endsWith("_test") ? "Chat de testeo (simulado)" : "Grupo " + NOMBRE_LIGA[l]; } });
   // Los grupos de la liga aparecen aunque WhatsApp no haya podido listar los chats
-  Object.entries(destinos).forEach(([l, id]) => { if (!gs.some(g => g.id === id)) gs.push({ id, nombre: "Grupo " + (NOMBRE_LIGA[l] || l) }); });
-  const peso = g => ligaDeGrupo(g.id) ? 0 : 1;
+  Object.entries(destinos).forEach(([l, id]) => { if (!gs.some(g => g.id === id)) gs.push({ id, nombre: nombresDestino[l] || ("Grupo " + (NOMBRE_LIGA[l] || l)) }); });
+  // Orden: grupos de la liga, luego los de testeo, luego el resto
+  const peso = g => { const l = ligaDeGrupo(g.id); return l ? (l.endsWith("_test") ? 1 : 0) : 2; };
   gruposMenu = gs.sort((a, b) => peso(a) - peso(b) || a.nombre.localeCompare(b.nombre, "es"));
   return gruposMenu;
 }
@@ -239,7 +242,7 @@ async function mostrarMenu(forzar) {
   const gs = await cargarGruposMenu(forzar);
   console.log("\n============ MENÚ PRINCIPAL ============");
   console.log("  Elige el grupo al que quieres mandar algo:");
-  gs.forEach((g, i) => { const l = ligaDeGrupo(g.id); console.log(`  ${i + 1}) ${g.nombre}${l ? "  ★ " + NOMBRE_LIGA[l] : ""}`); });
+  gs.forEach((g, i) => { const l = ligaDeGrupo(g.id); console.log(`  ${i + 1}) ${g.nombre}${l ? (l.endsWith("_test") ? "  ★ TESTEO" : "  ★ " + NOMBRE_LIGA[l]) : ""}`); });
   if (!gs.length) console.log("  (no encontré grupos; escribe R para volver a buscar)");
   console.log("  ----------------------------------------");
   console.log(`  P) ${pausado ? "Reanudar" : "Pausar"} los mensajes automáticos`);
@@ -426,6 +429,13 @@ async function listarGrupos() {
 }
 // Un grupo se puede indicar por su nombre exacto o por su link de invitación (https://chat.whatsapp.com/...)
 async function idDeGrupo(valor, cargar) {
+  // Un número de teléfono (ej. +56 9 1234 5678) manda al chat personal de ese número
+  const tel = String(valor || "").replace(/[\s+().-]/g, "");
+  if (/^\d{8,15}$/.test(tel)) {
+    const num = tel.length === 9 && tel.startsWith("9") ? "56" + tel : tel;   // celular chileno sin el 56
+    try { const r = await client.getNumberId(num); if (r && r._serialized) return { id: r._serialized, nombre: "chat de +" + num }; } catch (e) {}
+    return { id: num + "@c.us", nombre: "chat de +" + num };
+  }
   const m = /chat\.whatsapp\.com\/(?:invite\/)?([A-Za-z0-9]+)/.exec(valor || "");
   if (m) {
     try {
@@ -461,7 +471,7 @@ client.on("ready", async () => {
   for (const [liga, valor] of Object.entries(CFG.grupos || {})) {
     if (!valor || /NOMBRE EXACTO/.test(valor) || !usaLiga(liga)) continue;
     const g = await idDeGrupo(valor, cargar);
-    if (g) { destinos[liga] = g.id; console.log(`${hora()} ${liga} → ${g.nombre}`); }
+    if (g) { destinos[liga] = g.id; nombresDestino[liga] = g.nombre; console.log(`${hora()} ${liga} → ${g.nombre}`); }
     else console.error(`${hora()} No encontré el grupo "${valor}" para ${liga}. Revisa el nombre o usa el link de invitación del grupo.`);
   }
   if (!Object.keys(destinos).length) { console.error("No hay grupos configurados. Revisa config.json."); process.exit(1); }

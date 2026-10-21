@@ -2438,7 +2438,18 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   // ---------- Efectos de la ruleta: sonido, puntero, confeti ----------
   let ruletaAudio = null;
-  const sonidoOn = () => { try { return localStorage.getItem("sorteo_sonido") !== "0"; } catch(e){ return true; } };
+  // Sonido: lo decide el organizador para todos los equipos (S.sonidoRuleta, así se silencia también la pantalla/TV);
+  // además cada equipo puede silenciarse solo (se recuerda en este navegador)
+  let sndLocal = (() => { try { return localStorage.getItem("sorteo_sonido") !== "0"; } catch(e){ return true; } })();
+  const sonidoOn = () => sndLocal && !(S && S.sonidoRuleta === false);
+  // Al apagar, corta en el acto lo que esté sonando (tics y campanitas ya programadas)
+  function aplicarSonido(){
+    if (!ruletaAudio || !ruletaOut) return;
+    try {
+      const t = ruletaAudio.currentTime; ruletaOut.gain.cancelScheduledValues(t); ruletaOut.gain.setValueAtTime(sonidoOn() ? 0.85 : 0, t);
+      if (!sonidoOn()) ruletaAudio.suspend().catch(() => {});
+    } catch(e){}
+  }
   // Salida común: volumen moderado, filtro suave y un eco corto (sonido más limpio y menos agresivo)
   let ruletaOut = null, ruletaEco = null;
   function audioCtx(){
@@ -2449,12 +2460,14 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         const a = ruletaAudio = new (window.AudioContext || window.webkitAudioContext)();
         const comp = a.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3;
         const lp = a.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 6000;
-        ruletaOut = a.createGain(); ruletaOut.gain.value = 0.85;
+        ruletaOut = a.createGain(); ruletaOut.gain.value = sonidoOn() ? 0.85 : 0;
         ruletaOut.connect(lp); lp.connect(comp); comp.connect(a.destination);
         // eco suave para el ganador
         const d = a.createDelay(1); d.delayTime.value = 0.18; const fb = a.createGain(); fb.gain.value = 0.28; const wet = a.createGain(); wet.gain.value = 0.35;
         ruletaEco = a.createGain(); ruletaEco.connect(d); d.connect(fb); fb.connect(d); d.connect(wet); wet.connect(ruletaOut); ruletaEco.connect(ruletaOut);
       }
+      if (!sonidoOn()) return null;
+      if (ruletaOut) ruletaOut.gain.value = 0.85;
       if (ruletaAudio.state !== "running") ruletaAudio.resume().catch(() => {});
       return ruletaAudio;
     } catch(e){ return null; }
@@ -2610,6 +2623,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   function renderSorteo(){
     if (view !== "sorteo") return;
+    pintarSnd(); aplicarSonido();
     const {pool, top, gan, st} = sorteoData();
     const sp = S && S.sorteo && S.sorteo.spin;
     if (sp && sp.id !== seenSpin && !spinning){
@@ -2670,8 +2684,14 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     commit();
   }
   $("btnSpin").addEventListener("click", () => { audioCtx(); spin(); });
-  const pintarSnd = () => { const b = $("btnSnd"); if (b){ b.textContent = sonidoOn() ? "Sonido: sí" : "Sonido: no"; b.setAttribute("aria-pressed", sonidoOn()); b.title = sonidoOn() ? "Silenciar la ruleta" : "Activar el sonido de la ruleta"; } };
-  $("btnSnd").addEventListener("click", () => { try { localStorage.setItem("sorteo_sonido", sonidoOn() ? "0" : "1"); } catch(e){} if (sonidoOn()) { audioCtx(); ruletaTick(true); } pintarSnd(); });
+  function pintarSnd(){ const b = $("btnSnd"); if (b){ b.textContent = sonidoOn() ? "Sonido: sí" : "Sonido: no"; b.setAttribute("aria-pressed", sonidoOn()); b.title = sonidoOn() ? "Silenciar la ruleta" : "Activar el sonido de la ruleta"; } };
+  $("btnSnd").addEventListener("click", () => {
+    const nuevo = !sonidoOn();
+    sndLocal = nuevo; try { localStorage.setItem("sorteo_sonido", nuevo ? "1" : "0"); } catch(e){}
+    // El organizador lo cambia para todos los equipos (pantalla/TV incluida)
+    if (M.admin && S){ S.sonidoRuleta = nuevo; commit(); }
+    aplicarSonido(); if (nuevo) { audioCtx(); ruletaTick(true); } pintarSnd();
+  });
   pintarSnd();
   $("btnResetSorteo").addEventListener("click", () => $("confirmReset").hidden = false);
   $("btnResetNo").addEventListener("click", () => $("confirmReset").hidden = true);

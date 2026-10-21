@@ -56,6 +56,9 @@ Si el bot se reinicia solo, mantiene la liga elegida y no repite el mensaje de i
 Con el bot andando, escribe en su ventana y presiona **Enter**.
 
 **Menú principal:** aparecen todos los grupos de WhatsApp donde está el bot (los de la liga primero, marcados con ★).
+El chat de testeo (el de `precon_test` / `b3_test` en config.json) aparece marcado **★ TESTEO**: sirve para probar un mensaje
+antes de mandarlo al grupo real. En config.json puede ser el nombre de un grupo, su link de invitación o un **número de teléfono**
+(por ejemplo `"precon_test": "+56912345678"`) para que llegue a un chat personal.
 Escribe el número del grupo para entrar. Además:
 
 - **P**: pausa / reanuda los mensajes automáticos

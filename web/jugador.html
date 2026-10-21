@@ -800,7 +800,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   <div class="drawer-sec"><span class="lbl">Secciones</span><div id="menuTabs"></div></div>
   <div class="drawer-sec"><span class="lbl">Cuenta y vistas</span><div id="menuActions"></div></div>
 </aside>
-<div class="tv-bar"><button class="btn ghost" id="btnTvSorteo" type="button">🎡 Sorteo</button><button class="btn ghost tv-exit" id="btnTvExit" type="button">Salir de modo pantalla</button></div>
+<div class="tv-bar"><button class="btn ghost" id="btnTvSorteo" type="button">Sorteo</button><button class="btn ghost tv-exit" id="btnTvExit" type="button">Salir de modo pantalla</button></div>
 <div class="wrap">
   <header class="top">
     <div class="brand-wrap">
@@ -835,12 +835,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <a class="btn ghost" id="lnkOther" href="./">Ver la liga</a>
       <button class="btn" id="btnAccount" type="button" hidden>Entrar</button>
       <button class="btn ghost" id="btnDisplay" type="button">Modo pantalla</button>
-      <button class="btn ghost dev-btn" id="btnTest" type="button" hidden>🧪 Iniciar liga de testeo</button>
+      <button class="btn ghost dev-btn" id="btnTest" type="button" hidden>Iniciar liga de testeo</button>
     </div>
   </header>
 
   <div class="banner" id="offlineBanner" hidden></div>
-  <div class="banner test-banner" id="testBanner" hidden><span id="testTxt"></span><span class="test-acts"><button class="btn ghost" id="btnTestLink" type="button" hidden>📱 Copiar link para celulares</button><a class="btn ghost" id="lnkReal" hidden>Ver la liga real</a><button class="btn primary" id="btnFinTest2" type="button" hidden>Finalizar liga testeo</button></span></div>
+  <div class="banner test-banner" id="testBanner" hidden><span id="testTxt"></span><span class="test-acts"><button class="btn ghost" id="btnTestLink" type="button" hidden>Copiar link para celulares</button><a class="btn ghost" id="lnkReal" hidden>Ver la liga real</a><button class="btn primary" id="btnFinTest2" type="button" hidden>Finalizar liga testeo</button></span></div>
   <div class="guia adm live-only" id="guia" hidden></div>
   <div class="banner adm live-only" id="sampleBanner" hidden>Jugadores de ejemplo. Carga los inscritos reales en el panel del organizador, al final de la página.</div>
 
@@ -859,7 +859,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <button class="btn" id="btnReset" type="button">Reiniciar reloj</button>
       <button class="btn" id="btnNext" type="button">Siguiente ronda</button>
       <button class="btn ghost" id="btnRearmar" type="button" hidden title="Vuelve a sortear las mesas de esta ronda. Solo mientras el reloj no ha partido y no hay resultados.">↺ Volver a armar la ronda</button>
-      <button class="btn primary" id="btnFinTest" type="button" hidden>🧪 Finalizar liga testeo</button>
+      <button class="btn primary" id="btnFinTest" type="button" hidden>Finalizar liga testeo</button>
     </div>
   </section>
 
@@ -874,12 +874,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <h2 id="mesasTitle">Mesas</h2>
         <span class="meta" id="mesasMeta"></span>
         <span class="tv-page" id="tvMesas"></span>
-        <button class="btn ghost adm imp-btn" id="btnImp" type="button">📥 Importar resultados</button>
+        <button class="btn ghost adm imp-btn" id="btnImp" type="button">Importar resultados</button>
       </div>
       <div class="imp adm" id="impBox" hidden>
         <div class="imp-h"><b class="imp-t">Importar resultados a la <select id="impRonda" aria-label="Ronda a importar"></select></b><button class="btn ghost" id="btnImpX" type="button" aria-label="Cerrar">✕</button></div>
         <p class="note" style="margin:0">Sube una captura de la planilla (Mesa · Jugador · GANÓ · EMPATÓ · Kills) para pasarla a texto, o copia las celdas desde Excel (con la fila de títulos) y pégalas abajo. Si solo pegas las mesas (sin x ni kills), la ronda se arma así y las mesas quedan en juego. Elige arriba a qué ronda van los resultados.</p>
-        <div class="imp-row"><label class="btn" for="impFile">🖼 Leer imagen</label><input type="file" id="impFile" accept="image/*" hidden><span class="note" id="impEst" style="margin:0"></span></div>
+        <div class="imp-row"><label class="btn" for="impFile">Leer imagen</label><input type="file" id="impFile" accept="image/*" hidden><span class="note" id="impEst" style="margin:0"></span></div>
         <textarea id="impTxt" rows="7" spellcheck="false" placeholder="Mesa&#9;Jugador&#9;Ganó&#9;Empató&#9;Kills&#10;Mesa 1&#9;Marco Camargo&#9;x&#9;&#9;3&#10;Mesa 1&#9;David Lunt&#10;…&#10;&#10;También sirve: Mesa 2 Felipe Flores empató"></textarea>
         <div id="impPrev"></div>
         <div class="imp-row" style="justify-content:flex-end"><button class="btn primary" id="btnImpGo" type="button" disabled>Importar</button></div>
@@ -956,7 +956,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <div class="hub" aria-hidden="true"><img src="logo-256.png" alt=""></div>
         </div>
         <div class="wheel-actions">
-          <div class="spin-row"><button class="btn primary spin-btn" id="btnSpin" type="button">Girar la ruleta</button><button class="btn ghost snd-btn" id="btnSnd" type="button" aria-pressed="true" title="Sonido de la ruleta">🔊</button></div>
+          <div class="spin-row"><button class="btn primary spin-btn" id="btnSpin" type="button">Girar la ruleta</button><button class="btn ghost snd-btn" id="btnSnd" type="button" aria-pressed="true" title="Sonido de la ruleta">Sonido: sí</button></div>
           <span class="msg" id="spinMsg"></span>
         </div>
         <div class="winner-card" id="winnerCard" hidden aria-live="polite"></div>
@@ -967,7 +967,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="card"><h3 id="poolTitle">En la ruleta</h3><p class="card-sub adm">Toca la × para sacar a alguien del sorteo (por ejemplo, si ya se fue).</p><div class="chips" id="poolChips"></div></div>
         <div class="card" id="exclCard" hidden><h3 id="exclTitle">Quitados del sorteo</h3><div class="chips" id="exclChips"></div></div>
         <div class="card"><h3>Top 4 del día</h3><p class="card-sub" id="topNote"></p><ol class="win-list toplist" id="topList"></ol></div>
-        <div class="ban-wrap"><button class="btn ghost" id="btnBan" type="button" aria-expanded="false">🔨 BAN</button><div class="ban-box" id="banBox" hidden></div></div>
+        <div class="ban-wrap"><button class="btn ghost" id="btnBan" type="button" aria-expanded="false">BAN</button><div class="ban-box" id="banBox" hidden></div></div>
         <div class="row adm"><button class="btn ghost" id="btnResetSorteo" type="button">Reiniciar sorteo</button>
           <span class="confirm" id="confirmReset" hidden><span>Se borran los ganadores y vuelven todos a la ruleta.</span><button class="btn primary" id="btnResetYes" type="button">Sí, reiniciar</button><button class="btn" id="btnResetNo" type="button">Cancelar</button></span></div>
       </div>
@@ -979,7 +979,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     <div class="admin-body">
       <div class="jornada-info" id="jornadaInfo"></div>
       <div class="late-box" id="lateBox" hidden></div>
-      <details class="adm-sec" data-sec="jug"><summary><span class="ic">👥</span><span><b>Jugadores de esta fecha</b><small>Mazos, códigos para el portal, drop y cuentas vinculadas</small></span></summary><div class="adm-sec-body">
+      <details class="adm-sec" data-sec="jug"><summary><span><b>Jugadores de esta fecha</b><small>Mazos, códigos para el portal, drop y cuentas vinculadas</small></span></summary><div class="adm-sec-body">
         <div class="field">
           <label>Jugadores, mazos y códigos de acceso · <span id="decksCount"></span></label>
           <p class="note" style="margin:0">El código de 4 letras sirve para que un jugador que inscribiste tú se vincule a su cuenta desde el portal, si no se vinculó solo por nombre.</p>
@@ -992,7 +992,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <ul class="links" id="linksList"></ul>
         </div>
       </div></details>
-      <details class="adm-sec" data-sec="cfg"><summary><span class="ic">⚙️</span><span><b>Ajustes de esta fecha</b><small>Minutos y cantidad de rondas, sistema de mesas y puntaje</small></span></summary><div class="adm-sec-body">
+      <details class="adm-sec" data-sec="cfg"><summary><span><b>Ajustes de esta fecha</b><small>Minutos y cantidad de rondas, sistema de mesas y puntaje</small></span></summary><div class="adm-sec-body">
         <p class="note" style="margin:0">Se cargan desde la liga del mes al abrir la fecha. Si los cambias aquí, solo afectan a esta fecha.</p>
         <div class="row">
           <div class="field"><label for="cfgMin">Minutos por ronda</label><input type="number" id="cfgMin" min="10" max="180"></div>
@@ -1011,10 +1011,10 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         </div>
         <p class="note">Rondas al azar: se evita repetir rivales y que se junten dos comandantes iguales en una mesa. Rondas suizas: mesas en orden de standing (puntos, kills y Buchholz); si alguien ya jugó con alguien de su mesa o tiene el mismo comandante, se cambia por el siguiente con exactamente los mismos puntos, kills y Buchholz, y al final se intercambian jugadores entre mesas con los mismos puntos si eso deja ambas mesas sin choques. Si los inscritos no son múltiplo de 4, se forman mesas de 3. Desempate: puntos, kills y Buchholz (suma de los puntos de los rivales enfrentados).</p>
       </div></details>
-      <details class="adm-sec" data-sec="cal"><summary><span class="ic">📅</span><span><b>Calendario de ligas</b><small>Qué días se juega cada mes y cuántas fechas suman al standing</small></span></summary><div class="adm-sec-body">
+      <details class="adm-sec" data-sec="cal"><summary><span><b>Calendario de ligas</b><small>Qué días se juega cada mes y cuántas fechas suman al standing</small></span></summary><div class="adm-sec-body">
         <div class="cal-admin" id="calAdmin"></div>
       </div></details>
-      <details class="adm-sec" data-sec="imp"><summary><span class="ic">📋</span><span><b>Inscribir muchos de una vez</b><small>Pega una lista: un jugador por línea</small></span></summary><div class="adm-sec-body"><div class="field">
+      <details class="adm-sec" data-sec="imp"><summary><span><b>Inscribir muchos de una vez</b><small>Pega una lista: un jugador por línea</small></span></summary><div class="adm-sec-body"><div class="field">
         <label for="playersInput">Importar inscritos en bloque</label>
         <p class="note" style="margin:0">Una persona por línea: <b>Nombre Apellido ; Mazo ; Comandante ; Correo</b>. Comandante y correo son opcionales: si falta el comandante, se usa el de portada del precon.</p>
         <textarea id="playersInput" spellcheck="false" placeholder="Camila Soto ; Animated Army ; Bello, Bard of the Brambles&#10;Tomás Araya ; Eldrazi Unbound"></textarea>
@@ -1023,7 +1023,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <span class="note" id="countNote"></span>
         </div>
       </div></div></details>
-      <details class="adm-sec peligro" data-sec="nueva"><summary><span class="ic">🆕</span><span><b>Empezar nueva fecha · borrar datos</b><small>Para dejar lista la próxima fecha, o borrar una fecha de prueba</small></span></summary><div class="adm-sec-body"><div class="field">
+      <details class="adm-sec peligro" data-sec="nueva"><summary><span><b>Empezar nueva fecha · borrar datos</b><small>Para dejar lista la próxima fecha, o borrar una fecha de prueba</small></span></summary><div class="adm-sec-body"><div class="field">
         <p class="note" style="margin:0">Al empezar una nueva fecha se abren las inscripciones desde cero. Hazlo después de <b>Cerrar liga</b>, para que la fecha anterior quede guardada en el histórico.</p>
         <div class="row">
           <button class="btn primary" id="btnLoad" type="button">Empezar nueva fecha</button>
@@ -2164,7 +2164,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   });
   $("warn").addEventListener("input", e => { if (e.target.id === "warnSearch"){ warnQ = e.target.value; const pos = e.target.selectionStart; e.target.blur(); renderWarn(); const i = $("warnSearch"); if (i){ i.focus(); i.setSelectionRange(pos, pos); } } });
   // Botón del modo pantalla: desde la liga en vivo va al sorteo; desde cualquier otra pestaña vuelve a la liga en vivo
-  const tvLabel = () => { const b = $("btnTvSorteo"); if (b) b.textContent = view === "live" ? "🎡 Sorteo" : "⏱ Liga en vivo"; };
+  const tvLabel = () => { const b = $("btnTvSorteo"); if (b) b.textContent = view === "live" ? "Sorteo" : "Liga en vivo"; };
   function setView(v){
     if ((v === "sorteo" || v === "warn") && !ADMUI() && M.mode === "connecting") vistaPendiente = v;
     if (v === "warn" && !ADMUI()) v = "live";
@@ -2670,7 +2670,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     commit();
   }
   $("btnSpin").addEventListener("click", () => { audioCtx(); spin(); });
-  const pintarSnd = () => { const b = $("btnSnd"); if (b){ b.textContent = sonidoOn() ? "🔊" : "🔇"; b.setAttribute("aria-pressed", sonidoOn()); b.title = sonidoOn() ? "Silenciar la ruleta" : "Activar el sonido de la ruleta"; } };
+  const pintarSnd = () => { const b = $("btnSnd"); if (b){ b.textContent = sonidoOn() ? "Sonido: sí" : "Sonido: no"; b.setAttribute("aria-pressed", sonidoOn()); b.title = sonidoOn() ? "Silenciar la ruleta" : "Activar el sonido de la ruleta"; } };
   $("btnSnd").addEventListener("click", () => { try { localStorage.setItem("sorteo_sonido", sonidoOn() ? "0" : "1"); } catch(e){} if (sonidoOn()) { audioCtx(); ruletaTick(true); } pintarSnd(); });
   pintarSnd();
   $("btnResetSorteo").addEventListener("click", () => $("confirmReset").hidden = false);
@@ -2701,7 +2701,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const t = document.createElement("div"); t.className = "ban-toast"; t.setAttribute("role", "status");
     t.innerHTML = `<span class="ham" aria-hidden="true">🔨</span><b>${esc(pname(b.dataset.ban))} ha sido baneado</b><span aria-hidden="true">&nbsp;</span>`;
     document.body.appendChild(t); requestAnimationFrame(() => t.classList.add("show"));
-    setTimeout(() => { const u = t.querySelector("span:last-child"); u.removeAttribute("aria-hidden"); u.textContent = "¡Era broma! 😄 Sigue en la liga y en la ruleta"; }, 2200);
+    setTimeout(() => { const u = t.querySelector("span:last-child"); u.removeAttribute("aria-hidden"); u.textContent = "¡Era broma! Sigue en la liga y en la ruleta"; }, 2200);
     setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 400); }, 5000);
   });
   $("filtBox").addEventListener("change", e => {
@@ -3029,7 +3029,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <p class="note" style="margin:0">Se intercambian sus asientos y lo anotado de los dos en esa ronda.</p></details>`;
     if (!r) return `<div class="cr">${head}<p class="note" style="margin:0">La mesa aún no tiene resultado: anótalo con “Cargar resultado” en la mesa.</p>${swap}</div>`;
     const d = corrD[key];
-    if (!d) return `<div class="cr">${head}<div class="cr-acc"><button type="button" class="btn" data-ct-open="${ri}" data-ti="${ti}">✏️ Corregir esta mesa</button><small>Se abre la mesa completa con todos sus jugadores para rehacer lo anotado.</small></div>${swap}</div>`;
+    if (!d) return `<div class="cr">${head}<div class="cr-acc"><button type="button" class="btn" data-ct-open="${ri}" data-ti="${ti}">Corregir esta mesa</button><small>Se abre la mesa completa con todos sus jugadores para rehacer lo anotado.</small></div>${swap}</div>`;
     const res = norm(d), err = validate(d, t.seats);
     const orden = [pid].concat(t.seats.filter(s => s !== pid));
     const fila = p => {
@@ -3424,7 +3424,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     box.hidden = !show; if (!show || typing(box)) return;
     const n = S.players.filter(p => p.late != null).length;
     const ab = !!box.querySelector("details[open]");
-    box.innerHTML = `<details class="adm-sec"${ab ? " open" : ""}><summary><span class="ic">➕</span><span><b>Inscribir a alguien que llegó tarde</b><small>Entra con 0 puntos y juega desde la próxima ronda${n ? ` · Tardíos en esta fecha: ${n}` : ""}</small></span></summary><div class="adm-sec-body"><p class="note" style="margin:0">Si hay una mesa de 3 o quieres sentarlo ya, después de inscribirlo arrástralo desde “Sin mesa” a una mesa de la ronda actual.</p>${regFormHTML("rgL", null)}</div></details>`;
+    box.innerHTML = `<details class="adm-sec"${ab ? " open" : ""}><summary><span><b>Inscribir a alguien que llegó tarde</b><small>Entra con 0 puntos y juega desde la próxima ronda${n ? ` · Tardíos en esta fecha: ${n}` : ""}</small></span></summary><div class="adm-sec-body"><p class="note" style="margin:0">Si hay una mesa de 3 o quieres sentarlo ya, después de inscribirlo arrástralo desde “Sin mesa” a una mesa de la ronda actual.</p>${regFormHTML("rgL", null)}</div></details>`;
   }
   $("lateBox").addEventListener("click", e => { if (e.target.closest('[data-reg-save="rgL"]')) saveReg("rgL"); });
   function renderMine(stand, tableOf, myPid){
@@ -4115,12 +4115,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function urlLiga(test){ return location.pathname + "?liga=" + LIGA + (test ? "&test=1" : "") + location.hash; }
   function devUI(){
     document.body.classList.toggle("modo-test", TEST);
-    const b = $("btnTest"); if (b){ b.hidden = !M.dev; b.textContent = TEST ? "Volver a la liga real" : "🧪 Iniciar liga de testeo"; }
+    const b = $("btnTest"); if (b){ b.hidden = !M.dev; b.textContent = TEST ? "Volver a la liga real" : "Iniciar liga de testeo"; }
     $("testBanner").hidden = !TEST;
     if (!TEST) return;
     $("testTxt").innerHTML = M.dev
-      ? "<b>🧪 Liga de testeo</b> · Nada de lo que hagas aquí cuenta para la liga real, sus estadísticas ni el bot de WhatsApp. Para verla en otro celular, comparte el link. Cuando cierres la fecha aparece <b>Finalizar liga testeo</b>, que borra todos los datos de prueba."
-      : "<b>🧪 Liga de testeo</b> · Esto es una prueba: nada de lo que ves aquí cuenta para la liga real.";
+      ? "<b>Liga de testeo</b> · Nada de lo que hagas aquí cuenta para la liga real, sus estadísticas ni el bot de WhatsApp. Para verla en otro celular, comparte el link. Cuando cierres la fecha aparece <b>Finalizar liga testeo</b>, que borra todos los datos de prueba."
+      : "<b>Liga de testeo</b> · Esto es una prueba: nada de lo que ves aquí cuenta para la liga real.";
     $("btnTestLink").hidden = !M.dev;
     const real = $("lnkReal"); real.hidden = !!M.dev; real.href = urlLiga(false);
   }
@@ -4129,7 +4129,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const url = new URL(PORTAL ? location.pathname : location.pathname.replace(/[^/]*$/, "") + "jugador.html", location.origin);
     url.search = "?liga=" + LIGA + "&test=1";
     const b = $("btnTestLink"), txt = url.href;
-    try { if (navigator.share && matchMedia("(pointer:coarse)").matches) await navigator.share({title:"Liga de testeo", url:txt}); else { await navigator.clipboard.writeText(txt); b.textContent = "✓ Link copiado"; setTimeout(() => b.textContent = "📱 Copiar link para celulares", 2500); } }
+    try { if (navigator.share && matchMedia("(pointer:coarse)").matches) await navigator.share({title:"Liga de testeo", url:txt}); else { await navigator.clipboard.writeText(txt); b.textContent = "✓ Link copiado"; setTimeout(() => b.textContent = "Copiar link para celulares", 2500); } }
     catch(e){ prompt("Copia este link:", txt); }
   });
   $("btnTest").addEventListener("click", () => {
@@ -4164,7 +4164,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     commit(); window.scrollTo({top:0, behavior:"smooth"});
     // Última fecha del mes: el 1.º del standing mensual entra al salón de la fama
     const top = asignarSalon(currentEvent());
-    if (top) setTimeout(() => alert(`🏆 ${top.nombre} es el ganador de ${monthLabel(mesDe(currentEvent()))} y entra al Salón de la fama de la ${LIGAS[LIGA].nombre}.`), 300);
+    if (top) setTimeout(() => alert(`${top.nombre} es el ganador de ${monthLabel(mesDe(currentEvent()))} y entra al Salón de la fama de la ${LIGAS[LIGA].nombre}.`), 300);
   }
   // Guarda la fecha actual en el histórico (si tiene resultados) antes de abrir otra
   async function saveFechaToHist(){

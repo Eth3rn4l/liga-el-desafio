@@ -437,6 +437,12 @@ body.display .corr{display:none}
 .cr-foot{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px dashed var(--line)}
 .cr-foot.bad span:first-child{color:var(--red-hi)}
 .cr-btns{display:flex;gap:6px;margin-left:auto}
+.cr-acc{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}.cr-acc small{color:var(--muted);font-size:12px}
+.ct-filas{display:flex;flex-direction:column;gap:8px}
+.ct-fila{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.ct-fila.yo{border-color:var(--gold)}
+.ct-nm{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ct-pts{font-size:13px;color:var(--muted);white-space:nowrap}.ct-pts b{color:var(--fg)}.ct-pts.cambia b{color:var(--gold)}
 .cr-swap summary{cursor:pointer;color:var(--muted);font-size:12px}
 .cr-swap-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:8px 0 4px}
 .corr-drop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px;color:var(--muted);padding-top:8px;border-top:1px solid var(--line)}
@@ -2924,33 +2930,40 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   const ptsTxt = v => (v < 0 ? "−" + -v : "+" + v) + " pts";
   const detTxt = (est, k, c) => [EST_TXT[est].split(" (")[0], k ? k + (k === 1 ? " kill" : " kills") : "", c ? c + " cmd" : ""].filter(Boolean).join(" · ");
   function rondaCorrHTML(pid, ri, ti){
-    const t = S.rounds[ri].tables[ti], r = t.result, key = pid + ":" + ri;
+    const t = S.rounds[ri].tables[ti], r = t.result, key = "t:" + ri + ":" + ti;
     const vs = t.seats.filter(s => s !== pid).map(pname).join(", ");
-    const head = `<div class="cr-h"><b>Ronda ${ri + 1}</b><span class="cr-mesa">Mesa ${ti + 1} · vs ${esc(vs)}</span>${r ? `<span class="cr-now">${esc(detTxt(estDe(r, pid), kills(r, pid), ckills(r, pid)))} · <b>${ptsTxt(points(r, pid, S.cfg))}</b></span>` : '<span class="cr-now">En juego</span>'}</div>`;
+    const head = `<div class="cr-h"><b>Ronda ${ri + 1} · Mesa ${ti + 1}</b><span class="cr-mesa">vs ${esc(vs)}</span>${r ? `<span class="cr-now">${esc(pname(pid))}: ${esc(detTxt(estDe(r, pid), kills(r, pid), ckills(r, pid)))} · <b>${ptsTxt(points(r, pid, S.cfg))}</b></span>` : '<span class="cr-now">En juego</span>'}</div>`;
     const otros = S.players.filter(p => p.id !== pid).sort((a, b) => a.name.localeCompare(b.name));
     const mesaDe = id => { const i = S.rounds[ri].tables.findIndex(x => x.seats.includes(id)); return i < 0 ? null : i; };
-    const swap = `<details class="cr-swap"><summary>¿En realidad jugó otra persona en este asiento?</summary>
+    const swap = `<details class="cr-swap"><summary>¿En realidad jugó otra persona en el asiento de ${esc(pname(pid))}?</summary>
         <div class="cr-swap-row"><select data-swap-sel="${ri}" aria-label="Quién jugó realmente en la ronda ${ri + 1}"><option value="">Elige quién jugó realmente…</option>${otros.map(p => { const m = mesaDe(p.id); return `<option value="${esc(p.id)}">${esc(p.name)}${m === ti ? " (misma mesa)" : m != null ? ` (Mesa ${m + 1})` : " (no jugó esa ronda)"}</option>`; }).join("")}</select>
         <button class="btn" type="button" data-swap="${esc(pid)}" data-ri="${ri}">Intercambiar</button></div>
         <p class="note" style="margin:0">Se intercambian sus asientos y lo anotado de los dos en esa ronda.</p></details>`;
     if (!r) return `<div class="cr">${head}<p class="note" style="margin:0">La mesa aún no tiene resultado: anótalo con “Cargar resultado” en la mesa.</p>${swap}</div>`;
-    const d = corrD[key] || {est:estDe(r, pid), k:kills(r, pid), c:ckills(r, pid)};
-    const cambio = d.est !== estDe(r, pid) || d.k !== kills(r, pid) || d.c !== ckills(r, pid);
-    const pr = cambio ? armarCorreccion(ri, ti, pid, d.est, d.k, d.c) : null;
-    const seg = ["w", "a", "e"].map(v => `<button type="button" class="seg-b${d.est === v ? " on " + v : ""}" data-cr-est="${v}" data-ri="${ri}" aria-pressed="${d.est === v}">${EST_TXT[v].split(" (")[0]}</button>`).join("");
-    const step = (f, lbl, val) => `<div class="cr-step"><span>${lbl}</span><button type="button" data-cr-step="${f}" data-d="-1" data-ri="${ri}" ${val <= 0 ? "disabled" : ""} aria-label="Restar ${lbl}">−</button><b>${val}</b><button type="button" data-cr-step="${f}" data-d="1" data-ri="${ri}" ${val >= t.seats.length - 1 ? "disabled" : ""} aria-label="Sumar ${lbl}">+</button></div>`;
-    const foot = cambio
-      ? `<div class="cr-foot ${pr.err ? "bad" : ""}"><span>${pr.err ? esc(pr.err) : `Queda: <b>${esc(detTxt(d.est, d.k, d.c))} · ${ptsTxt(points(pr.res, pid, S.cfg))}</b> (antes ${ptsTxt(points(r, pid, S.cfg))})${pr.prevW ? ` · ${esc(pname(pr.prevW))} deja de ser el ganador` : ""}`}</span>
-          <span class="cr-btns"><button type="button" class="btn ghost" data-cr-reset="${ri}">Deshacer</button><button type="button" class="btn primary" data-cr-save="${ri}" data-ti="${ti}" ${pr.err ? "disabled" : ""}>Guardar ronda ${ri + 1}</button></span></div>`
-      : "";
-    return `<div class="cr${cambio ? " editando" : ""}">${head}<div class="seg">${seg}</div><div class="cr-steps">${step("k", "Kills", d.k)}${step("c", "Cmd kills", d.c)}</div>${foot}${swap}</div>`;
+    const d = corrD[key];
+    if (!d) return `<div class="cr">${head}<div class="cr-acc"><button type="button" class="btn" data-ct-open="${ri}" data-ti="${ti}">✏️ Corregir esta mesa</button><small>Se abre la mesa completa con todos sus jugadores para rehacer lo anotado.</small></div>${swap}</div>`;
+    const res = norm(d), err = validate(d, t.seats);
+    const orden = [pid].concat(t.seats.filter(s => s !== pid));
+    const fila = p => {
+      const est = estDe(d, p), k = kills(d, p), c = ckills(d, p), max = t.seats.length - 1;
+      const antes = points(r, p, S.cfg), ahora = points(res, p, S.cfg);
+      const seg = ["w", "a", "e"].map(v => `<button type="button" class="seg-b${est === v ? " on " + v : ""}" data-ct-est="${v}" data-p="${esc(p)}" data-ri="${ri}" data-ti="${ti}" aria-pressed="${est === v}">${EST_TXT[v].split(" (")[0]}</button>`).join("");
+      const step = (f, lbl, val) => `<div class="cr-step"><span>${lbl}</span><button type="button" data-ct-step="${f}" data-d="-1" data-p="${esc(p)}" data-ri="${ri}" data-ti="${ti}" ${val <= 0 ? "disabled" : ""} aria-label="Restar ${lbl} a ${esc(pname(p))}">−</button><b>${val}</b><button type="button" data-ct-step="${f}" data-d="1" data-p="${esc(p)}" data-ri="${ri}" data-ti="${ti}" ${val >= max ? "disabled" : ""} aria-label="Sumar ${lbl} a ${esc(pname(p))}">+</button></div>`;
+      return `<div class="ct-fila${p === pid ? " yo" : ""}"><div class="ct-nm"><b>${esc(pname(p))}</b><span class="ct-pts${antes !== ahora ? " cambia" : ""}">${antes !== ahora ? `${ptsTxt(antes)} → ` : ""}<b>${ptsTxt(ahora)}</b></span></div>
+        <div class="seg">${seg}</div><div class="cr-steps">${step("k", "Kills", k)}${step("c", "Cmd kills", c)}</div></div>`;
+    };
+    const cambio = sig(d) !== sig(r);
+    return `<div class="cr editando">${head}<p class="note" style="margin:0">Corrige a cada jugador de la mesa y guarda una sola vez. Solo puede haber un ganador: si marcas a otro, el anterior pasa a eliminado.</p>
+      <div class="ct-filas">${orden.map(fila).join("")}</div>
+      <div class="cr-foot ${err ? "bad" : ""}"><span>${err ? esc(err) : cambio ? "Revisa los puntos y guarda." : "Sin cambios todavía."}</span>
+        <span class="cr-btns"><button type="button" class="btn ghost" data-ct-reset="${ri}" data-ti="${ti}">Cancelar</button><button type="button" class="btn primary" data-ct-save="${ri}" data-ti="${ti}" ${err || !cambio ? "disabled" : ""}>Guardar mesa ${ti + 1} · ronda ${ri + 1}</button></span></div>${swap}</div>`;
   }
   function corregirHTML(pid, h, me){
     const aj = (S.ajustes || {})[pid] || {};
     const ajD = corrD[pid + ":aj"] || {pts:+aj.pts || 0, motivo:aj.motivo || ""};
     const ajCambio = ajD.pts !== (+aj.pts || 0);
     return `<div class="corr"><h3>Corregir puntos · solo organizadores</h3>
-      <p class="note" style="margin:0">Elige lo que pasó en cada ronda y presiona <b>Guardar</b>. Ves cuántos puntos queda antes de guardar; el standing se recalcula solo.</p>
+      <p class="note" style="margin:0">En cada ronda, toca <b>Corregir esta mesa</b>: aparecen todos los que jugaron en esa mesa para rehacer lo anotado. Ves los puntos antes de guardar y el standing se recalcula solo.</p>
       ${h.length ? h.map(({ri, ti}) => rondaCorrHTML(pid, ri, ti)).join("") : '<p class="note">Aún no juega ninguna ronda.</p>'}
       <div class="cr cr-aj"><div class="cr-h"><b>Ajuste de puntos</b><span class="cr-mesa">Penalización o bonificación que no sale de una mesa</span>${aj.pts ? `<span class="cr-now">Actual: <b>${ptsTxt(+aj.pts)}</b></span>` : ""}</div>
         <div class="cr-steps"><div class="cr-step"><span>Puntos</span><button type="button" data-aj-step="-1" aria-label="Restar un punto">−</button><b>${ajD.pts > 0 ? "+" + ajD.pts : ajD.pts}</b><button type="button" data-aj-step="1" aria-label="Sumar un punto">+</button></div>
@@ -3708,22 +3721,36 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       if (!confirm(`Ronda ${ri + 1}: ¿cambiar a ${pname(a)} por ${pname(otro)}?\n\nSe intercambian sus mesas y resultados de esa ronda. El standing se recalcula.`)) return;
       intercambiarEnRonda(ri, a, otro); document.activeElement.blur(); commit(); return;
     }
-    const ce = e.target.closest("[data-cr-est]"), cs = e.target.closest("[data-cr-step]");
+    const co = e.target.closest("[data-ct-open]");
+    if (co){
+      const ri = +co.dataset.ctOpen, ti = +co.dataset.ti, r = S.rounds[ri].tables[ti].result; if (!r) return;
+      const d = JSON.parse(JSON.stringify(norm(r))); d.k = d.k || {}; d.c = d.c || {}; d.a = d.a || []; d.b = d.b || {}; d.j = d.j || []; d.x = d.x || [];
+      corrD["t:" + ri + ":" + ti] = d; render(); return;
+    }
+    const ce = e.target.closest("[data-ct-est]"), cs = e.target.closest("[data-ct-step]");
     if (ce || cs){
-      const ri = +(ce || cs).dataset.ri, pid = focus, ti = S.rounds[ri].tables.findIndex(t => t.seats.includes(pid)), r = S.rounds[ri].tables[ti].result, key = pid + ":" + ri;
-      const d = corrD[key] = corrD[key] || {est:estDe(r, pid), k:kills(r, pid), c:ckills(r, pid)};
-      if (ce) d.est = ce.dataset.crEst;
-      else { const f = cs.dataset.crStep; d[f] = Math.max(0, d[f] + +cs.dataset.d); }
-      if (d.est === estDe(r, pid) && d.k === kills(r, pid) && d.c === ckills(r, pid)) delete corrD[key];
+      const el = ce || cs, ri = +el.dataset.ri, ti = +el.dataset.ti, p = el.dataset.p, d = corrD["t:" + ri + ":" + ti]; if (!d) return;
+      const seats = S.rounds[ri].tables[ti].seats;
+      if (ce){
+        const v = ce.dataset.ctEst;
+        if (v === "w"){ if (d.w && d.w !== p) d.a = d.a.filter(x => x !== d.w); d.w = p; if (!d.a.includes(p)) d.a.push(p); d.x = d.x.filter(x => x !== p); }
+        else if (v === "a"){ if (d.w === p) d.w = null; if (!d.a.includes(p)) d.a.push(p); }
+        else { if (d.w === p) d.w = null; d.a = d.a.filter(x => x !== p); }
+        if (d.a.includes(p)) d.j = d.j.filter(x => x !== p);
+      } else {
+        const f = cs.dataset.ctStep, o = f === "k" ? d.k : d.c;
+        o[p] = Math.max(0, Math.min(seats.length - 1, (o[p] || 0) + +cs.dataset.d)); if (!o[p]) delete o[p];
+        if (brute(d, p) > kills(d, p)) d.b[p] = kills(d, p);
+      }
       render(); return;
     }
-    const cr = e.target.closest("[data-cr-reset]");
-    if (cr){ delete corrD[focus + ":" + cr.dataset.crReset]; render(); return; }
-    const sv = e.target.closest("[data-cr-save]");
+    const cr = e.target.closest("[data-ct-reset]");
+    if (cr){ delete corrD["t:" + cr.dataset.ctReset + ":" + cr.dataset.ti]; render(); return; }
+    const sv = e.target.closest("[data-ct-save]");
     if (sv){
-      const ri = +sv.dataset.crSave, ti = +sv.dataset.ti, pid = focus, d = corrD[pid + ":" + ri]; if (!d) return;
-      const pr = armarCorreccion(ri, ti, pid, d.est, d.k, d.c); if (pr.err) return;
-      S.rounds[ri].tables[ti].result = pr.res; delete corrD[pid + ":" + ri];
+      const ri = +sv.dataset.ctSave, ti = +sv.dataset.ti, key = "t:" + ri + ":" + ti, d = corrD[key]; if (!d) return;
+      const t = S.rounds[ri].tables[ti]; if (validate(d, t.seats)) return;
+      t.result = norm(d); delete corrD[key]; delete drafts["adm:" + ri + ":" + ti];
       document.activeElement.blur(); commit(); return;
     }
     const as = e.target.closest("[data-aj-step]");

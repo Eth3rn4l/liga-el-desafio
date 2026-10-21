@@ -3287,7 +3287,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         const mv = ADMUI() && !r && !pasada && !document.body.classList.contains("display");
         return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">${si + 1}</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${cmdLine(id)}</span>${right}</li>`;
       }).join("");
-      const pend = pr ? `<span class="pending">Reportado: ${esc(resLabel(pr.res))} · ${pr.n}/${t.seats.length} confirman${pr.kinds > 1 ? " · Hay reportes distintos" : ""}</span>` : "";
+      const pend = pr ? `<span class="pending">Reportado por ${pr.n === 1 ? "1 jugador" : pr.n + " jugadores"}: ${esc(resLabel(pr.res))}${pr.kinds > 1 ? " · Hay reportes distintos" : ""} · Revísalo y toca “Aprobar reporte”</span>` : "";
       const edKey = "adm:" + vr + ":" + ti;
       const ed = M.admin && openEd[edKey] ? editorHTML(edKey, t.seats, draftFor(edKey, t.seats, r || (pr && pr.res)), "Guardar resultado") : "";
       return `<article class="mesa ${r ? "closed" : ""}" data-t="${ti}"><div class="mesa-h"><b>Mesa ${ti + 1}</b>${tag}</div>
@@ -3310,8 +3310,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
     $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V victorias · K kills · S rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.${ADMUI() ? " Organizador: toca un jugador para corregir sus puntos ronda por ronda." : ""}`;
-    $("rulesHint").innerHTML = `Puntaje por mesa: ganar <b>${c.win}</b> · Cada kill <b>${c.kill}</b> · Sobrevivir al tiempo <b>${c.surv}</b> · Máximo <b>${c.cap}</b> por jugador.${B3 ? ` Muy joven para morir <b>+${c.joven || 0}</b> · Demasiado bruto <b>−${c.bruto || 0}</b> por eliminación temprana · No es tu lugar: <b>0</b> en la mesa.` : ""} El número de cada asiento es el orden de turno.` +
-      (M.admin ? " Los jugadores reportan desde su celular; cuando toda la mesa reporta lo mismo, el resultado se registra solo." : "");
+    $("rulesHint").innerHTML = `Puntaje por mesa: ganar <b>${c.win}</b> · Cada kill <b>${c.kill}</b> · Sobrevivir al tiempo <b>${c.surv}</b> · Máximo <b>${c.cap}</b> por jugador.${B3 ? ` Muy joven para morir <b>+${c.joven || 0}</b> · Demasiado bruto <b>−${c.bruto || 0}</b> por eliminación temprana · No es tu lugar: <b>0</b> en la mesa.` : ""}` +
+      (M.admin ? " Basta con que un jugador de la mesa reporte desde su celular: revisa el reporte y toca “Aprobar reporte” para cerrar la mesa." : "");
 
     const ficha = $("ficha");
     if (focus && S.players.some(p => p.id === focus)){ ficha.hidden = false; if (!typing(ficha)) ficha.innerHTML = `<h3>${esc(pname(focus))}</h3>` + fichaHTML(focus, stand); }
@@ -3381,19 +3381,18 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         const st = t.result ? "" : !x.linked ? '<span class="st no">Sin cuenta</span>' :
           !x.res ? '<span class="st">Sin reportar</span>' :
           `<span class="st ${mySig && sig(x.res) === mySig ? "ok" : "no"}">${mySig && sig(x.res) === mySig ? "Coincide" : esc(resLabel(x.res))}</span>`;
-        return `<li class="${x.pid === myPid ? "me" : ""}"><span style="font-family:var(--f-num);color:var(--muted)">${si + 1}</span><span class="nm-wrap"><span class="nm">${esc(pname(x.pid))}</span>${cmdLine(x.pid)}</span>${st}</li>`;
+        return `<li class="${x.pid === myPid ? "me" : ""}"><span style="font-family:var(--f-num);color:var(--muted)">·</span><span class="nm-wrap"><span class="nm">${esc(pname(x.pid))}</span>${cmdLine(x.pid)}</span>${st}</li>`;
       }).join("");
       let status, ed = "";
       if (t.result) status = `<p class="msg ok">Resultado registrado: ${esc(resLabel(t.result))}. Sumaste ${points(t.result, myPid, S.cfg)} pts.</p>`;
       else {
-        if (consensus(ti)) status = '<p class="msg ok">Toda la mesa coincide. El organizador lo registra en segundos.</p>';
-        else if (tv.some(x => !x.linked)) status = '<p class="msg warn">Hay jugadores sin cuenta vinculada: el organizador confirma el resultado.</p>';
-        else if (mySig && tv.some(x => x.res && sig(x.res) !== mySig)) status = '<p class="msg warn">Hay reportes distintos en tu mesa. Conversen y corrijan, o avisen al organizador.</p>';
-        else status = '<p class="msg">El resultado se registra cuando toda la mesa reporta lo mismo.</p>';
+        if (mySig && tv.some(x => x.res && sig(x.res) !== mySig)) status = '<p class="msg warn">Hay reportes distintos en tu mesa. Conversen, corrijan con “Actualizar reporte” y avísenle al organizador.</p>';
+        else if (tv.some(x => x.res)) status = '<p class="msg ok">Reporte enviado. Avísale al organizador: él lo revisa y cierra la mesa.</p>';
+        else status = '<p class="msg">Basta con que <b>un jugador</b> de la mesa reporte. Después el organizador lo revisa y cierra la mesa.</p>';
         const key = "me:" + S.cur;
         ed = "<h3>Reportar resultado de la mesa</h3>" + editorHTML(key, t.seats, draftFor(key, t.seats, mine.res || (proposal(ti) || {}).res), mine.res ? "Actualizar reporte" : "Enviar reporte");
       }
-      mesa = `<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="big-table">Mesa ${ti + 1}</span><span class="msg">Ronda ${S.cur + 1} · Eres el turno ${t.seats.indexOf(myPid) + 1}</span></div>
+      mesa = `<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="big-table">Mesa ${ti + 1}</span><span class="msg">Ronda ${S.cur + 1}</span></div>
         <ul class="vote-list">${list}</ul>${ed}${status}<span class="err" id="voteErr"></span>`;
     }
     const myDeck = deckOf(myPid);
@@ -4007,7 +4006,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       btn = `<button class="btn primary" type="button" data-guia="start">▶ Iniciar ronda ${S.cur + 1}</button><button class="btn ghost" type="button" data-guia="rearmar">↺ Volver a armar la ronda ${S.cur + 1}</button>`;
     } else {
       titulo = `Ronda ${S.cur + 1} en juego`;
-      txt = `<b>${conRes} de ${T.length}</b> mesas con resultado. Cuando una mesa termine, toca <b>Cargar resultado</b> en esa mesa${faltan.length ? ` · Faltan: ${faltan.map(n => "Mesa " + n).join(", ")}` : ""}.`;
+      txt = `<b>${conRes} de ${T.length}</b> mesas con resultado. Cuando una mesa termine, un jugador la reporta desde su celular y tú tocas <b>Aprobar reporte</b> en esa mesa (o <b>Cargar resultado</b> si nadie reportó)${faltan.length ? ` · Faltan: ${faltan.map(n => "Mesa " + n).join(", ")}` : ""}.`;
       btn = faltan.length ? `<button class="btn primary" type="button" data-guia="mesa" data-t="${faltan[0] - 1}">Cargar resultado de la Mesa ${faltan[0]}</button>` : "";
       if (remaining() <= 0 && S.cur < R - 1){ txt += ` El tiempo terminó: cuando carguen los resultados, arma la ronda ${S.cur + 2}. Si una mesa no va a reportar, puedes armarla igual (esa mesa queda sin puntos).`; btn += `<button class="btn ghost" type="button" data-guia="next">Armar ronda ${S.cur + 2} igual</button>`; }
     }

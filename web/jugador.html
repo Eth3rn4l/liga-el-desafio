@@ -384,6 +384,30 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .corr-aj label{grid-column:1/-1;font-size:13px;color:var(--muted)}
 @media (max-width:600px){.corr-aj{grid-template-columns:1fr 1fr}.corr-aj label{grid-column:1/-1}}
 body.display .corr{display:none}
+.cr{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--surface-2)}
+.cr.editando{border-color:var(--gold)}
+.cr-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px}
+.cr-h > b{font-size:15px}
+.cr-mesa{color:var(--muted);font-size:12px;flex:1;min-width:140px}
+.cr-now{font-size:13px;white-space:nowrap}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg-b{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 6px;color:var(--fg);font:inherit;font-size:14px;cursor:pointer;min-height:44px}
+.seg-b.on.w{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
+.seg-b.on.a{background:rgba(233,180,76,.18);border-color:var(--gold);color:var(--gold);font-weight:700}
+.seg-b.on.e{background:var(--surface);border-color:var(--fg);font-weight:700}
+.cr-steps{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.cr-step{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:4px 6px}
+.cr-step span{font-size:13px;color:var(--muted);padding:0 4px}
+.cr-step b{min-width:22px;text-align:center;font-size:16px}
+.cr-step button{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:18px;cursor:pointer}
+.cr-step button:disabled{opacity:.35;cursor:default}
+.cr-steps input{flex:1;min-width:180px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--fg);font:inherit}
+.cr-steps input.falta{border-color:var(--red-hi)}
+.cr-foot{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px dashed var(--line)}
+.cr-foot.bad span:first-child{color:var(--red-hi)}
+.cr-btns{display:flex;gap:6px;margin-left:auto}
+.cr-swap summary{cursor:pointer;color:var(--muted);font-size:12px}
+.cr-swap-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:8px 0 4px}
 .corr-drop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px;color:var(--muted);padding-top:8px;border-top:1px solid var(--line)}
 .btn.mini{padding:3px 8px;font-size:11px}
 .imp-btn{margin-left:auto;padding:6px 12px;font-size:13px}
@@ -2835,42 +2859,66 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <div class="chips">${rivals.map(r => `<span>${esc(pname(r))}</span>`).join("") || '<span>Ninguno aún</span>'}</div>${ADMUI() ? corregirHTML(pid, h, me) : ""}`;
   }
   // Organizador: corregir mesas de rondas ya jugadas (cambiar a un jugador por quien realmente jugó) y ajustar puntos a mano
-  // Fila para corregir la victoria y las kills del jugador en una mesa ya anotada
-  function resCorr(pid, ri, ti){
-    const t = S.rounds[ri].tables[ti], r = t.result;
-    if (!r) return `<div class="corr-res"><span class="note">Mesa sin resultado anotado.</span></div>`;
-    const est = isWin(r, pid) ? "w" : alive(r, pid) ? "a" : "e";
-    const op = (v, txt) => `<option value="${v}"${est === v ? " selected" : ""}>${txt}</option>`;
-    return `<div class="corr-res"><select data-est-sel="${ri}" aria-label="Resultado en la ronda ${ri + 1}">${op("w", "Ganó la mesa")}${op("a", "Vivo al final")}${op("e", "Eliminado")}</select>
-      <label class="corr-k">Kills <input type="number" data-kills-sel="${ri}" min="0" max="${t.seats.length - 1}" step="1" value="${kills(r, pid)}"></label>
-      <button class="btn" type="button" data-res="${esc(pid)}" data-ri="${ri}" data-ti="${ti}">Guardar</button></div>`;
-  }
-  // Aplica el cambio de victoria/kills; devuelve un error o "" si quedó bien
-  function corregirResultado(ri, ti, pid, est, k){
-    const t = S.rounds[ri].tables[ti], r0 = t.result; if (!r0) return "La mesa no tiene resultado.";
-    const d = JSON.parse(JSON.stringify(r0)); d.k = d.k || {}; d.a = d.a || []; d.b = d.b || {};
-    if (est === "w"){ d.w = pid; d.a = [pid]; d.x = (d.x || []).filter(x => x !== pid); d.j = (d.j || []).filter(x => x !== pid); }
-    else if (est === "a"){ if (d.w) d.w = null; if (!d.a.includes(pid)) d.a.push(pid); d.j = (d.j || []).filter(x => x !== pid); }
+  // ---------- Corregir puntos de un jugador (organizador), ronda por ronda ----------
+  // Borrador por jugador y ronda: {est:"w"|"a"|"e", k, c}. Se guarda solo al presionar "Guardar".
+  const corrD = {};
+  const estDe = (r, pid) => !r ? "e" : isWin(r, pid) ? "w" : alive(r, pid) ? "a" : "e";
+  const EST_TXT = {w:"Ganó", a:"Empató (vivo al final)", e:"Eliminado"};
+  // Resultado de la mesa con el cambio aplicado (sin guardarlo) y validación
+  function armarCorreccion(ri, ti, pid, est, k, c){
+    const t = S.rounds[ri].tables[ti], r0 = t.result; if (!r0) return {err:"La mesa no tiene resultado."};
+    const d = JSON.parse(JSON.stringify(r0)); d.k = d.k || {}; d.a = d.a || []; d.b = d.b || {}; d.c = d.c || {};
+    const prevW = r0.w && r0.w !== pid && est === "w" ? r0.w : null;
+    if (est === "w"){ d.w = pid; if (!d.a.includes(pid)) d.a.push(pid); d.x = (d.x || []).filter(x => x !== pid); d.j = (d.j || []).filter(x => x !== pid);
+      // un solo ganador: el anterior queda como eliminado
+      if (prevW) d.a = d.a.filter(x => x !== prevW); }
+    else if (est === "a"){ if (d.w === pid) d.w = null; if (!d.a.includes(pid)) d.a.push(pid); d.j = (d.j || []).filter(x => x !== pid); }
     else { if (d.w === pid) d.w = null; d.a = d.a.filter(x => x !== pid); }
-    k = Math.max(0, Math.min(t.seats.length - 1, k | 0));
+    const max = t.seats.length - 1;
+    k = Math.max(0, Math.min(max, k | 0)); c = Math.max(0, Math.min(max, c | 0));
     if (k) d.k[pid] = k; else delete d.k[pid];
+    if (c) d.c[pid] = c; else delete d.c[pid];
     if (brute(d, pid) > k) d.b[pid] = k;
     const sumK = t.seats.reduce((s, p) => s + kills(d, p) + ckills(d, p), 0), dead = t.seats.length - d.a.length;
-    if (sumK > dead) return `Quedarían ${sumK} kills en la mesa pero solo ${dead} eliminados. Baja las kills de otro jugador primero o revisa quién quedó vivo.`;
-    t.result = norm(d); return "";
+    const err = sumK > dead ? `En esta mesa quedarían ${sumK} kills y solo ${dead} ${dead === 1 ? "eliminado" : "eliminados"}. Baja kills o revisa quién quedó vivo (las kills de los demás se corrigen en su propia ficha).` : "";
+    return {res:norm(d), err, prevW};
+  }
+  const ptsTxt = v => (v < 0 ? "−" + -v : "+" + v) + " pts";
+  const detTxt = (est, k, c) => [EST_TXT[est].split(" (")[0], k ? k + (k === 1 ? " kill" : " kills") : "", c ? c + " cmd" : ""].filter(Boolean).join(" · ");
+  function rondaCorrHTML(pid, ri, ti){
+    const t = S.rounds[ri].tables[ti], r = t.result, key = pid + ":" + ri;
+    const vs = t.seats.filter(s => s !== pid).map(pname).join(", ");
+    const head = `<div class="cr-h"><b>Ronda ${ri + 1}</b><span class="cr-mesa">Mesa ${ti + 1} · vs ${esc(vs)}</span>${r ? `<span class="cr-now">${esc(detTxt(estDe(r, pid), kills(r, pid), ckills(r, pid)))} · <b>${ptsTxt(points(r, pid, S.cfg))}</b></span>` : '<span class="cr-now">En juego</span>'}</div>`;
+    const otros = S.players.filter(p => p.id !== pid).sort((a, b) => a.name.localeCompare(b.name));
+    const mesaDe = id => { const i = S.rounds[ri].tables.findIndex(x => x.seats.includes(id)); return i < 0 ? null : i; };
+    const swap = `<details class="cr-swap"><summary>¿En realidad jugó otra persona en este asiento?</summary>
+        <div class="cr-swap-row"><select data-swap-sel="${ri}" aria-label="Quién jugó realmente en la ronda ${ri + 1}"><option value="">Elige quién jugó realmente…</option>${otros.map(p => { const m = mesaDe(p.id); return `<option value="${esc(p.id)}">${esc(p.name)}${m === ti ? " (misma mesa)" : m != null ? ` (Mesa ${m + 1})` : " (no jugó esa ronda)"}</option>`; }).join("")}</select>
+        <button class="btn" type="button" data-swap="${esc(pid)}" data-ri="${ri}">Intercambiar</button></div>
+        <p class="note" style="margin:0">Se intercambian sus asientos y lo anotado de los dos en esa ronda.</p></details>`;
+    if (!r) return `<div class="cr">${head}<p class="note" style="margin:0">La mesa aún no tiene resultado: anótalo con “Cargar resultado” en la mesa.</p>${swap}</div>`;
+    const d = corrD[key] || {est:estDe(r, pid), k:kills(r, pid), c:ckills(r, pid)};
+    const cambio = d.est !== estDe(r, pid) || d.k !== kills(r, pid) || d.c !== ckills(r, pid);
+    const pr = cambio ? armarCorreccion(ri, ti, pid, d.est, d.k, d.c) : null;
+    const seg = ["w", "a", "e"].map(v => `<button type="button" class="seg-b${d.est === v ? " on " + v : ""}" data-cr-est="${v}" data-ri="${ri}" aria-pressed="${d.est === v}">${EST_TXT[v].split(" (")[0]}</button>`).join("");
+    const step = (f, lbl, val) => `<div class="cr-step"><span>${lbl}</span><button type="button" data-cr-step="${f}" data-d="-1" data-ri="${ri}" ${val <= 0 ? "disabled" : ""} aria-label="Restar ${lbl}">−</button><b>${val}</b><button type="button" data-cr-step="${f}" data-d="1" data-ri="${ri}" ${val >= t.seats.length - 1 ? "disabled" : ""} aria-label="Sumar ${lbl}">+</button></div>`;
+    const foot = cambio
+      ? `<div class="cr-foot ${pr.err ? "bad" : ""}"><span>${pr.err ? esc(pr.err) : `Queda: <b>${esc(detTxt(d.est, d.k, d.c))} · ${ptsTxt(points(pr.res, pid, S.cfg))}</b> (antes ${ptsTxt(points(r, pid, S.cfg))})${pr.prevW ? ` · ${esc(pname(pr.prevW))} deja de ser el ganador` : ""}`}</span>
+          <span class="cr-btns"><button type="button" class="btn ghost" data-cr-reset="${ri}">Deshacer</button><button type="button" class="btn primary" data-cr-save="${ri}" data-ti="${ti}" ${pr.err ? "disabled" : ""}>Guardar ronda ${ri + 1}</button></span></div>`
+      : "";
+    return `<div class="cr${cambio ? " editando" : ""}">${head}<div class="seg">${seg}</div><div class="cr-steps">${step("k", "Kills", d.k)}${step("c", "Cmd kills", d.c)}</div>${foot}${swap}</div>`;
   }
   function corregirHTML(pid, h, me){
-    const mesaDe = (ri, id) => { const i = S.rounds[ri].tables.findIndex(t => t.seats.includes(id)); return i < 0 ? null : i; };
     const aj = (S.ajustes || {})[pid] || {};
-    const filas = h.map(({ri, ti}) => `<li><span class="r">R${ri + 1} · M${ti + 1}</span>
-        <select data-swap-sel="${ri}" aria-label="Cambiar en la ronda ${ri + 1}"><option value="">Cambiar por…</option>${S.players.filter(p => p.id !== pid).sort((a, b) => a.name.localeCompare(b.name)).map(p => { const m = mesaDe(ri, p.id); return `<option value="${esc(p.id)}">${esc(p.name)}${m === ti ? " (misma mesa)" : m != null ? ` (Mesa ${m + 1})` : " (no jugó)"}</option>`; }).join("")}</select>
-        <button class="btn" type="button" data-swap="${esc(pid)}" data-ri="${ri}">Aplicar</button>${resCorr(pid, ri, ti)}</li>`).join("");
-    return `<div class="corr"><h3>Corregir · solo organizadores</h3>
-      <p class="note">¿Quedó alguien en la mesa equivocada? Elige quién jugó realmente en su lugar: se intercambian sus asientos y resultados en esa ronda. Abajo de cada ronda puedes corregir si ganó, quedó vivo o fue eliminado, y sus kills. El standing se recalcula.</p>
-      ${filas ? `<ul class="corr-list">${filas}</ul>` : '<p class="note">Aún no juega ninguna ronda.</p>'}
-      <div class="corr-aj"><label for="ajPts">Ajuste manual de puntos</label><input type="number" id="ajPts" step="1" min="-30" max="30" value="${aj.pts || 0}"><input type="text" id="ajMot" maxlength="80" placeholder="Motivo (ej: error al anotar la mesa 3)" value="${esc(aj.motivo || "")}"><button class="btn primary" type="button" data-ajuste="${esc(pid)}">Guardar ajuste</button></div>
-      ${S.phase !== "inscripcion" ? `<div class="corr-drop"><span>${isDrop(pid) ? "<b>Retirado de la liga.</b> No entra en las próximas rondas; conserva sus puntos." : "¿Se fue en medio de la fecha? Sale de su mesa (si aún no tiene resultado), queda en “Sin mesa” y no entra en las próximas rondas. Conserva sus puntos."}</span><button class="btn ${isDrop(pid) ? "" : "danger"}" type="button" data-drop-ficha="${esc(pid)}">${isDrop(pid) ? "Reincorporar" : "Drop"}</button></div>` : ""}
-      ${me && me.adj ? `<p class="note" style="margin:0">Ajuste actual: <b>${me.adj > 0 ? "+" : "−"}${Math.abs(me.adj)} pts</b>${aj.motivo ? " · " + esc(aj.motivo) : ""}</p>` : ""}</div>`;
+    const ajD = corrD[pid + ":aj"] || {pts:+aj.pts || 0, motivo:aj.motivo || ""};
+    const ajCambio = ajD.pts !== (+aj.pts || 0);
+    return `<div class="corr"><h3>Corregir puntos · solo organizadores</h3>
+      <p class="note" style="margin:0">Elige lo que pasó en cada ronda y presiona <b>Guardar</b>. Ves cuántos puntos queda antes de guardar; el standing se recalcula solo.</p>
+      ${h.length ? h.map(({ri, ti}) => rondaCorrHTML(pid, ri, ti)).join("") : '<p class="note">Aún no juega ninguna ronda.</p>'}
+      <div class="cr cr-aj"><div class="cr-h"><b>Ajuste de puntos</b><span class="cr-mesa">Penalización o bonificación que no sale de una mesa</span>${aj.pts ? `<span class="cr-now">Actual: <b>${ptsTxt(+aj.pts)}</b></span>` : ""}</div>
+        <div class="cr-steps"><div class="cr-step"><span>Puntos</span><button type="button" data-aj-step="-1" aria-label="Restar un punto">−</button><b>${ajD.pts > 0 ? "+" + ajD.pts : ajD.pts}</b><button type="button" data-aj-step="1" aria-label="Sumar un punto">+</button></div>
+        <input type="text" id="ajMot" maxlength="80" placeholder="Motivo (obligatorio si hay ajuste)" value="${esc(ajD.motivo)}"></div>
+        ${ajCambio || ajD.pts ? `<div class="cr-foot"><span>${ajCambio ? `Queda: <b>${ajD.pts ? ptsTxt(ajD.pts) : "sin ajuste"}</b>` : "Puedes cambiar el motivo y guardar."}</span><span class="cr-btns">${ajCambio ? '<button type="button" class="btn ghost" data-aj-reset>Deshacer</button>' : ""}<button type="button" class="btn primary" data-ajuste="${esc(pid)}">Guardar ajuste</button></span></div>` : ""}</div>
+      ${S.phase !== "inscripcion" ? `<div class="corr-drop"><span>${isDrop(pid) ? "<b>Retirado de la liga.</b> No entra en las próximas rondas; conserva sus puntos." : "¿Se fue en medio de la fecha? Sale de su mesa (si aún no tiene resultado), queda en “Sin mesa” y no entra en las próximas rondas. Conserva sus puntos."}</span><button class="btn ${isDrop(pid) ? "" : "danger"}" type="button" data-drop-ficha="${esc(pid)}">${isDrop(pid) ? "Reincorporar" : "Drop"}</button></div>` : ""}</div>`;
   }
 
   // Código personal del jugador (4 caracteres), derivado de su id: lo entrega el organizador para vincular la cuenta
@@ -3108,7 +3156,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
        <td class="pts">${x.pts}${(n => n ? `<span class="pen" title="Puntos negativos de la fecha${ADMUI() && x.pen ? " (incluye " + x.pen + " por warnings)" : ""}">−${n}</span>` : "")(ADMUI() ? x.neg : x.neg - x.pen)}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td class="buch">${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
-    $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V victorias · K kills · S rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.`;
+    $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V victorias · K kills · S rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.${ADMUI() ? " Organizador: toca un jugador para corregir sus puntos ronda por ronda." : ""}`;
     $("rulesHint").innerHTML = `Puntaje por mesa: ganar <b>${c.win}</b> · Cada kill <b>${c.kill}</b> · Sobrevivir al tiempo <b>${c.surv}</b> · Kill de comandante <b>+${CMDK(c)}</b> · Máximo <b>${c.cap}</b> por jugador.${B3 ? ` Muy joven para morir <b>+${c.joven || 0}</b> · Demasiado bruto <b>−${c.bruto || 0}</b> por eliminación temprana · No es tu lugar: <b>0</b> en la mesa.` : ""} El número de cada asiento es el orden de turno.` +
       (M.admin ? " Los jugadores reportan desde su celular; cuando toda la mesa reporta lo mismo, el resultado se registra solo." : "");
 
@@ -3618,17 +3666,32 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       if (!confirm(`Ronda ${ri + 1}: ¿cambiar a ${pname(a)} por ${pname(otro)}?\n\nSe intercambian sus mesas y resultados de esa ronda. El standing se recalcula.`)) return;
       intercambiarEnRonda(ri, a, otro); document.activeElement.blur(); commit(); return;
     }
-    const rb = e.target.closest("[data-res]");
-    if (rb){
-      const pid = rb.dataset.res, ri = +rb.dataset.ri, ti = +rb.dataset.ti, f = $("ficha");
-      const est = f.querySelector(`[data-est-sel="${ri}"]`).value, k = parseInt(f.querySelector(`[data-kills-sel="${ri}"]`).value, 10) || 0;
-      const r = S.rounds[ri].tables[ti].result, prevW = r && r.w && r.w !== pid && est !== "e" ? r.w : null;
-      const txt = {w:"ganó la mesa", a:"quedó vivo al final", e:"fue eliminado"}[est];
-      if (!confirm(`Ronda ${ri + 1} · Mesa ${ti + 1}: ${pname(pid)} ${txt}, con ${k} kill${k === 1 ? "" : "s"}.${prevW ? `\n\n${pname(prevW)} deja de ser el ganador de la mesa.` : ""}\n\nEl standing se recalcula.`)) return;
-      const err = corregirResultado(ri, ti, pid, est, k);
-      if (err){ alert(err); return; }
+    const ce = e.target.closest("[data-cr-est]"), cs = e.target.closest("[data-cr-step]");
+    if (ce || cs){
+      const ri = +(ce || cs).dataset.ri, pid = focus, ti = S.rounds[ri].tables.findIndex(t => t.seats.includes(pid)), r = S.rounds[ri].tables[ti].result, key = pid + ":" + ri;
+      const d = corrD[key] = corrD[key] || {est:estDe(r, pid), k:kills(r, pid), c:ckills(r, pid)};
+      if (ce) d.est = ce.dataset.crEst;
+      else { const f = cs.dataset.crStep; d[f] = Math.max(0, d[f] + +cs.dataset.d); }
+      if (d.est === estDe(r, pid) && d.k === kills(r, pid) && d.c === ckills(r, pid)) delete corrD[key];
+      render(); return;
+    }
+    const cr = e.target.closest("[data-cr-reset]");
+    if (cr){ delete corrD[focus + ":" + cr.dataset.crReset]; render(); return; }
+    const sv = e.target.closest("[data-cr-save]");
+    if (sv){
+      const ri = +sv.dataset.crSave, ti = +sv.dataset.ti, pid = focus, d = corrD[pid + ":" + ri]; if (!d) return;
+      const pr = armarCorreccion(ri, ti, pid, d.est, d.k, d.c); if (pr.err) return;
+      S.rounds[ri].tables[ti].result = pr.res; delete corrD[pid + ":" + ri];
       document.activeElement.blur(); commit(); return;
     }
+    const as = e.target.closest("[data-aj-step]");
+    if (as){
+      const aj = (S.ajustes || {})[focus] || {}, key = focus + ":aj";
+      const d = corrD[key] = corrD[key] || {pts:+aj.pts || 0, motivo:aj.motivo || ""};
+      d.motivo = ($("ajMot") && $("ajMot").value) || d.motivo; d.pts = Math.max(-30, Math.min(30, d.pts + +as.dataset.ajStep));
+      render(); return;
+    }
+    if (e.target.closest("[data-aj-reset]")){ delete corrD[focus + ":aj"]; render(); return; }
     const df = e.target.closest("[data-drop-ficha]");
     if (df){
       const id = df.dataset.dropFicha, on = !isDrop(id);
@@ -3637,12 +3700,18 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     }
     const aj = e.target.closest("[data-ajuste]");
     if (aj){
-      const id = aj.dataset.ajuste, v = parseInt($("ajPts").value, 10) || 0, mot = ($("ajMot").value || "").trim();
-      if (v && !mot){ $("ajMot").focus(); $("ajMot").placeholder = "Escribe el motivo del ajuste"; return; }
+      const id = aj.dataset.ajuste, d = corrD[id + ":aj"] || {pts:0}, v = d.pts | 0, mot = ($("ajMot").value || "").trim();
+      if (v && !mot){ $("ajMot").focus(); $("ajMot").placeholder = "Escribe el motivo del ajuste"; $("ajMot").classList.add("falta"); return; }
       S.ajustes = Object.assign({}, S.ajustes || {});
       if (v) S.ajustes[id] = {pts:v, motivo:mot, por:M.email || "organizador", at:Date.now()}; else delete S.ajustes[id];
-      document.activeElement.blur(); commit();
+      delete corrD[id + ":aj"]; document.activeElement.blur(); commit();
     }
+  });
+  $("ficha").addEventListener("input", e => {
+    if (e.target.id !== "ajMot" || !focus) return;
+    const aj = (S.ajustes || {})[focus] || {}, key = focus + ":aj";
+    const d = corrD[key] = corrD[key] || {pts:+aj.pts || 0, motivo:aj.motivo || ""};
+    d.motivo = e.target.value; e.target.classList.remove("falta");
   });
   $("standBody").addEventListener("click", e => {
     const tr = e.target.closest("tr[data-p]"); if (!tr) return;

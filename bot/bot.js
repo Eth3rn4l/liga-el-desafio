@@ -64,14 +64,17 @@ const LIGAS = { precon: { estado: "estado", cal: "calendario" }, b3: { estado: "
   precon_test: { estado: "estado_test", cal: "calendario_test" }, b3_test: { estado: "estado_b3_test", cal: "calendario_b3_test" } };
 
 const leerMem = () => { try { return JSON.parse(fs.readFileSync(MEM_FILE, "utf8")); } catch (e) { return {}; } };
-const guardarMem = m => fs.writeFileSync(MEM_FILE, JSON.stringify(m, null, 1));
+// Solo se escribe el archivo cuando algo cambió (antes se reescribía cada 15 s)
+let memGuardada = null;
+const guardarMem = m => { const t = JSON.stringify(m, null, 1); if (t === memGuardada) return; memGuardada = t; try { fs.writeFileSync(MEM_FILE, t); } catch (e) { console.error(`${hora()} no se pudo guardar memoria.json:`, e.message); } };
 const hora = () => new Date().toLocaleTimeString("es-CL");
 const espera = ms => new Promise(r => setTimeout(r, ms));
 
 const ESTADO_ARCH = (i => i >= 0 ? ARG[i + 1] : null)(ARG.indexOf("--estado"));
 async function leerLiga() {
   if (ESTADO_ARCH) return { estado: JSON.parse(fs.readFileSync(ESTADO_ARCH, "utf8")) };
-  const ids = Object.values(LIGAS).flatMap(l => [l.estado, l.cal]).join(",");
+  // Solo las ligas que maneja esta sesión (las de testeo, solo si tienen chat configurado)
+  const ids = Object.entries(LIGAS).filter(([l]) => usaLiga(l) && (!l.endsWith("_test") || destinos[l] || SIMULAR)).flatMap(([, l]) => [l.estado, l.cal]).join(",");
   const url = `${CFG.supabaseUrl}/rest/v1/liga?select=id,data&id=in.(${ids})`;
   const r = await fetch(url, { headers: { apikey: CFG.supabaseKey, Accept: "application/json" } });
   if (!r.ok) throw new Error("Supabase respondió " + r.status + ": " + (await r.text()).slice(0, 200));
@@ -156,7 +159,10 @@ async function procesarCola() {
       cola.shift(); destinoManual = null;
       await espera(SIMULAR ? 50 : 2500);
     } catch (e) {
-      console.error(`${hora()} no se pudo enviar (se reintenta en 30 s):`, e.message);
+      // Un mensaje que falla una y otra vez no puede trabar los siguientes: después de 5 intentos se descarta
+      const it = cola[0]; it.intentos = (it.intentos || 0) + 1;
+      if (it.intentos >= 5) { cola.shift(); destinoManual = null; console.error(`${hora()} se descarta un mensaje para ${liga} después de 5 intentos:`, String(e.message || e).split("\n")[0]); continue; }
+      console.error(`${hora()} no se pudo enviar (intento ${it.intentos} de 5, se reintenta en 30 s):`, String(e.message || e).split("\n")[0]);
       await espera(30000);
     }
   }

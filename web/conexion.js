@@ -379,32 +379,80 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     if (T[t].shape === "cols"){ const o = {pid:row.pid}; if (row.deck != null) o.deck = row.deck; return o; }
     return row.data;
   };
-  const watch = {}; // tabla → {rows:Map, subs:[], loading, timer}
+  const watch = {}; // tabla → {rows:Map, subs:[], timer, ids:Set|null}
+  // Filtro de cada consulta: la liga (tablas por liga) y, en "liga", solo los documentos que usa la página
+  // (antes se bajaban los estados de todas las ligas en cada actualización)
+  function filtrar(t, q){
+    const w = watch[t];
+    if (T[t].scoped) q = q.eq("liga", LIGA_ID);
+    if (w && w.ids) q = q.in(T[t].key, Array.from(w.ids));
+    return q;
+  }
   async function load(t){
     const w = watch[t]; if (!w) return;
-    let q = sb.from(t).select("*"); if (T[t].scoped) q = q.eq("liga", LIGA_ID);
-    const {data, error} = await q;
+    const {data, error} = await filtrar(t, sb.from(t).select("*"));
     if (error){ w.subs.forEach(s => s.err && s.err(error)); return; }
     w.rows = new Map((data || []).map(r => [String(r[T[t].key]), fromRow(t, r)]));
-    w.subs.forEach(s => { try { s.cb(w.rows); } catch(e){ console.error(e); } });
+    avisar(t);
   }
-  const reload = t => { const w = watch[t]; if (!w) return; clearTimeout(w.timer); w.timer = setTimeout(() => load(t), 150); };
-  let channel = null;
+  function avisar(t){ const w = watch[t]; w.subs.forEach(s => { try { s.cb(w.rows); } catch(e){ console.error(e); } }); }
+  // Recarga una sola fila (cuando el tiempo real avisa que cambió): mucho menos tráfico que bajar la tabla entera
+  async function loadFila(t, id){
+    const w = watch[t]; if (!w || !w.rows) return reload(t);
+    let q = sb.from(t).select("*").eq(T[t].key, id); if (T[t].scoped) q = q.eq("liga", LIGA_ID);
+    const {data, error} = await q.maybeSingle();
+    if (error) return reload(t);
+    if (data) w.rows.set(String(id), fromRow(t, data)); else w.rows.delete(String(id));
+    avisar(t);
+  }
+  const reload = t => { const w = watch[t]; if (!w) return; clearTimeout(w.timer); w.pend = null; w.timer = setTimeout(() => { w.timer = 0; load(t); }, 150); };
+  const reloadFila = (t, id) => {
+    const w = watch[t]; if (!w) return;
+    if (w.pend === null && w.timer) return;            // ya viene una recarga completa
+    w.pend = w.pend || new Set(); w.pend.add(String(id));
+    clearTimeout(w.timer);
+    w.timer = setTimeout(() => { const ids = w.pend; w.pend = null; w.timer = 0; if (!ids) return; if (ids.size > 5) load(t); else ids.forEach(i => loadFila(t, i)); }, 150);
+  };
+  // Cambio avisado por el tiempo real: se ignora si es de otra liga o de un documento que la página no usa
+  function cambio(t, ev){
+    const w = watch[t]; if (!w) return;
+    const fila = (ev && (ev.new && Object.keys(ev.new).length ? ev.new : ev.old)) || {};
+    const id = fila[T[t].key];
+    if (id == null) return reload(t);
+    if (T[t].scoped && fila.liga != null && fila.liga !== LIGA_ID) return;
+    if (w.ids && !w.ids.has(String(id))) return;
+    reloadFila(t, id);
+  }
+  let channel = null, enVivo = false;
+  const recargarTodo = () => Object.keys(watch).forEach(reload);
   function ensureChannel(){
     if (channel) return;
     channel = sb.channel("liga-desafio");
-    Object.keys(T).forEach(t => channel.on("postgres_changes", {event:"*", schema:"public", table:t}, () => reload(t)));
-    channel.subscribe();
-    // Respaldo por si el tiempo real se corta: refresca cada 20 s y al volver a la pestaña
-    setInterval(() => Object.keys(watch).forEach(reload), 20000);
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) Object.keys(watch).forEach(reload); });
+    Object.keys(T).forEach(t => channel.on("postgres_changes", {event:"*", schema:"public", table:t}, ev => cambio(t, ev)));
+    channel.subscribe(st => {
+      const antes = enVivo; enVivo = st === "SUBSCRIBED";
+      if (enVivo && !antes && Object.keys(watch).some(t => watch[t].rows)) recargarTodo();   // se reconectó: ponerse al día
+    });
+    // Respaldo por si el tiempo real se corta: con la pestaña visible, refresca cada 20 s si no hay tiempo real
+    // (y cada 2 min si lo hay); con la pestaña oculta no consulta nada. Al volver a la pestaña, se pone al día.
+    let ultimo = Date.now();
+    setInterval(() => {
+      if (document.hidden) return;
+      if (Date.now() - ultimo < (enVivo ? 120000 : 20000)) return;
+      ultimo = Date.now(); recargarTodo();
+    }, 5000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden){ ultimo = Date.now(); recargarTodo(); } });
   }
-  function subscribe(t, cb, err){
+  function subscribe(t, cb, err, id){
     if (!T[t]) throw new Error("Tabla desconocida: " + t);
     ensureChannel();
-    const w = watch[t] || (watch[t] = {rows:null, subs:[], timer:0});
+    const w = watch[t] || (watch[t] = {rows:null, subs:[], timer:0, ids: id != null ? new Set() : null});
+    // "liga" se pide documento por documento; si alguien pide la colección entera, se baja completa
+    let nuevo = false;
+    if (id == null) { if (w.ids){ w.ids = null; nuevo = true; } }
+    else if (w.ids && !w.ids.has(String(id))) { w.ids.add(String(id)); nuevo = true; }
     const s = {cb, err}; w.subs.push(s);
-    if (w.rows) cb(w.rows); else reload(t);
+    if (w.rows && !nuevo) cb(w.rows); else reload(t);
     return () => { w.subs = w.subs.filter(x => x !== s); };
   }
   async function mustOk(p){ const {error} = await p; if (error) throw new Error(friendly(error)); }
@@ -412,9 +460,9 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     doc(path){
       const [t, id] = path.split("/");
       return {
-        async set(obj){ await mustOk(sb.from(t).upsert(toRow(t, id, obj), T[t].scoped ? {onConflict: T[t].key + ",liga"} : undefined)); reload(t); },
-        async delete(){ let q = sb.from(t).delete().eq(T[t].key, id); if (T[t].scoped) q = q.eq("liga", LIGA_ID); await mustOk(q); reload(t); },
-        onSnapshot(cb, err){ return subscribe(t, rows => { const v = rows.get(id); cb({exists: v != null, data: () => v}); }, err); }
+        async set(obj){ await mustOk(sb.from(t).upsert(toRow(t, id, obj), T[t].scoped ? {onConflict: T[t].key + ",liga"} : undefined)); reloadFila(t, id); },
+        async delete(){ let q = sb.from(t).delete().eq(T[t].key, id); if (T[t].scoped) q = q.eq("liga", LIGA_ID); await mustOk(q); reloadFila(t, id); },
+        onSnapshot(cb, err){ return subscribe(t, rows => { const v = rows.get(id); cb({exists: v != null, data: () => v}); }, err, t === "liga" ? id : null); }
       };
     },
     collection(t){

@@ -2950,7 +2950,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       const seg = ["w", "a", "e"].map(v => `<button type="button" class="seg-b${est === v ? " on " + v : ""}" data-ct-est="${v}" data-p="${esc(p)}" data-ri="${ri}" data-ti="${ti}" aria-pressed="${est === v}">${EST_TXT[v].split(" (")[0]}</button>`).join("");
       const step = (f, lbl, val) => `<div class="cr-step"><span>${lbl}</span><button type="button" data-ct-step="${f}" data-d="-1" data-p="${esc(p)}" data-ri="${ri}" data-ti="${ti}" ${val <= 0 ? "disabled" : ""} aria-label="Restar ${lbl} a ${esc(pname(p))}">−</button><b>${val}</b><button type="button" data-ct-step="${f}" data-d="1" data-p="${esc(p)}" data-ri="${ri}" data-ti="${ti}" ${val >= max ? "disabled" : ""} aria-label="Sumar ${lbl} a ${esc(pname(p))}">+</button></div>`;
       return `<div class="ct-fila${p === pid ? " yo" : ""}"><div class="ct-nm"><b>${esc(pname(p))}</b><span class="ct-pts${antes !== ahora ? " cambia" : ""}">${antes !== ahora ? `${ptsTxt(antes)} → ` : ""}<b>${ptsTxt(ahora)}</b></span></div>
-        <div class="seg">${seg}</div><div class="cr-steps">${step("k", "Kills", k)}${step("c", "Cmd kills", c)}</div></div>`;
+        <div class="seg">${seg}</div><div class="cr-steps">${step("k", "Kills", k)}</div></div>`;
     };
     const cambio = sig(d) !== sig(r);
     return `<div class="cr editando">${head}<p class="note" style="margin:0">Corrige a cada jugador de la mesa y guarda una sola vez. Solo puede haber un ganador: si marcas a otro, el anterior pasa a eliminado.</p>

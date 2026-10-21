@@ -2415,17 +2415,21 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // ---------- Efectos de la ruleta: sonido, puntero, confeti ----------
   let ruletaAudio = null;
   const sonidoOn = () => { try { return localStorage.getItem("sorteo_sonido") !== "0"; } catch(e){ return true; } };
-  // Salida común con volumen alto y compresor (para que se escuche en parlantes de notebook o TV)
-  let ruletaOut = null;
+  // Salida común: volumen moderado, filtro suave y un eco corto (sonido más limpio y menos agresivo)
+  let ruletaOut = null, ruletaEco = null;
   function audioCtx(){
     try {
       // iPhone: que el sonido salga aunque el celular esté en silencio
       try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}
       if (!ruletaAudio){
-        ruletaAudio = new (window.AudioContext || window.webkitAudioContext)();
-        const comp = ruletaAudio.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4;
-        ruletaOut = ruletaAudio.createGain(); ruletaOut.gain.value = 1.6;
-        ruletaOut.connect(comp); comp.connect(ruletaAudio.destination);
+        const a = ruletaAudio = new (window.AudioContext || window.webkitAudioContext)();
+        const comp = a.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3;
+        const lp = a.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 6000;
+        ruletaOut = a.createGain(); ruletaOut.gain.value = 0.85;
+        ruletaOut.connect(lp); lp.connect(comp); comp.connect(a.destination);
+        // eco suave para el ganador
+        const d = a.createDelay(1); d.delayTime.value = 0.18; const fb = a.createGain(); fb.gain.value = 0.28; const wet = a.createGain(); wet.gain.value = 0.35;
+        ruletaEco = a.createGain(); ruletaEco.connect(d); d.connect(fb); fb.connect(d); d.connect(wet); wet.connect(ruletaOut); ruletaEco.connect(ruletaOut);
       }
       if (ruletaAudio.state !== "running") ruletaAudio.resume().catch(() => {});
       return ruletaAudio;
@@ -2434,25 +2438,37 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // El navegador solo deja sonar después de un toque o clic en la página: se habilita con el primero que ocurra
   // (así suena también en la pantalla/TV aunque el giro se lance desde otro equipo)
   ["pointerdown", "keydown", "touchend"].forEach(ev => document.addEventListener(ev, () => { if (sonidoOn()) audioCtx(); }, {passive:true}));
-  let ultimoTick = 0;
+  let ultimoTick = 0, ruido = null;
+  // Tic de la ruleta: un "toc" suave de madera (seno corto + un poco de ruido filtrado), más grave cuando frena
   function ruletaTick(lento){
     if (!sonidoOn()) return;
-    const now = performance.now(); if (now - ultimoTick < 35) return; ultimoTick = now;
+    const now = performance.now(); if (now - ultimoTick < 40) return; ultimoTick = now;
     const a = audioCtx(); if (!a) return;
-    const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime;
-    o.type = "square"; o.frequency.setValueAtTime(lento ? 1300 : 1700, t0); o.frequency.exponentialRampToValueAtTime(500, t0 + 0.05);
-    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(lento ? 0.7 : 0.45, t0 + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
-    o.connect(g); g.connect(ruletaOut || a.destination); o.start(t0); o.stop(t0 + 0.08);
+    const t0 = a.currentTime;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(lento ? 880 : 1180, t0); o.frequency.exponentialRampToValueAtTime(lento ? 520 : 700, t0 + 0.04);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(lento ? 0.22 : 0.14, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+    o.connect(g); g.connect(ruletaOut || a.destination); o.start(t0); o.stop(t0 + 0.07);
+    if (!ruido){ ruido = a.createBuffer(1, Math.floor(a.sampleRate * 0.03), a.sampleRate); const ch = ruido.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / ch.length, 3); }
+    const n = a.createBufferSource(), bp = a.createBiquadFilter(), gn = a.createGain();
+    n.buffer = ruido; bp.type = "bandpass"; bp.frequency.value = lento ? 1800 : 2600; bp.Q.value = 1.2; gn.gain.value = lento ? 0.08 : 0.05;
+    n.connect(bp); bp.connect(gn); gn.connect(ruletaOut || a.destination); n.start(t0);
   }
+  // Ganador: campanitas suaves en arpegio (tipo notificación moderna) y un acorde que se desvanece
   function fanfarria(){
     if (!sonidoOn()) return;
     const a = audioCtx(); if (!a) return;
-    [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5].forEach((f, i) => {
-      const o = a.createOscillator(), g = a.createGain(), t0 = a.currentTime + i * (i < 4 ? 0.12 : 0.18), d = i === 5 ? 0.9 : 0.16;
-      o.type = "square"; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
-      o.connect(g); g.connect(ruletaOut || a.destination); o.start(t0); o.stop(t0 + d + 0.02);
-    });
+    const t0 = a.currentTime + 0.02, dest = ruletaEco || ruletaOut || a.destination;
+    const nota = (f, t, dur, vol, tipo) => {
+      const o = a.createOscillator(), o2 = a.createOscillator(), g = a.createGain();
+      o.type = tipo || "sine"; o.frequency.value = f; o2.type = "sine"; o2.frequency.value = f * 2.01;   // brillo leve
+      const g2 = a.createGain(); g2.gain.value = 0.18;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); o2.connect(g2); g2.connect(g); g.connect(dest);
+      o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+    };
+    [659.25, 783.99, 987.77, 1318.5].forEach((f, i) => nota(f, t0 + i * 0.09, 0.55, 0.16));
+    [523.25, 659.25, 783.99, 987.77].forEach(f => nota(f, t0 + 0.42, 1.6, 0.07, "triangle"));
   }
   function golpePuntero(){
     const p = document.querySelector(".wheel-box .pointer"); if (!p) return;

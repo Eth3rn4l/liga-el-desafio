@@ -556,6 +556,17 @@ canvas.confeti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:no
 .winner-card .eyebrow{font-family:var(--f-num);letter-spacing:.2em;font-size:12px;color:var(--gold);text-transform:uppercase}
 .winner-card .wn{font-family:var(--f-display);font-weight:900;font-size:clamp(28px,5vw,44px);text-transform:uppercase;line-height:1.1;margin:6px 0}
 @keyframes pop{0%{transform:scale(.9);opacity:0}100%{transform:scale(1);opacity:1}}
+.winner-card{position:relative;overflow:hidden;isolation:isolate}
+.winner-card .wc-body{position:relative;z-index:1}
+.wc-art{position:absolute;inset:0;z-index:0;display:flex}
+.wc-art span{flex:1;background-size:cover;background-position:center 30%;animation:artZoom 9s ease-out both}
+.wc-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,9,9,.35) 0%,rgba(11,9,9,.55) 45%,rgba(11,9,9,.9) 100%),radial-gradient(120% 120% at 50% 0%,rgba(233,180,76,.25),transparent 60%)}
+.winner-card.con-arte{min-height:220px;display:flex;align-items:flex-end;justify-content:center}
+.winner-card.con-arte .wc-body{text-shadow:0 2px 12px rgba(0,0,0,.85)}
+.winner-card.con-arte .wn{color:#fff}
+body.display #sorteo .winner-card.con-arte{min-height:360px}
+@keyframes artZoom{from{transform:scale(1.12)}to{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.wc-art span{animation:none}}
 @media (prefers-reduced-motion:reduce){.winner-card{animation:none}}
 .win-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .filt{display:flex;flex-direction:column;gap:6px}
@@ -2621,7 +2632,14 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const wc = $("winnerCard");
     if (!spinning && showWinner && gan.includes(showWinner)){
       wc.hidden = false;
-      wc.innerHTML = `<div class="eyebrow">Ganador del sorteo · ${gan.indexOf(showWinner) + 1}°</div><div class="wn">${esc(pname(showWinner))}</div>${cmdLine(showWinner, true)}`;
+      // De fondo, la ilustración del comandante del ganador (Scryfall); con partner, las dos lado a lado
+      const d = deckOf(showWinner), cmd = d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "";
+      const arts = cmd ? cmd.split(" + ").map(n => n.split(" // ")[0].trim()).filter(Boolean).slice(0, 2) : [];
+      const fondo = arts.length ? `<div class="wc-art n${arts.length}" aria-hidden="true">${arts.map(n => `<span style="background-image:url('https://api.scryfall.com/cards/named?exact=${encodeURIComponent(n).replace(/'/g, "%27")}&format=image&version=art_crop')"></span>`).join("")}</div>` : "";
+      const clave = showWinner + "|" + cmd;
+      if (wc.dataset.k !== clave){ wc.dataset.k = clave;
+        wc.innerHTML = `${fondo}<div class="wc-body"><div class="eyebrow">Ganador del sorteo · ${gan.indexOf(showWinner) + 1}°</div><div class="wn">${esc(pname(showWinner))}</div>${cmdLine(showWinner, true)}</div>`; }
+      wc.classList.toggle("con-arte", !!arts.length);
     } else if (!spinning) wc.hidden = true;
   }
   function spin(){

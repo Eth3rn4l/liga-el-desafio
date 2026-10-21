@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0"
-node bot.js --grupos
+node --no-deprecation bot.js --grupos
 pause

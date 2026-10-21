@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0"
-node bot.js --prueba
+node --no-deprecation bot.js --prueba
 pause

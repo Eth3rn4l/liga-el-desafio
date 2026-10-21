@@ -467,15 +467,27 @@ client.on("ready", alListo);
 // Si getChats falla (pasa con algunas versiones de WhatsApp Web), los grupos se leen directo de la memoria de WhatsApp Web
 async function gruposDirecto() {
   const page = client.pupPage; if (!page) return null;
-  const gs = await page.evaluate(() => {
-    const C = window.Store && window.Store.Chat; if (!C) return null;
-    const arr = C.getModelsArray ? C.getModelsArray() : (C.models || C._models || []);
-    return arr.filter(c => c && c.id && (c.id.server === "g.us" || /@g\.us$/.test(c.id._serialized || ""))).map(c => ({
-      id: c.id._serialized || (c.id.user + "@g.us"),
-      name: c.formattedTitle || c.name || (c.groupMetadata && c.groupMetadata.subject) || (c.contact && c.contact.name) || ""
+  const r = await page.evaluate(() => {
+    const errores = [];
+    const arr = col => { if (!col) return []; try { return col.getModelsArray ? col.getModelsArray() : (col.models || col._models || []); } catch (e) { errores.push(String(e && e.message || e)); return []; } };
+    const req = n => { try { return window.require ? window.require(n) : null; } catch (e) { return null; } };
+    const W = req("WAWebCollections") || {};
+    const S = window.Store || {};
+    const fuentes = [S.Chat, W.Chat, S.GroupMetadata, W.GroupMetadata];
+    const out = {};
+    fuentes.forEach(col => arr(col).forEach(c => {
+      try {
+        const id = c && c.id && (c.id._serialized || (c.id.user ? c.id.user + "@" + (c.id.server || "g.us") : ""));
+        if (!id || !/@g\.us$/.test(id)) return;
+        const name = c.formattedTitle || c.subject || c.name || (c.groupMetadata && c.groupMetadata.subject) || "";
+        if (!(id in out) || (!out[id] && name)) out[id] = name;
+      } catch (e) { errores.push(String(e && e.message || e)); }
     }));
+    return { grupos: Object.entries(out).map(([id, name]) => ({ id, name })), errores: errores.slice(0, 2), store: !!window.Store, req: !!window.require };
   });
-  return gs ? gs.map(g => ({ id: { _serialized: g.id }, name: g.name, isGroup: true })) : null;
+  if (!r) return null;
+  if (!r.grupos.length) console.log(`${hora()} (lectura directa: Store=${r.store} require=${r.req}${r.errores.length ? " · " + r.errores.join(" | ") : ""})`);
+  return r.grupos.map(g => ({ id: { _serialized: g.id }, name: g.name || "(grupo sin nombre)", isGroup: true }));
 }
 async function listarGrupos() {
   let ultimoError = "";

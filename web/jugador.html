@@ -392,6 +392,8 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .sf-slot.campeon{border-color:var(--gold);background:linear-gradient(180deg,rgba(233,180,76,.18),var(--surface-2));box-shadow:0 0 0 1px var(--gold),0 6px 24px rgba(233,180,76,.25)}
 .sf-slot.campeon b{color:var(--gold)}
 .sf-campeones{display:flex;flex-direction:column;gap:10px;margin:0 0 16px}
+.sf-campeon,.sf-slot.campeon{cursor:pointer;transition:transform .15s}
+.sf-campeon:hover,.sf-slot.campeon:hover{transform:translateY(-2px)}
 .sf-campeon{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:16px;border:1px solid var(--gold);background:radial-gradient(120% 140% at 0% 0%,rgba(233,180,76,.28),rgba(233,180,76,.06) 60%,var(--surface));box-shadow:0 8px 30px rgba(233,180,76,.18)}
 .sf-campeon .corona{font-size:44px;line-height:1;filter:drop-shadow(0 2px 8px rgba(233,180,76,.5))}
 .sf-campeon > div{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -2475,6 +2477,40 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     };
     requestAnimationFrame(fr);
   }
+  // Challa y serpentinas al pasar el mouse o tocar al campeón del salón de la fama
+  let ultimaChalla = 0;
+  function challa(el){
+    const now = performance.now(); if (now - ultimaChalla < 1200) return; ultimaChalla = now;
+    const c = document.createElement("canvas"); c.className = "confeti"; document.body.appendChild(c);
+    const dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+    c.width = W * dpr; c.height = H * dpr; const g = c.getContext("2d"); g.scale(dpr, dpr);
+    const b = el.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + Math.min(b.height / 2, 60);
+    const cols = ["#e9b44c", "#ffffff", "#c8321a", "#f7d27a", "#ff6b4a", "#6fcf8a", "#7cc4ff"];
+    const col = () => cols[Math.floor(Math.random() * cols.length)];
+    const ps = Array.from({length: 130}, () => { const a = -Math.PI / 2 + (Math.random() - .5) * 2.4, v = 5 + Math.random() * 9;
+      return {x:cx + (Math.random() - .5) * b.width * .6, y:cy, vx:Math.cos(a) * v, vy:Math.sin(a) * v, w:5 + Math.random() * 6, h:3 + Math.random() * 4, r:Math.random() * 6, vr:(Math.random() - .5) * .45, c:col()}; });
+    // serpentinas: cintas onduladas que suben y caen
+    const ss = Array.from({length: 16}, () => { const a = -Math.PI / 2 + (Math.random() - .5) * 2, v = 7 + Math.random() * 8;
+      return {x:cx + (Math.random() - .5) * b.width * .5, y:cy, vx:Math.cos(a) * v, vy:Math.sin(a) * v, f:Math.random() * 6, len:60 + Math.random() * 70, c:col(), pts:[]}; });
+    const t0 = performance.now(), DUR = 3600;
+    const fr = t1 => {
+      const t = t1 - t0, al = Math.max(0, 1 - t / DUR); g.clearRect(0, 0, W, H);
+      ps.forEach(p => { p.vy += 0.28; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.globalAlpha = al; g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w * Math.abs(Math.cos(p.r * 2)) + 1, p.h); g.restore(); });
+      ss.forEach(s_ => { s_.vy += 0.22; s_.vx *= 0.985; s_.x += s_.vx + Math.sin(t / 90 + s_.f) * 1.6; s_.y += s_.vy;
+        s_.pts.unshift([s_.x, s_.y]); if (s_.pts.length > s_.len / 4) s_.pts.pop();
+        g.save(); g.globalAlpha = al; g.strokeStyle = s_.c; g.lineWidth = 3; g.lineCap = "round"; g.beginPath();
+        s_.pts.forEach(([x, y], i) => { const ox = Math.sin(i * .7 + t / 70 + s_.f) * 5; i ? g.lineTo(x + ox, y) : g.moveTo(x + ox, y); }); g.stroke(); g.restore(); });
+      if (t < DUR) requestAnimationFrame(fr); else c.remove();
+    };
+    requestAnimationFrame(fr);
+  }
+  document.addEventListener("mouseover", e => {
+    const el = e.target.closest(".sf-campeon, .sf-slot.campeon"); if (!el) return;
+    if (e.relatedTarget && el.contains(e.relatedTarget)) return;   // solo al entrar
+    challa(el);
+  });
+  document.addEventListener("click", e => { const el = e.target.closest(".sf-campeon, .sf-slot.campeon"); if (el && !e.target.closest("button")) challa(el); });
   // Giro con suspenso: amague hacia atrás, arranque fuerte, frenado largo, se pasa un poco y vuelve al ganador
   function animateSpin(sp){
     const list = sp.list, n = list.length, i = list.indexOf(sp.winner);

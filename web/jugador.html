@@ -2339,7 +2339,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <dt>+${c.win}</dt><dd><b>Ganar la mesa</b>El ganador recibe ${c.win} puntos.</dd>
         <dt>+${c.kill}</dt><dd><b>Eliminar a un jugador</b>Por cada jugador eliminado.</dd>
         <dt>+${c.surv}</dt><dd><b>Sobrevivir a la mesa</b>Seguir vivo al terminar el tiempo (empate).</dd>
-        <dt>+${CMDK(c)}</dt><dd><b>Kill de comandante</b>Por cada jugador eliminado con daño de comandante (máximo ${CMDCAP(c)} puntos por mesa).</dd>
+        <dt hidden>+${CMDK(c)}</dt><dd hidden><b>Kill de comandante</b>Por cada jugador eliminado con daño de comandante (máximo ${CMDCAP(c)} puntos por mesa).</dd>
       </dl>
       <p class="note" style="margin:0">Máximo ${c.cap} puntos por jugador en cada mesa. Las kills del ganador también se anotan: cuentan para el desempate.</p>
     </div>
@@ -3109,7 +3109,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <button type="button" class="tg ${w ? "on win" : ""}" data-act="win" data-p="${p}" aria-pressed="${w}">Ganó</button>
           <button type="button" class="tg ${al ? "on" : ""}" data-act="alive" data-p="${p}" aria-pressed="${al}">${al ? "Vivo" : "Eliminado"}</button>
           <span class="kc"><button type="button" data-act="k-" data-p="${p}" aria-label="Quitar kill a ${esc(pname(p))}">−</button><b>${k}</b><span>kills</span><button type="button" data-act="k+" data-p="${p}" aria-label="Sumar kill a ${esc(pname(p))}">+</button></span>
-          <span class="kc" title="Kills por daño de comandante (columna Cmd Kills del Excel): cada una suma ${CMDK(S.cfg)} punto, máximo ${CMDCAP(S.cfg)} por mesa"><button type="button" data-act="c-" data-p="${p}" aria-label="Quitar kill de comandante a ${esc(pname(p))}">−</button><b>${ckills(d, p)}</b><span>cmd kills</span><button type="button" data-act="c+" data-p="${p}" aria-label="Sumar kill de comandante a ${esc(pname(p))}">+</button></span>
+          ${B3 ? `<span class="kc" title="Kills por daño de comandante (columna Cmd Kills del Excel): cada una suma ${CMDK(S.cfg)} punto, máximo ${CMDCAP(S.cfg)} por mesa"><button type="button" data-act="c-" data-p="${p}" aria-label="Quitar kill de comandante a ${esc(pname(p))}">−</button><b>${ckills(d, p)}</b><span>cmd kills</span><button type="button" data-act="c+" data-p="${p}" aria-label="Sumar kill de comandante a ${esc(pname(p))}">+</button></span>` : ""}
           ${B3 ? `<button type="button" class="tg ${young(d, p) ? "on young" : ""}" data-act="young" data-p="${p}" aria-pressed="${young(d, p)}" ${al ? "disabled" : ""} title="Eliminado antes de terminar su 6.º turno">Muy joven</button>
           <span class="kc" title="Eliminaciones que hizo antes de que la víctima terminara su 6.º turno"><button type="button" data-act="b-" data-p="${p}" aria-label="Quitar eliminación temprana a ${esc(pname(p))}">−</button><b>${brute(d, p)}</b><span>tempranas</span><button type="button" data-act="b+" data-p="${p}" aria-label="Sumar eliminación temprana a ${esc(pname(p))}">+</button></span>
           <button type="button" class="tg ${dq(d, p) ? "on dq" : ""}" data-act="dq" data-p="${p}" aria-pressed="${dq(d, p)}" title="Controló la mesa o hizo combo antes del turno 7 del primer jugador">No es tu lugar</button>` : ""}
@@ -3310,7 +3310,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
     $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V victorias · K kills · S rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.${ADMUI() ? " Organizador: toca un jugador para corregir sus puntos ronda por ronda." : ""}`;
-    $("rulesHint").innerHTML = `Puntaje por mesa: ganar <b>${c.win}</b> · Cada kill <b>${c.kill}</b> · Sobrevivir al tiempo <b>${c.surv}</b> · Kill de comandante <b>+${CMDK(c)}</b> · Máximo <b>${c.cap}</b> por jugador.${B3 ? ` Muy joven para morir <b>+${c.joven || 0}</b> · Demasiado bruto <b>−${c.bruto || 0}</b> por eliminación temprana · No es tu lugar: <b>0</b> en la mesa.` : ""} El número de cada asiento es el orden de turno.` +
+    $("rulesHint").innerHTML = `Puntaje por mesa: ganar <b>${c.win}</b> · Cada kill <b>${c.kill}</b> · Sobrevivir al tiempo <b>${c.surv}</b> · Máximo <b>${c.cap}</b> por jugador.${B3 ? ` Muy joven para morir <b>+${c.joven || 0}</b> · Demasiado bruto <b>−${c.bruto || 0}</b> por eliminación temprana · No es tu lugar: <b>0</b> en la mesa.` : ""} El número de cada asiento es el orden de turno.` +
       (M.admin ? " Los jugadores reportan desde su celular; cuando toda la mesa reporta lo mismo, el resultado se registra solo." : "");
 
     const ficha = $("ficha");

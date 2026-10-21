@@ -134,6 +134,13 @@ async function enviarTexto(liga, texto) {
   if (SIMULAR) console.log(`\n----- [${liga}] ${hora()} -----\n${texto}\n`);
   else { await enviar(destinos[liga], texto); console.log(`${hora()} enviado a ${liga}: ${texto.split("\n")[0]}`); }
 }
+async function enviarImagen(liga, msg) {
+  if (!fs.existsSync(msg.archivo)) { console.error(`${hora()} no encontré la imagen ${msg.archivo}`); return; }
+  if (SIMULAR) { console.log(`\n----- [${liga}] ${hora()} · imagen ${path.basename(msg.archivo)} -----${msg.caption ? "\n" + msg.caption : ""}\n`); return; }
+  const { MessageMedia } = require("whatsapp-web.js");
+  await enviar(destinos[liga], MessageMedia.fromFilePath(msg.archivo), msg.caption ? { caption: msg.caption } : {});
+  console.log(`${hora()} enviado a ${liga}: imagen ${path.basename(msg.archivo)}`);
+}
 async function procesarCola() {
   if (enviando) return; enviando = true;
   while (cola.length) {
@@ -141,6 +148,7 @@ async function procesarCola() {
     try {
       if (typeof msg === "string") await enviarTexto(liga, msg);
       else if (msg.tipo === "mesas") await enviarMesas(liga, msg, S);
+      else if (msg.tipo === "imagen") await enviarImagen(liga, msg);
       cola.shift();
       await espera(SIMULAR ? 50 : 2500);
     } catch (e) {
@@ -196,14 +204,15 @@ const MENU = [
   ["5", "Enviar el standing"],
   ["6", "Enviar el podio / cierre de la fecha"],
   ["7", "Enviar un mensaje escrito por ti"],
-  ["8", "Pausar / reanudar los mensajes automáticos"],
-  ["9", "Ver cómo va la fecha"],
+  ["8", "Enviar una imagen (Código de la mesa u otra)"],
+  ["9", "Pausar / reanudar los mensajes automáticos"],
+  ["10", "Ver cómo va la fecha"],
   ["0", "Mostrar este menú"]
 ];
 function mostrarMenu() {
   console.log("\n========== COMANDOS DEL BOT ==========");
   MENU.forEach(([n, t]) => console.log(`  ${n}) ${t}`));
-  console.log("  Escribe el número y presiona Enter." + (pausado ? "\n  ⏸  Mensajes automáticos EN PAUSA (opción 8 para reanudar)" : ""));
+  console.log("  Escribe el número y presiona Enter." + (pausado ? "\n  ⏸  Mensajes automáticos EN PAUSA (opción 9 para reanudar)" : ""));
   console.log("======================================");
 }
 const lineas = []; let esperandoLinea = null, stdinCerrado = false;
@@ -224,12 +233,13 @@ async function elegirLigaMenu() {
   if (!l) console.log("Cancelado.");
   return l || null;
 }
-const resumen = msg => typeof msg === "string" ? msg : `[${msg.tipo === "mesas" ? "imágenes de las mesas" : "mensaje"}]\n${msg.respaldo || msg.texto}`;
+const DIR_IMG = path.join(DIR, "imagenes-para-enviar");
+const resumen = msg => typeof msg === "string" ? msg : msg.tipo === "imagen" ? `[imagen: ${path.basename(msg.archivo)}]${msg.caption ? "\n" + msg.caption : ""}` : `[${msg.tipo === "mesas" ? "imágenes de las mesas" : "mensaje"}]\n${msg.respaldo || msg.texto}`;
 async function comando(op) {
   op = String(op || "").trim();
   if (!op) return;
   if (op === "0" || /^(m|menu|menú|ayuda|\?)$/i.test(op)) return mostrarMenu();
-  if (op === "8") {
+  if (op === "9") {
     pausado = !pausado;
     console.log(pausado ? `${hora()} ⏸  Mensajes automáticos en PAUSA. Los comandos del menú siguen funcionando.` : `${hora()} ▶  Mensajes automáticos reanudados.`);
     return;
@@ -244,7 +254,7 @@ async function comando(op) {
   const ri = Math.max(0, Math.min(S.cur | 0, (S.rounds || []).length - 1));
   const ronda = (S.rounds || [])[ri], hayMesas = ronda && ronda.tables && ronda.tables.length;
   const fecha = S.fecha ? S.fecha.split("-").reverse().join("/") : "sin fecha";
-  if (op === "9") {
+  if (op === "10") {
     console.log(`\n${NOMBRE_LIGA[liga]} · ${fecha}`);
     console.log(`  Fase: ${S.phase === "inscripcion" ? "inscripciones abiertas" : S.closedSig ? "fecha cerrada" : "jugando"} · ${S.players.length} jugadores`);
     if (hayMesas) console.log(`  Ronda ${ri + 1} de ${S.cfg.rounds}: ${ronda.tables.filter(t => t.result).length} de ${ronda.tables.length} mesas reportadas`);
@@ -281,6 +291,17 @@ async function comando(op) {
     const t = ls.join("\n").trim();
     if (!t) { console.log("Mensaje vacío, no se envía."); return; }
     msgs = [t]; que = "tu mensaje";
+  } else if (op === "8") {
+    // Imágenes guardadas en la carpeta "imagenes-para-enviar" (puedes agregar las que quieras)
+    fs.mkdirSync(DIR_IMG, { recursive: true });
+    const arch = fs.readdirSync(DIR_IMG).filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f)).sort();
+    if (!arch.length) { console.log(`No hay imágenes. Copia la imagen en la carpeta: ${DIR_IMG}`); return; }
+    arch.forEach((f, i) => console.log(`  ${i + 1}) ${f}`));
+    const r = await leerLinea("¿Qué imagen? (número, Enter = cancelar): ");
+    const f = arch[(parseInt(r, 10) || 0) - 1];
+    if (!f) { console.log("Cancelado."); return; }
+    const cap = await leerLinea("Texto que acompaña la imagen (Enter = sin texto): ");
+    msgs = [{ tipo: "imagen", archivo: path.join(DIR_IMG, f), caption: (cap || "").trim() }]; que = `la imagen ${f}`;
   }
   console.log(`\n----- Vista previa (${NOMBRE_LIGA[liga]}) -----\n${msgs.map(resumen).join("\n\n")}\n-------------------------------`);
   const ok = await leerLinea(`¿Enviar ${que} al grupo? (s/n): `);

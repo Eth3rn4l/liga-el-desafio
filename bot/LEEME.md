@@ -64,8 +64,9 @@ Con el bot andando, escribe un número en su ventana y presiona **Enter**:
 | 5 | Envía el standing (te pregunta cuántos jugadores mostrar) |
 | 6 | Envía el podio (si la fecha aún no se cierra, sale como "Podio parcial") |
 | 7 | Envía un mensaje que escribes tú (para varias líneas, termina con una línea con solo un punto `.`) |
-| 8 | Pausa / reanuda los mensajes automáticos |
-| 9 | Muestra cómo va la fecha (ronda, mesas reportadas, mensajes en espera) |
+| 8 | Envía una imagen de la carpeta **imagenes-para-enviar** (ya viene el *Código de la Mesa*; puedes agregar más imágenes ahí) |
+| 9 | Pausa / reanuda los mensajes automáticos |
+| 10 | Muestra cómo va la fecha (ronda, mesas reportadas, mensajes en espera) |
 | 0 | Muestra el menú otra vez |
 
 Antes de enviar, el bot muestra una vista previa y pregunta **s/n**. Si maneja las dos ligas, pregunta a cuál.

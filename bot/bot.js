@@ -200,17 +200,22 @@ async function iniciar() {
 // Menú principal: se elige el grupo. Dentro del grupo: se elige qué mensaje mandar (0 = volver).
 let pausado = false, gruposMenu = null;
 const DIR_IMG = path.join(DIR, "imagenes-para-enviar");
+// Opciones que se muestran → acción interna
 const MENU_GRUPO = [
-  ["1", "Mesas de la ronda actual (imágenes)"],
-  ["2", "Mesas de la ronda actual (texto)"],
-  ["3", "Mensaje para inscribirse"],
-  ["4", "Resultados de la ronda actual"],
-  ["5", "Standing"],
-  ["6", "Podio / cierre de la fecha"],
-  ["7", "Mensaje escrito por ti"],
-  ["8", "Imagen (Código de la mesa u otra)"],
-  ["0", "Volver (elegir otra liga)"]
+  ["1", "Mesas de la ronda actual", "1"],
+  ["2", "Mensaje para inscribirse", "3"],
+  ["3", "Standing", "5"],
+  ["4", "Mensaje escrito por ti", "7"],
+  ["5", "Imagen (Código de la mesa u otra)", "8"],
+  ["0", "Volver", null]
 ];
+// Pantalla limpia en cada menú: solo queda el menú y el último aviso
+let aviso = "", nLog = 0;
+const logOriginal = console.log; console.log = (...a) => { nLog++; logOriginal(...a); };
+function limpiar() {
+  if (process.stdout.isTTY) process.stdout.write("\x1Bc");
+  if (aviso) { logOriginal(aviso); aviso = ""; }
+}
 const lineas = []; let esperandoLinea = null, stdinCerrado = false;
 function leerLinea(txt) {
   if (txt) process.stdout.write(txt);
@@ -238,15 +243,13 @@ async function cargarGruposMenu(forzar) {
 }
 async function mostrarMenu(forzar) {
   const gs = await cargarGruposMenu(forzar);
+  limpiar();
   console.log("\n============ MENÚ PRINCIPAL ============");
-  console.log("  Elige el grupo al que quieres mandar algo:");
+  console.log("  Elige el grupo:");
   gs.forEach((g, i) => { const l = ligaDeGrupo(g.id); console.log(`  ${i + 1}) ${g.nombre}${l ? (l.endsWith("_test") ? "  ★ TESTEO" : "  ★ " + NOMBRE_LIGA[l]) : ""}`); });
   if (!gs.length) console.log("  (no encontré grupos; escribe R para volver a buscar)");
   console.log("  ----------------------------------------");
   console.log(`  P) ${pausado ? "Reanudar" : "Pausar"} los mensajes automáticos`);
-  console.log("  E) Ver cómo va la fecha");
-  console.log("  R) Volver a cargar la lista de grupos");
-  console.log("  0) Mostrar este menú");
   if (pausado) console.log("  ⏸  Mensajes automáticos EN PAUSA");
   console.log("========================================");
 }
@@ -337,6 +340,7 @@ async function armarMensaje(op, grupo, ligaSel) {
 async function menuGrupo(grupo) {
   for (;;) {
     const ls = ligasConDatos();
+    limpiar();
     console.log(`\n------ ${grupo.nombre} ------`);
     console.log("  ¿De qué liga quieres mandar?");
     ls.forEach((l, i) => console.log(`  ${i + 1}) ${(NOMBRE_LIGA[l] || l).replace("🧪 ", "")}`));
@@ -346,7 +350,7 @@ async function menuGrupo(grupo) {
     const o = r.trim();
     if (o === "0" || /^(v|volver)$/i.test(o)) return mostrarMenu();
     const liga = ls[(parseInt(o, 10) || 0) - 1];
-    if (!liga || !/^\d+$/.test(o)) { console.log(`  No existe la opción "${o}".`); continue; }
+    if (!liga || !/^\d+$/.test(o)) { aviso = `  No existe la opción "${o}".`; continue; }
     const fin = await menuMensajes(grupo, liga);
     if (fin === "salir") return;
   }
@@ -354,39 +358,42 @@ async function menuGrupo(grupo) {
 async function menuMensajes(grupo, liga) {
   const titulo = `${grupo.nombre} · ${(NOMBRE_LIGA[liga] || liga).replace("🧪 ", "")}`;
   for (;;) {
+    limpiar();
     console.log(`\n------ ${titulo} ------`);
-    console.log("  ¿Qué mensaje quieres mandar?");
+    console.log("  ¿Qué quieres mandar?");
     MENU_GRUPO.forEach(([n, t]) => console.log(`  ${n}) ${t}`));
-    const op = await leerLinea(`\n[${titulo}] Opción (0 = volver): `);
+    const op = await leerLinea(`\n[${titulo}] Opción: `);
     if (op === null) return "salir";
     const o = op.trim();
     if (o === "0" || /^(v|volver)$/i.test(o)) return;
-    if (!MENU_GRUPO.some(([n]) => n === o)) { console.log(`  No existe la opción "${o}".`); continue; }
-    const a = await armarMensaje(o, grupo, liga); if (!a) continue;
+    const item = MENU_GRUPO.find(([n]) => n === o);
+    if (!item || !item[2]) { aviso = `  No existe la opción "${o}".`; continue; }
+    const n0 = nLog;
+    const a = await armarMensaje(item[2], grupo, liga);
+    if (!a) { if (nLog > n0) await leerLinea("  (Enter para seguir) "); continue; }
     console.log(`\n----- Vista previa → ${grupo.nombre} -----\n${a.msgs.map(resumen).join("\n\n")}\n-------------------------------`);
     const ok = await leerLinea(`  ¿Enviar ${a.que} a "${grupo.nombre}"? (s/n): `);
-    if (!/^s/i.test(ok || "")) { console.log("  No se envió."); continue; }
+    if (!/^s/i.test(ok || "")) { aviso = "  No se envió."; continue; }
     // Si las mesas se mandan a mano al grupo de la liga, el bot no las vuelve a mandar solo al partir la ronda
     if (a.mesas != null && destinos[a.liga] === grupo.id) { const m = mem[a.liga]; if (m && m.fecha === (a.S.fecha || "sin-fecha")) { m.hecho[`r${a.mesas}:armada`] = 1; guardarMem(mem); } }
     a.msgs.forEach(msg => cola.push({ liga: a.liga, msg, S: a.S, to: grupo.id }));
-    console.log(`${hora()} En cola: ${a.que} → ${grupo.nombre}.`);
+    aviso = `  ✓ ${hora()} Enviando ${a.que} a "${grupo.nombre}".`;
     procesarCola();
   }
 }
 async function comando(op) {
   op = String(op || "").trim();
-  if (!op) return;
-  if (op === "0" || /^(m|menu|menú|ayuda|\?)$/i.test(op)) return mostrarMenu();
+  if (!op || op === "0" || /^(m|menu|menú|ayuda|\?)$/i.test(op)) return mostrarMenu();
   if (/^p$/i.test(op)) {
     pausado = !pausado;
-    console.log(pausado ? `${hora()} ⏸  Mensajes automáticos en PAUSA. El menú sigue funcionando.` : `${hora()} ▶  Mensajes automáticos reanudados.`);
-    return;
+    aviso = pausado ? `  ⏸  ${hora()} Mensajes automáticos en PAUSA.` : `  ▶  ${hora()} Mensajes automáticos reanudados.`;
+    return mostrarMenu();
   }
-  if (/^e$/i.test(op)) return verFecha();
+  if (/^e$/i.test(op)) { await verFecha(); await leerLinea("  (Enter para seguir) "); return mostrarMenu(); }
   if (/^r$/i.test(op)) { console.log("Buscando grupos…"); return mostrarMenu(true); }
   const gs = await cargarGruposMenu();
   const g = gs[(parseInt(op, 10) || 0) - 1];
-  if (!g || !/^\d+$/.test(op)) { console.log(`No existe la opción "${op}". Escribe 0 para ver el menú.`); return; }
+  if (!g || !/^\d+$/.test(op)) { aviso = `  No existe la opción "${op}".`; return mostrarMenu(); }
   return menuGrupo(g);
 }
 let menuIniciado = false;
@@ -399,7 +406,7 @@ function iniciarMenu() {
   (async () => {
     await mostrarMenu();
     for (;;) {
-      const l = await leerLinea(lineas.length ? "" : "\nElige un grupo (número), P, E, R o 0: ");
+      const l = await leerLinea(lineas.length ? "" : "\nGrupo (número) o P: ");
       if (l === null) break;
       try { await comando(l); } catch (e) { console.error("Error en el comando:", e.message); }
     }

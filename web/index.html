@@ -154,19 +154,22 @@ td.mesa-c{color:var(--muted);font-family:var(--f-num)}
 /* Admin */
 details.admin{background:var(--surface);border:1px solid var(--line);border-radius:14px}
 details.admin > summary{cursor:pointer;padding:14px 16px;font-family:var(--f-display);font-weight:900;text-transform:uppercase;letter-spacing:.04em;list-style:none;display:flex;justify-content:space-between}
-details.admin > summary::after{content:"+";color:var(--muted);font-weight:400}
+details.admin > summary{align-items:center;gap:10px;flex-wrap:wrap}
+details.admin > summary::after{content:"";flex:none;width:10px;height:10px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s}
+details.admin[open] > summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
 details.admin[open] > summary::after{content:"–"}
 .admin-body{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
 .adm-sub{align-self:center;font-family:var(--f-body,inherit);font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:12px;margin-left:10px;flex:1}
 details.adm-sec{border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
-details.adm-sec > summary{cursor:pointer;list-style:none;display:flex;gap:12px;align-items:center;padding:12px 14px}
+details.adm-sec > summary{cursor:pointer;list-style:none;display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:12px;transition:background .15s}
+details.adm-sec > summary:hover{background:rgba(255,255,255,.03)}
 details.adm-sec > summary::-webkit-details-marker{display:none}
-details.adm-sec > summary::after{content:"Abrir";margin-left:auto;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px;flex:none}
-details.adm-sec[open] > summary::after{content:"Cerrar"}
-details.adm-sec > summary .ic{font-size:22px;flex:none}
-details.adm-sec > summary > span:nth-child(2){display:flex;flex-direction:column;gap:2px;min-width:0}
-details.adm-sec > summary b{font-size:15px}
-details.adm-sec > summary small{color:var(--muted);font-size:12px}
+details.adm-sec > summary::after{content:"";margin-left:auto;flex:none;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s}
+details.adm-sec[open] > summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+details.adm-sec[open] > summary{border-bottom-left-radius:0;border-bottom-right-radius:0}
+details.adm-sec > summary > span:first-child{display:flex;flex-direction:column;gap:3px;min-width:0}
+details.adm-sec > summary b{font-size:15px;line-height:1.25}
+details.adm-sec > summary small{color:var(--muted);font-size:12.5px;line-height:1.35}
 details.adm-sec.peligro{border-color:rgba(226,71,44,.35)}
 details.mine-claim > summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
 details.mine-claim > summary::-webkit-details-marker{display:none}
@@ -193,6 +196,19 @@ body.display .guia{display:none!important}
 .jz.con{border-color:rgba(255,107,94,.45)}.jz.editando{border-color:var(--gold)}
 .jz-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;justify-content:space-between}.jz-h > b{font-size:15px}
 .jz-res{font-size:13px;color:var(--fg)}.jz-res small{color:var(--muted)}
+.jz-rondas{display:flex;gap:6px;flex-wrap:wrap}
+.jz .cr-steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.jz .cr-steps input{flex-basis:100%}
+.jz{padding:8px 10px;gap:6px}
+.jz-r{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;cursor:pointer}
+.jz-r.on{background:var(--gold);border-color:var(--gold);color:#1a1205;font-weight:700}
+.jz-mesa{border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.jz-mesa.cerrada{opacity:.85}
+.jz-mh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.jz-badge{display:inline-block;align-self:flex-start;margin:2px 0;padding:1px 8px;border-radius:999px;background:rgba(226,71,44,.18);border:1px solid rgba(255,107,94,.55);color:#ff8a7e;font-size:11px;font-weight:700;vertical-align:middle}
+.juez-nota{margin:8px 0 2px;padding:8px 10px;border:1px solid rgba(255,107,94,.55);border-radius:10px;background:rgba(226,71,44,.10);display:flex;flex-direction:column;gap:3px;font-size:13px}
+.juez-nota b{color:#ff8a7e;text-transform:uppercase;letter-spacing:.06em;font-size:11px}
+.juez-nota small{color:var(--muted)}
 .adm-sec-body{padding:0 14px 14px;display:flex;flex-direction:column;gap:14px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-family:var(--f-num);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -544,6 +560,15 @@ body.portal #sampleBanner{display:none!important}
 .code-in{width:84px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-family:var(--f-num);letter-spacing:.25em;text-transform:uppercase;text-align:center}
 .sorteo{display:flex;flex-direction:column;gap:18px}
 .sorteo-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+/* Celular: textos que no caben al lado pasan a la línea de abajo */
+@media (max-width:600px){
+  .rounds{flex-wrap:wrap;row-gap:10px}
+  .rounds .lbl:last-child{flex-basis:100%;margin:0 !important;letter-spacing:.12em;font-size:12px;line-height:1.5}
+  .adm-sub{flex-basis:100%;order:3;margin-left:0}
+  .top{flex-wrap:nowrap;align-items:flex-start}
+  .top .brand-wrap{flex:1;gap:10px}
+  .brand-logo{width:52px;height:52px}
+}
 @media (max-width:900px){.sorteo-grid{grid-template-columns:minmax(0,1fr)}}
 .sorteo-side{display:flex;flex-direction:column;gap:14px;min-width:0}
 .wheel-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;min-width:0}
@@ -956,7 +981,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <div class="hub" aria-hidden="true"><img src="logo-256.png" alt=""></div>
         </div>
         <div class="wheel-actions">
-          <div class="spin-row"><button class="btn primary spin-btn" id="btnSpin" type="button">Girar la ruleta</button><button class="btn ghost snd-btn" id="btnSnd" type="button" aria-pressed="true" title="Sonido de la ruleta">Sonido: sí</button></div>
+          <div class="spin-row"><button class="btn primary spin-btn" id="btnSpin" type="button">Girar la ruleta</button></div>
           <span class="msg" id="spinMsg"></span>
         </div>
         <div class="winner-card" id="winnerCard" hidden aria-live="polite"></div>
@@ -982,12 +1007,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <details class="adm-sec" data-sec="jug"><summary><span><b>Jugadores de esta fecha</b><small>Mazos, códigos para el portal, drop y cuentas vinculadas</small></span></summary><div class="adm-sec-body">
         <div class="field">
           <label>Jugadores, mazos y códigos de acceso · <span id="decksCount"></span></label>
-          <p class="note" style="margin:0">El código de 4 letras sirve para que un jugador que inscribiste tú se vincule a su cuenta desde el portal, si no se vinculó solo por nombre.</p>
+          <p class="note" style="margin:0">El código de 4 letras sirve para que un jugador que inscribiste tú se vincule a su cuenta desde el portal, si no quedó vinculado automáticamente por su nombre.</p>
           <ul class="links decks" id="decksList"></ul>
         </div>
         <div class="field">
           <label>Cuentas vinculadas a jugadores</label>
-          <p class="note" style="margin:0">Une la <b>cuenta</b> con la que alguien entra al portal con su <b>nombre en esta fecha</b>, para que vea su mesa y pueda reportar. Quien se inscribe desde su cuenta queda vinculado solo. A los que inscribes tú se les vincula automáticamente al cerrar inscripciones si su cuenta tiene el mismo nombre y apellido; si no, usan su código. Aquí puedes deshacer un vínculo equivocado.</p>
+          <p class="note" style="margin:0">Asocia la <b>cuenta</b> con la que alguien entra al portal a su <b>nombre en esta fecha</b>, para que vea su mesa y pueda reportar. Quien se inscribe desde su cuenta queda vinculado automáticamente. Los que inscribes tú se vinculan solos al cerrar inscripciones si su cuenta tiene el mismo nombre y apellido; si no, usan su código. Aquí puedes deshacer un vínculo equivocado.</p>
           <div class="row"><button class="btn ghost" id="btnAutoLink" type="button">Vincular por nombre ahora</button><span class="note" id="autoLinkNote"></span></div>
           <ul class="links" id="linksList"></ul>
         </div>
@@ -1810,7 +1835,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="stand-scroll"><table><thead><tr><th class="pos-h">#</th><th class="l">Jugador</th><th>Pts</th><th title="Puntos negativos: penalizaciones y warnings">Neg</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>PJ</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${standVis.map((p, i) => {
           const top = Object.entries(p.decks).sort((a, b) => b[1] - a[1])[0];
           const pk = fold(p.nombre).trim();
-          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${i < 4 ? " t4" : ""}${STADM() && editPlayer === pk ? " sel" : ""}" ${STADM() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${medalla(i)}</td><td class="l nm">${esc(p.nombre)}${STADM() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.pj}</td><td class="l${B3 && top && !DECK[top[0]] ? " cmd-art" : ""}" style="color:var(--muted)">${B3 && top && !DECK[top[0]] ? artFondo(top[0].replace(/^c:/, "")) : ""}${top ? (DECK[top[0]] ? `<span class="deck-set">${setIcon(DECK[top[0]].set)}${esc(DECK[top[0]].name)}</span>` : `<span class="deck-set">${(c => c != null ? `<span class="ci">${ciPips(c)}</span>` : "")(ciFor(top[0].replace(/^c:/, "")))}${esc(top[0].replace(/^c:/, ""))}</span>`) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${STADM() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú ves a los ${stand.length}.` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
+          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${i < 4 ? " t4" : ""}${STADM() && editPlayer === pk ? " sel" : ""}" ${STADM() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${medalla(i)}</td><td class="l nm">${esc(p.nombre)}${STADM() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.pj}</td><td class="l${B3 && top && !DECK[top[0]] ? " cmd-art" : ""}" style="color:var(--muted)">${B3 && top && !DECK[top[0]] ? artFondo(top[0].replace(/^c:/, "")) : ""}${top ? (DECK[top[0]] ? `<span class="deck-set">${setIcon(DECK[top[0]].set)}${esc(DECK[top[0]].name)}</span>` : `<span class="deck-set">${(c => c != null ? `<span class="ci">${ciPips(c)}</span>` : "")(ciFor(top[0].replace(/^c:/, "")))}${esc(top[0].replace(/^c:/, ""))}</span>`) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${STADM() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú los ves a todos (${stand.length}).` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
       ${STADM() && editPlayer ? editStatsHTML(evsAll, statMonth) : ""}
       <div class="stats-grid">
         <div class="card"><div class="sec-head" style="margin:0"><h3>Jugadores con más kills</h3>${seg}</div><p class="card-sub" style="margin:0"><b>${killsTot}</b> kills en total ${rankScope === "all" ? "en el histórico" : "en el " + (statMonth === "all" ? "período" : "mes")}</p>${bars(playerKills)}</div>
@@ -2438,18 +2463,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   // ---------- Efectos de la ruleta: sonido, puntero, confeti ----------
   let ruletaAudio = null;
-  // Sonido: lo decide el organizador para todos los equipos (S.sonidoRuleta, así se silencia también la pantalla/TV);
-  // además cada equipo puede silenciarse solo (se recuerda en este navegador)
-  let sndLocal = (() => { try { return localStorage.getItem("sorteo_sonido") !== "0"; } catch(e){ return true; } })();
-  const sonidoOn = () => sndLocal && !(S && S.sonidoRuleta === false);
-  // Al apagar, corta en el acto lo que esté sonando (tics y campanitas ya programadas)
-  function aplicarSonido(){
-    if (!ruletaAudio || !ruletaOut) return;
-    try {
-      const t = ruletaAudio.currentTime; ruletaOut.gain.cancelScheduledValues(t); ruletaOut.gain.setValueAtTime(sonidoOn() ? 0.85 : 0, t);
-      if (!sonidoOn()) ruletaAudio.suspend().catch(() => {});
-    } catch(e){}
-  }
+  const sonidoOn = () => true;   // la ruleta siempre suena
+
   // Salida común: volumen moderado, filtro suave y un eco corto (sonido más limpio y menos agresivo)
   let ruletaOut = null, ruletaEco = null;
   function audioCtx(){
@@ -2623,7 +2638,6 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   function renderSorteo(){
     if (view !== "sorteo") return;
-    pintarSnd(); aplicarSonido();
     const {pool, top, gan, st} = sorteoData();
     const sp = S && S.sorteo && S.sorteo.spin;
     if (sp && sp.id !== seenSpin && !spinning){
@@ -2685,15 +2699,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     commit();
   }
   $("btnSpin").addEventListener("click", () => { audioCtx(); spin(); });
-  function pintarSnd(){ const b = $("btnSnd"); if (b){ b.textContent = sonidoOn() ? "Sonido: sí" : "Sonido: no"; b.setAttribute("aria-pressed", sonidoOn()); b.title = sonidoOn() ? "Silenciar la ruleta" : "Activar el sonido de la ruleta"; } };
-  $("btnSnd").addEventListener("click", () => {
-    const nuevo = !sonidoOn();
-    sndLocal = nuevo; try { localStorage.setItem("sorteo_sonido", nuevo ? "1" : "0"); } catch(e){}
-    // El organizador lo cambia para todos los equipos (pantalla/TV incluida)
-    if (M.admin && S){ S.sonidoRuleta = nuevo; commit(); }
-    aplicarSonido(); if (nuevo) { audioCtx(); ruletaTick(true); } pintarSnd();
-  });
-  pintarSnd();
+
   $("btnResetSorteo").addEventListener("click", () => $("confirmReset").hidden = false);
   $("btnResetNo").addEventListener("click", () => $("confirmReset").hidden = true);
   $("btnResetYes").addEventListener("click", () => { $("confirmReset").hidden = true; showWinner = null; if (S){ S.sorteo = {ganadores: [], excluidos: [], filtros: sorteoFiltros()}; commit(); } });
@@ -3115,9 +3121,30 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // ---------- Rol juez: warnings y restas de puntos (tabla "sanciones") ----------
   // El juez entra como jugador; lo que marca se guarda en "sanciones" y la página del organizador lo suma a la fecha (S.juez).
   const JUEZ_MAX = 10;
-  let juezD = {}, juezQ = "";
-  const sancFecha = () => { const out = {}; if (!S) return out; const ids = new Set(S.players.map(p => p.id));
-    Object.values(sanc).forEach(v => { if (v && v.f === (S.fecha || "") && ids.has(v.pid) && (v.w || v.pts)) out[v.pid] = {w:v.w | 0, pts:Math.min(0, v.pts | 0), motivo:v.motivo || "", por:v.por || ""}; }); return out; };
+  let juezD = {}, juezQ = "", juezR = null;
+  // Sanciones del juez de esta fecha. Cada una va ligada a una mesa (ronda + mesa) y se descuenta
+  // del standing cuando esa mesa queda cerrada (con resultado). Las antiguas sin mesa cuentan al tiro.
+  const sancKey = (pid, ri, ti) => pid + "@r" + ri + "t" + ti;
+  function sancLista(){
+    if (!S) return [];
+    const ids = new Set(S.players.map(p => p.id));
+    return Object.entries(sanc).map(([id, v]) => Object.assign({id}, v)).filter(v => v && v.f === (S.fecha || "") && ids.has(v.pid) && (v.w || v.pts));
+  }
+  const mesaDe = v => v.ri == null ? null : ((S.rounds[v.ri] || {}).tables || [])[v.ti] || null;
+  const sancCerrada = v => { if (v.ri == null) return true; const t = mesaDe(v); return !!(t && t.result && t.seats.includes(v.pid)); };
+  // Lo que se descuenta en el standing: suma por jugador de las sanciones de mesas cerradas
+  function sancFecha(){
+    const out = {};
+    sancLista().filter(sancCerrada).forEach(v => {
+      const o = out[v.pid] || (out[v.pid] = {w:0, pts:0, motivo:"", por:v.por || ""});
+      o.w += v.w | 0; o.pts += Math.min(0, v.pts | 0);
+      if (v.motivo) o.motivo = o.motivo ? o.motivo + "; " + v.motivo : v.motivo;
+    });
+    return out;
+  }
+  // Sanciones de una mesa (para destacarlas en la tarjeta de la mesa)
+  function sancMesa(ri, ti){ const out = {}; sancLista().forEach(v => { if (v.ri === ri && v.ti === ti) out[v.pid] = v; }); return out; }
+  const sancTxt = v => [v.pts ? `−${Math.abs(v.pts)} pt${v.pts === -1 ? "" : "s"}` : "", v.w ? `${v.w} warning${v.w === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ");
   function syncJuez(){
     if (!(M.mode === "live" && M.admin && S && S.phase !== "inscripcion")) return;
     const J = sancFecha();
@@ -3125,59 +3152,68 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   function renderJuez(forzar){
     const box = $("juezBox"); if (!box) return;
-    const show = M.juez && !ADMUI() && S && S.phase !== "inscripcion" && !document.body.classList.contains("display");
+    const show = M.juez && !ADMUI() && S && S.phase !== "inscripcion" && S.rounds.length && !document.body.classList.contains("display");
     box.hidden = !show; if (!show || (!forzar && typing(box))) return;
-    const J = sancFecha(), W = S.warnings || {}, AJ = S.ajustes || {};
-    const q = fold(juezQ).trim();
-    const lista = S.players.slice().sort((a, b) => a.name.localeCompare(b.name)).filter(p => !q || fold(p.name).includes(q));
-    const fila = p => {
-      const j = J[p.id] || {w:0, pts:0, motivo:""}, d = juezD[p.id] || j;
-      const wOrg = W[p.id] || 0, wTot = wOrg + d.w, pen = warnPen(wTot);
-      const cambio = d.w !== j.w || d.pts !== j.pts || (d.motivo || "") !== (j.motivo || "");
-      const aOrg = AJ[p.id] && +AJ[p.id].pts < 0 ? +AJ[p.id].pts : 0;
-      return `<li class="jz${cambio ? " editando" : ""}${wTot || d.pts ? " con" : ""}">
-        <div class="jz-h"><b>${esc(p.name)}</b><span class="jz-res">${wTot ? `${wTot} warning${wTot === 1 ? "" : "s"}${pen ? ` · <b class="neg">−${pen}</b>` : ""}` : ""}${d.pts ? ` · resta <b class="neg">${d.pts}</b>` : ""}${wOrg || aOrg ? ` <small>(organizador: ${[wOrg ? wOrg + " warning" + (wOrg === 1 ? "" : "s") : "", aOrg ? aOrg + " pts" : ""].filter(Boolean).join(", ")})</small>` : ""}</span></div>
-        <div class="cr-steps">
-          <div class="cr-step"><span>Warnings</span><button type="button" data-jz="w" data-d="-1" data-p="${esc(p.id)}" ${d.w <= 0 ? "disabled" : ""} aria-label="Quitar warning a ${esc(p.name)}">−</button><b>${d.w}</b><button type="button" data-jz="w" data-d="1" data-p="${esc(p.id)}" aria-label="Agregar warning a ${esc(p.name)}">+</button></div>
-          <div class="cr-step"><span>Restar puntos</span><button type="button" data-jz="pts" data-d="-1" data-p="${esc(p.id)}" ${d.pts <= -JUEZ_MAX ? "disabled" : ""} aria-label="Restar un punto a ${esc(p.name)}">−</button><b>${d.pts}</b><button type="button" data-jz="pts" data-d="1" data-p="${esc(p.id)}" ${d.pts >= 0 ? "disabled" : ""} aria-label="Devolver un punto a ${esc(p.name)}">+</button></div>
-          ${d.pts ? `<input type="text" data-jz-mot="${esc(p.id)}" maxlength="80" placeholder="Motivo de la resta (obligatorio)" value="${esc(d.motivo || "")}">` : ""}
-        </div>
-        ${cambio ? `<div class="cr-foot"><span>${d.pts && !(d.motivo || "").trim() ? "Escribe el motivo de la resta." : "Revisa y guarda."}</span><span class="cr-btns"><button type="button" class="btn ghost" data-jz-reset="${esc(p.id)}">Deshacer</button><button type="button" class="btn primary" data-jz-save="${esc(p.id)}" ${d.pts && !(d.motivo || "").trim() ? "disabled" : ""}>Guardar</button></span></div>` : ""}</li>`;
+    if (juezR == null || juezR > S.cur || !S.rounds[juezR]) juezR = S.cur;
+    const ri = juezR, round = S.rounds[ri], q = fold(juezQ).trim();
+    const pills = S.rounds.map((r, i) => `<button type="button" class="jz-r${i === ri ? " on" : ""}" data-jz-ronda="${i}">Ronda ${i + 1}</button>`).join("");
+    const mesa = (t, ti) => {
+      const M2 = sancMesa(ri, ti);
+      if (q && !t.seats.some(id => fold(pname(id)).includes(q))) return "";
+      const fila = id => {
+        const k = sancKey(id, ri, ti), j = M2[id] || {w:0, pts:0, motivo:""}, d = juezD[k] || {w:j.w | 0, pts:j.pts | 0, motivo:j.motivo || ""};
+        const cambio = d.w !== (j.w | 0) || d.pts !== (j.pts | 0) || (d.motivo || "") !== (j.motivo || "");
+        const falta = (d.w || d.pts) && !(d.motivo || "").trim();
+        return `<li class="jz${cambio ? " editando" : ""}${j.w || j.pts ? " con" : ""}">
+          <div class="jz-h"><b>${esc(pname(id))}</b>${j.w || j.pts ? `<span class="jz-res"><b class="neg">${esc(sancTxt(j))}</b></span>` : ""}</div>
+          <div class="cr-steps">
+            <div class="cr-step"><span>Warnings</span><button type="button" data-jz="w" data-d="-1" data-k="${esc(k)}" ${d.w <= 0 ? "disabled" : ""} aria-label="Quitar warning a ${esc(pname(id))}">−</button><b>${d.w}</b><button type="button" data-jz="w" data-d="1" data-k="${esc(k)}" aria-label="Agregar warning a ${esc(pname(id))}">+</button></div>
+            <div class="cr-step"><span>Restar puntos</span><button type="button" data-jz="pts" data-d="-1" data-k="${esc(k)}" ${d.pts <= -JUEZ_MAX ? "disabled" : ""} aria-label="Restar un punto a ${esc(pname(id))}">−</button><b>${d.pts}</b><button type="button" data-jz="pts" data-d="1" data-k="${esc(k)}" ${d.pts >= 0 ? "disabled" : ""} aria-label="Devolver un punto a ${esc(pname(id))}">+</button></div>
+            ${d.w || d.pts ? `<input type="text" data-jz-mot="${esc(k)}" maxlength="80" placeholder="Motivo (obligatorio)" value="${esc(d.motivo || "")}">` : ""}
+          </div>
+          ${cambio ? `<div class="cr-foot"><span>${falta ? "Escribe el motivo." : "Revisa y guarda."}</span><span class="cr-btns"><button type="button" class="btn ghost" data-jz-reset="${esc(k)}">Deshacer</button><button type="button" class="btn primary" data-jz-save="${esc(k)}" ${falta ? "disabled" : ""}>Guardar</button></span></div>` : ""}</li>`;
+      };
+      return `<div class="jz-mesa${t.result ? " cerrada" : ""}"><div class="jz-mh"><b>Mesa ${ti + 1}</b><span class="tag ${t.result ? "ok" : ""}">${t.result ? "Cerrada · ya descontado" : "En juego · se descuenta al cerrar"}</span></div><ul class="jz-list">${t.seats.map(fila).join("")}</ul></div>`;
     };
-    box.innerHTML = `<div class="stats-head"><div><h2>Juez · puntos negativos</h2><div class="sub2">Asigna warnings y restas de puntos de esta fecha. Cada <b>${WARN_LIMIT} warnings</b> restan <b>${WARN_PEN} punto</b>. Lo que guardes se suma al standing en unos segundos.</div></div></div>
+    const html = round.tables.map(mesa).join("");
+    box.innerHTML = `<div class="stats-head"><div><h2>Juez · puntos negativos</h2><div class="sub2">Elige la ronda y la mesa, y asigna warnings o resta puntos con su motivo. Cada <b>${WARN_LIMIT} warnings</b> en la fecha restan <b>${WARN_PEN} punto</b>. El descuento se aplica solo cuando el organizador cierra esa mesa.</div></div></div>
+      <div class="jz-rondas">${pills}</div>
       <input class="warn-search" id="juezSearch" type="search" placeholder="Buscar jugador" value="${esc(juezQ)}" autocomplete="off">
-      <ul class="jz-list">${lista.map(fila).join("") || '<li class="jz"><span class="note">Nadie coincide con la búsqueda.</span></li>'}</ul><span class="err" id="juezErr"></span>`;
+      ${html || '<p class="note">Nadie coincide con la búsqueda en esta ronda.</p>'}<span class="err" id="juezErr"></span>`;
   }
+  const juezParse = k => { const m = /^(.+)@r(\d+)t(\d+)$/.exec(k || ""); return m ? {pid:m[1], ri:+m[2], ti:+m[3]} : null; };
+  const juezBase = k => { const v = sanc[k] && sanc[k].f === (S.fecha || "") ? sanc[k] : null; return {w:v ? v.w | 0 : 0, pts:v ? v.pts | 0 : 0, motivo:v ? v.motivo || "" : ""}; };
   document.addEventListener("click", async e => {
+    const rr = e.target.closest("[data-jz-ronda]");
+    if (rr && M.juez){ juezR = +rr.dataset.jzRonda; renderJuez(true); return; }
     const b = e.target.closest("[data-jz]"), rs = e.target.closest("[data-jz-reset]"), sv = e.target.closest("[data-jz-save]");
     if (!(b || rs || sv) || !M.juez || !S) return;
-    const J = sancFecha();
     if (b){
-      const id = b.dataset.p, d = juezD[id] = juezD[id] || Object.assign({w:0, pts:0, motivo:""}, J[id] || {});
-      const mot = document.querySelector(`[data-jz-mot="${id}"]`); if (mot) d.motivo = mot.value;
+      const k = b.dataset.k, d = juezD[k] = juezD[k] || juezBase(k);
+      const mot = document.querySelector(`[data-jz-mot="${k}"]`); if (mot) d.motivo = mot.value;
       if (b.dataset.jz === "w") d.w = Math.max(0, Math.min(20, d.w + +b.dataset.d));
       else d.pts = Math.max(-JUEZ_MAX, Math.min(0, d.pts + +b.dataset.d));
       renderJuez(true); return;
     }
     if (rs){ delete juezD[rs.dataset.jzReset]; renderJuez(true); return; }
     if (sv){
-      const id = sv.dataset.jzSave, d = juezD[id]; if (!d) return;
-      const mot = document.querySelector(`[data-jz-mot="${id}"]`); if (mot) d.motivo = mot.value.trim();
-      if (d.pts && !d.motivo) return;
+      const k = sv.dataset.jzSave, d = juezD[k], x = juezParse(k); if (!d || !x) return;
+      const mot = document.querySelector(`[data-jz-mot="${k}"]`); if (mot) d.motivo = mot.value.trim();
+      if ((d.w || d.pts) && !d.motivo) return;
       sv.disabled = true;
       try {
-        if (!d.w && !d.pts) await M.db.doc("sanciones/" + id).delete();
-        else await M.db.doc("sanciones/" + id).set({pid:id, f:S.fecha || "", w:d.w, pts:d.pts, motivo:d.pts ? d.motivo : "", por:M.email || "juez", at:Date.now()});
-        delete juezD[id]; renderJuez(true);
-      } catch(err){ const x = $("juezErr"); if (x) x.textContent = "No se pudo guardar. Revisa que tu cuenta tenga el rol de juez." + errDetail(err); sv.disabled = false; }
+        if (!d.w && !d.pts) await M.db.doc("sanciones/" + k).delete();
+        else await M.db.doc("sanciones/" + k).set({pid:x.pid, f:S.fecha || "", ri:x.ri, ti:x.ti, w:d.w, pts:d.pts, motivo:d.motivo, por:M.email || "juez", at:Date.now()});
+        delete juezD[k]; renderJuez(true);
+      } catch(err){ const el = $("juezErr"); if (el) el.textContent = "No se pudo guardar. Revisa que tu cuenta tenga el rol de juez." + errDetail(err); sv.disabled = false; }
     }
   });
   document.addEventListener("input", e => {
     if (e.target.id === "juezSearch"){ juezQ = e.target.value; const pos = e.target.selectionStart; renderJuez(true); const s2 = $("juezSearch"); if (s2){ s2.focus(); try { s2.setSelectionRange(pos, pos); } catch(_){} } return; }
     const m = e.target.closest && e.target.closest("[data-jz-mot]"); if (!m) return;
-    const id = m.dataset.jzMot, J = sancFecha(), d = juezD[id] = juezD[id] || Object.assign({w:0, pts:0, motivo:""}, J[id] || {});
+    const k = m.dataset.jzMot, d = juezD[k] = juezD[k] || juezBase(k);
     d.motivo = m.value;
-    const li = m.closest(".jz"), btn = li && li.querySelector("[data-jz-save]"); if (btn) btn.disabled = !!(d.pts && !m.value.trim());
+    const li = m.closest(".jz"), btn = li && li.querySelector("[data-jz-save]"); if (btn) btn.disabled = !!((d.w || d.pts) && !m.value.trim());
   });
   function autoApply(){
     if (!(M.mode === "live" && M.admin && S && S.rounds[S.cur])) return;
@@ -3377,6 +3413,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     $("tables").innerHTML = (pasada ? `<div class="banner ronda-ant">Estás viendo la <b>ronda ${vr + 1}</b>. Puedes corregir sus resultados con “Corregir”: el standing se recalcula, pero las mesas de las rondas siguientes no cambian. <button type="button" class="btn ghost" data-vround="${S.cur}">Volver a la ronda ${S.cur + 1}</button></div>` : "") + round.tables.map((t, ti) => {
       const r = t.result, pr = !pasada && !r && proposal(ti);
       const tag = r ? `<span class="tag ${r.w ? "ok" : "draw"}">${r.w ? "Terminada" : "Por tiempo"}</span>` : `<span class="tag">${t.seats.length} jugadores</span>`;
+      const JZ = (M.admin || M.juez) ? sancMesa(vr, ti) : {};
       const seats = t.seats.map((id, si) => {
         let right = `<span class="pt">${tot[id]} pts</span>`, cls = "";
         if (r){
@@ -3385,20 +3422,22 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           right = `<span class="pt">${det ? det + " · " : ""}+${points(r, id, c)}</span>`;
         }
         const mv = ADMUI() && !r && !pasada && !document.body.classList.contains("display");
-        return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">${si + 1}</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${cmdLine(id)}</span>${right}</li>`;
+        return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">${si + 1}</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${JZ[id] ? `<span class="jz-badge" title="${esc(JZ[id].motivo || "")}">Juez: ${esc(sancTxt(JZ[id]))}</span>` : ""}${cmdLine(id)}</span>${right}</li>`;
       }).join("");
+      const jzIds = Object.keys(JZ);
+      const jzNota = jzIds.length ? `<div class="juez-nota"><b>Sanción del juez</b>${jzIds.map(id => `<span>${esc(pname(id))}: ${esc(sancTxt(JZ[id]))}${JZ[id].motivo ? " · " + esc(JZ[id].motivo) : ""}</span>`).join("")}<small>${r ? "Ya descontado del standing." : "Se descuenta automáticamente al cerrar la mesa."}</small></div>` : "";
       const pend = pr ? `<span class="pending">Reportado por ${pr.n === 1 ? "1 jugador" : pr.n + " jugadores"}: ${esc(resLabel(pr.res))}${pr.kinds > 1 ? " · Hay reportes distintos" : ""} · Revísalo y toca “Aprobar reporte”</span>` : "";
       const edKey = "adm:" + vr + ":" + ti;
       const ed = M.admin && openEd[edKey] ? editorHTML(edKey, t.seats, draftFor(edKey, t.seats, r || (pr && pr.res)), "Guardar resultado") : "";
       return `<article class="mesa ${r ? "closed" : ""}" data-t="${ti}"><div class="mesa-h"><b>Mesa ${ti + 1}</b>${tag}</div>
-        <ol class="seats">${seats}</ol>${pend}${ed}
+        <ol class="seats">${seats}</ol>${jzNota}${pend}${ed}
         <div class="mesa-foot adm">${pr ? `<button type="button" class="apr" data-t="${ti}" data-op="approve">Aprobar reporte</button>` : ""}<button type="button" data-t="${ti}" data-op="edit">${openEd[edKey] ? "Cerrar" : r ? "Corregir" : "Cargar resultado"}</button>${r && !pasada ? `<button type="button" data-t="${ti}" data-op="clear">Reabrir</button>` : ""}</div></article>`;
     }).join("");
 
     if (ADMUI() && !pasada && !document.body.classList.contains("display")){
       const seated = new Set(round.tables.flatMap(t => t.seats));
       const libres = S.players.filter(p => !seated.has(p.id) && !isDrop(p.id)).concat(S.players.filter(p => !seated.has(p.id) && isDrop(p.id)));
-      $("tables").insertAdjacentHTML("beforeend", `<article class="mesa bucket" data-t="new"><div class="mesa-h"><b>Sin mesa${libres.length ? " · " + libres.length : ""}</b><span class="tag">Suelta aquí para sacar de la mesa</span></div>
+      $("tables").insertAdjacentHTML("beforeend", `<article class="mesa bucket" data-t="new"><div class="mesa-h"><b>Sin mesa${libres.length ? " · " + libres.length : ""}</b><span class="tag">Suelta aquí</span></div>
         <ol class="seats">${libres.map(p => `<li class="seat${moveSel === p.id ? " picked" : ""}${isDrop(p.id) ? " dropped" : ""}" data-pid="${p.id}" draggable="true" title="Arrastra a una mesa"><span class="n">·</span><span class="nm-wrap"><span class="nm">${esc(p.name)}</span>${cmdLine(p.id)}</span><span class="pt">${isDrop(p.id) ? `<button type="button" class="btn ghost mini" data-drop="${p.id}" title="Volver a incluirlo; luego arrástralo a una mesa">Reincorporar</button>` : isLate(p.id) ? "Tardío" : ""}</span></li>`).join("") || '<li class="seat-empty">Nadie sin mesa. Arrastra aquí a un jugador para sacarlo de su mesa.</li>'}</ol>
         <button type="button" class="btn ghost new-table" data-newtable>+ Nueva mesa con el jugador elegido</button></article>`);
       $("moveHint").hidden = false;
@@ -3409,7 +3448,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
        <td class="pts">${x.pts}${(n => n ? `<span class="pen" title="Puntos negativos de la fecha${ADMUI() && x.pen ? " (incluye " + x.pen + " por warnings)" : ""}">−${n}</span>` : "")(ADMUI() ? x.neg : x.neg - x.pen)}</td><td>${x.w}</td><td>${x.k}</td><td>${x.s}</td><td>${x.pj}</td><td class="buch">${x.buch}</td><td class="mesa-c">${tableOf[x.id] != null ? tableOf[x.id] + 1 : "–"}</td></tr>`).join("");
     const closed = S.rounds.filter(r => r.tables.every(t => t.result)).length;
     $("standMeta").textContent = `${closed} de ${c.rounds} rondas cerradas`;
-    $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V victorias · K kills · S rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.${ADMUI() ? " Organizador: toca un jugador para corregir sus puntos ronda por ronda." : ""}`;
+    $("legend").textContent = `Desempate: puntos, kills y Buch (Buchholz: suma de los puntos de los rivales enfrentados). V: victorias · K: kills · S: rondas sobrevividas sin ganar · ${PAIRINGS[c.pairing || "suizo"]}. Toca un jugador para ver su historial.${ADMUI() ? " Organizador: toca un jugador para corregir sus puntos ronda por ronda." : ""}`;
     $("rulesHint").innerHTML = `Puntaje por mesa: ganar <b>${c.win}</b> · Cada kill <b>${c.kill}</b> · Sobrevivir al tiempo <b>${c.surv}</b> · Máximo <b>${c.cap}</b> por jugador.${B3 ? ` Muy joven para morir <b>+${c.joven || 0}</b> · Demasiado bruto <b>−${c.bruto || 0}</b> por eliminación temprana · No es tu lugar: <b>0</b> en la mesa.` : ""}` +
       (M.admin ? " Basta con que un jugador de la mesa reporte desde su celular: revisa el reporte y toca “Aprobar reporte” para cerrar la mesa." : "");
 

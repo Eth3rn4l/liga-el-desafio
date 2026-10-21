@@ -542,12 +542,18 @@ async function alListo() {
     process.exit(0);
   }
   for (const [liga, valor] of Object.entries(CFG.grupos || {})) {
-    if (!valor || /NOMBRE EXACTO/.test(valor) || !usaLiga(liga)) continue;
+    if (!usaLiga(liga)) continue;
+    if (!valor || /NOMBRE EXACTO/.test(valor)) { if (!liga.endsWith("_test")) console.log(`${hora()} ${liga}: sin grupo en config.json (${valor ? "todavía dice NOMBRE EXACTO…" : "vacío"}).`); continue; }
     const g = await idDeGrupo(valor, cargar);
     if (g) { destinos[liga] = g.id; nombresDestino[liga] = g.nombre; console.log(`${hora()} ${liga} → ${g.nombre}`); }
     else console.error(`${hora()} No encontré el grupo "${valor}" para ${liga}. Revisa el nombre o usa el link de invitación del grupo.`);
   }
-  if (!Object.keys(destinos).length) { console.error("No hay grupos configurados. Revisa config.json."); process.exit(1); }
+  if (!Object.keys(destinos).length) {
+    console.error(`No hay grupos configurados. Revisa config.json (se leyó: ${CFG_FILE}).`);
+    console.error(`"grupos" dice: ${JSON.stringify(CFG.grupos || {})}`);
+    console.error('Debe quedar, por ejemplo:  "precon": "https://chat.whatsapp.com/XXXX",  "b3": "https://chat.whatsapp.com/YYYY"');
+    process.exit(1);
+  }
   if (ARG.includes("--prueba")) {
     for (const id of new Set(Object.values(destinos))) await enviar(id, "🤖 Bot de la liga conectado. Aquí se publicarán las mesas y los resultados en vivo.");
     console.log("Mensaje de prueba enviado."); await espera(3000); process.exit(0);

@@ -295,7 +295,10 @@ async function armarMensaje(op, grupo, ligaSel) {
   }
   if (op === "8") {
     fs.mkdirSync(DIR_IMG, { recursive: true });
-    const arch = fs.readdirSync(DIR_IMG).filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f)).sort();
+    // Las imágenes que terminan en "-precon" o "-b3" solo aparecen en esa liga
+    const base = String(ligaSel || ligaDeGrupo(grupo.id) || "").replace("_test", "");
+    const otra = base === "precon" ? /-b3\.[a-z]+$/i : base === "b3" ? /-precon\.[a-z]+$/i : null;
+    const arch = fs.readdirSync(DIR_IMG).filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f) && !(otra && otra.test(f))).sort();
     if (!arch.length) { console.log(`  No hay imágenes. Copia la imagen en la carpeta: ${DIR_IMG}`); return null; }
     arch.forEach((f, i) => console.log(`    ${i + 1}) ${f}`));
     const r = await leerLinea("  ¿Qué imagen? (número, Enter = cancelar): ");

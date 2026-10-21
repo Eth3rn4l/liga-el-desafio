@@ -406,7 +406,27 @@ if (SIMULAR) {
 // ---------- WhatsApp ----------
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
-const NUMERO = String(CFG.numeroBot || "").replace(/\D/g, "");   // ej. 56912345678: vincula con código en vez de QR
+// Vincular con código (en vez de QR): se usa el número del celular del bot (config.json → "numeroBot")
+const normNumero = v => { const t = String(v || "").replace(/\D/g, ""); return t.length === 9 && t.startsWith("9") ? "56" + t : t; };
+const haySesion = () => { try { return fs.readdirSync(path.join(DIR, "sesion-whatsapp", "session")).length > 0; } catch (e) { return false; } };
+async function numeroVinculo() {
+  const cfg = normNumero(CFG.numeroBot);
+  if (cfg || haySesion() || !process.stdin.isTTY) return cfg;
+  console.log("\nHay que vincular el WhatsApp del bot (solo la primera vez).");
+  console.log("Escribe el número del celular del bot para recibir un CÓDIGO de 8 letras (ej. +56 9 1234 5678).");
+  for (;;) {
+    const r = await pregunta("Número del bot (Enter = usar código QR): ");
+    if (!r) return "";
+    const n = normNumero(r);
+    if (/^\d{10,15}$/.test(n)) {
+      // Se guarda en config.json para no volver a preguntarlo
+      try { const c = JSON.parse(fs.readFileSync(CFG_FILE, "utf8")); c.numeroBot = "+" + n; fs.writeFileSync(CFG_FILE, JSON.stringify(c, null, 2)); } catch (e) {}
+      return n;
+    }
+    console.log("Ese número no parece válido. Escríbelo con el código del país, por ejemplo +56912345678.");
+  }
+}
+function crearCliente(NUMERO) {
 client = new Client({
   authStrategy: new LocalAuth({ dataPath: path.join(DIR, "sesion-whatsapp") }),
   ...(NUMERO ? { pairWithPhoneNumber: { phoneNumber: NUMERO, showNotification: true } } : {}),
@@ -419,12 +439,19 @@ client.on("qr", qr => {
   qrcode.generate(qr, { small: true });
 });
 client.on("code", code => {
-  console.log("\nCódigo para vincular el WhatsApp del bot: " + code);
-  console.log("En el celular del bot: WhatsApp → Dispositivos vinculados → Vincular un dispositivo → Vincular con número de teléfono, y escribe el código.\n");
+  const c = String(code || ""), cod = c.length === 8 ? c.slice(0, 4) + "-" + c.slice(4) : c;
+  console.log("\n============================================");
+  console.log("  CÓDIGO PARA VINCULAR EL BOT:  " + cod);
+  console.log("============================================");
+  console.log("En el celular del bot abre WhatsApp → Dispositivos vinculados → Vincular un dispositivo");
+  console.log("→ toca \"Vincular con el número de teléfono\" (abajo) y escribe el código.");
+  console.log("Si el código vence, el bot muestra uno nuevo solo.\n");
 });
 client.on("authenticated", () => console.log(`${hora()} Sesión de WhatsApp guardada.`));
 client.on("auth_failure", m => console.error("No se pudo iniciar sesión en WhatsApp:", m));
 client.on("disconnected", r => { console.error(`${hora()} WhatsApp se desconectó (${r}). Vuelve a abrir el bot.`); process.exit(1); });
+client.on("ready", alListo);
+}
 // Lista de grupos (con reintentos: recién vinculado, WhatsApp tarda en sincronizar los chats)
 async function listarGrupos() {
   for (let i = 0; i < 5; i++) {
@@ -456,7 +483,7 @@ async function idDeGrupo(valor, cargar) {
   const g = grupos.find(x => (x.name || "").trim().toLowerCase() === valor.trim().toLowerCase());
   return g ? { id: g.id._serialized, nombre: g.name } : null;
 }
-client.on("ready", async () => {
+async function alListo() {
   console.log(`${hora()} WhatsApp conectado.`);
   await espera(4000);
   let cache;
@@ -486,5 +513,5 @@ client.on("ready", async () => {
     console.log("Mensaje de prueba enviado."); await espera(3000); process.exit(0);
   }
   iniciar();
-});
-(async () => { if (!ARG.includes("--grupos")) await elegirLiga(); client.initialize(); })();
+}
+(async () => { if (!ARG.includes("--grupos")) await elegirLiga(); crearCliente(await numeroVinculo()); client.initialize(); })();

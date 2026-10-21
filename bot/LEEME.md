@@ -21,8 +21,11 @@ Solo **lee** la liga; no puede cambiar nada.
 
 1. Descomprime la carpeta del bot, por ejemplo en `Documentos\bot-liga`.
 2. Doble clic en **1-INSTALAR.bat** y espera a que diga *Listo* (tarda unos minutos).
-3. Doble clic en **2-VINCULAR-Y-VER-GRUPOS.bat**. Aparece un código QR:
-   en el celular del bot, **WhatsApp → ⋮ → Dispositivos vinculados → Vincular un dispositivo** y escanéalo.
+3. Doble clic en **2-VINCULAR-Y-VER-GRUPOS.bat**. El bot pide el **número del celular del bot**
+   (por ejemplo `+56912345678`) y muestra un **código de 8 letras** (tipo `ABCD-EFGH`).
+   En el celular del bot: **WhatsApp → ⋮ → Dispositivos vinculados → Vincular un dispositivo →
+   "Vincular con el número de teléfono"** (abajo) y escribe el código.
+   El número queda guardado en `config.json` ("numeroBot"). Si prefieres el QR, presiona Enter sin escribir número.
    Al terminar, la ventana muestra la lista de grupos.
 4. Abre `config.json` con el Bloc de notas y escribe el nombre exacto de cada grupo:
    ```
@@ -92,7 +95,7 @@ Muestra lo que publicaría con la liga real, sin enviar nada. Las imágenes qued
 
 ## Problemas comunes
 
-- **Pide el QR de nuevo**: la sesión se cerró desde el celular. Abre 2-VINCULAR-Y-VER-GRUPOS.bat y escanéalo otra vez.
+- **Pide vincular de nuevo**: la sesión se cerró desde el celular. Abre 2-VINCULAR-Y-VER-GRUPOS.bat e ingresa el código nuevo que aparece.
 - **“No encontré el grupo”**: el nombre en `config.json` no es exacto. Cópialo tal cual de la lista.
 - **Deja de funcionar tras una actualización de WhatsApp**: en una ventana de comandos dentro de la carpeta, `npm install whatsapp-web.js@latest`.
 - **Nunca compartas la carpeta `sesion-whatsapp`**: es la sesión abierta del WhatsApp del bot.

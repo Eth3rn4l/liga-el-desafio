@@ -415,6 +415,58 @@ if (SIMULAR) {
 }
 
 // ---------- WhatsApp ----------
+// Parche para whatsapp-web.js 1.34.7: WhatsApp Web (versión 2.3000.104x) renombró el id interno "_serialized" a "$1"
+// y eso rompe la lista de chats y el envío ("Error: r", "Data passed to getter must include an id property").
+// Se aplica una sola vez sobre node_modules, antes de cargar la librería.
+function parcharWwebjs() {
+  const MARCA = "/*parche-desafio-v1*/";
+  let f;
+  try {
+    const pk = require.resolve("whatsapp-web.js/package.json");
+    if (JSON.parse(fs.readFileSync(pk, "utf8")).version !== "1.34.7") return;   // otras versiones traen su propio arreglo
+    f = path.join(path.dirname(pk), "src", "util", "Injected", "Utils.js");
+  } catch (e) { return; }
+  let src; try { src = fs.readFileSync(f, "utf8"); } catch (e) { return; }
+  if (src.includes(MARCA)) return;
+  let out = src, n = 0;
+  // 1) "_serialized" vuelve a existir: se lee desde "$1" en los ids vivos y en los datos que se devuelven
+  out = out.replace("window.WWebJS = {};", m => { n++; return m + `
+    ${MARCA}
+    window.__dsfSer = (o) => { try { if (o && typeof o === 'object' && typeof o.$1 === 'string' && !Object.prototype.hasOwnProperty.call(o, '_serialized')) Object.defineProperty(o, '_serialized', { value: o.$1, enumerable: true, configurable: true, writable: true }); } catch (e) {} return o; };
+    (() => { try {
+        const def = (o) => { if (!o) return; const p = Object.getPrototypeOf(o); if (p && !('_serialized' in o) && typeof o.$1 === 'string') Object.defineProperty(p, '_serialized', { get() { return this.$1; }, configurable: true }); };
+        const WF = window.require('WAWebWidFactory');
+        def(WF.createWid('0@c.us')); def(WF.createWid('0@g.us'));
+        try { const MK = window.require('WAWebMsgKey'); def(new MK({ fromMe: true, remote: WF.createWid('0@c.us'), id: 'DSF0' })); } catch (e) {}
+    } catch (e) {} })();`; });
+  // 2) La lista de chats no se cae entera por un chat con problemas
+  out = out.replace(/const chatPromises = chats\.map\(\(chat\) =>\s*window\.WWebJS\.getChatModel\(chat\),?\s*\);\s*return await Promise\.all\(chatPromises\);/, () => { n++; return `const lista = [];
+        for (const chat of chats) { try { const m = await window.WWebJS.getChatModel(chat); if (m) lista.push(m); } catch (e) {} }
+        return lista;`; });
+  // 3) Envío de imágenes: el modelo de la imagen trae su propio id y WhatsApp lo rechaza
+  out = out.replace(/(const message = \{[\s\S]*?\n        \};)/, m => { n++; return m + "\n        delete message.__x_id;"; });
+  // 4) Id del mensaje enviado
+  out = out.replace(".Msg.get(newMsgKey._serialized);", () => { n++; return ".Msg.get(newMsgKey._serialized || newMsgKey.$1);"; });
+  // 5) Todo lo que devuelve la librería sale con "_serialized" (lo leen las demás partes de whatsapp-web.js)
+  const fin = out.lastIndexOf("};");
+  out = out.slice(0, fin) + `    (() => {
+        const norm = (o, d, vistos) => {
+            if (!o || typeof o !== 'object' || d > 7 || vistos.has(o)) return o; vistos.add(o);
+            window.__dsfSer(o);
+            const plano = Array.isArray(o) || Object.getPrototypeOf(o) === Object.prototype || Object.getPrototypeOf(o) === null;
+            if (plano) for (const k of Object.keys(o)) { try { norm(o[k], d + 1, vistos); } catch (e) {} }
+            return o;
+        };
+        Object.keys(window.WWebJS).forEach((k) => {
+            const fn = window.WWebJS[k]; if (typeof fn !== 'function' || k === 'compareWwebVersions') return;
+            window.WWebJS[k] = function (...a) { const r = fn.apply(this, a); return r && typeof r.then === 'function' ? r.then((v) => norm(v, 0, new WeakSet())) : norm(r, 0, new WeakSet()); };
+        });
+    })();
+` + out.slice(fin); n++;
+  if (n < 5) { console.log(`${hora()} Aviso: el parche de WhatsApp Web se aplicó a medias (${n} de 5). Si algo falla, avísale a Diego.`); }
+  try { fs.writeFileSync(f + ".original", src); fs.writeFileSync(f, out); console.log(`${hora()} Parche de compatibilidad con WhatsApp Web aplicado.`); } catch (e) { console.log(`${hora()} No se pudo aplicar el parche de WhatsApp Web: ${e.message}`); }
+}
+parcharWwebjs();
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 // Vincular con código (en vez de QR): se usa el número del celular del bot (config.json → "numeroBot")
@@ -477,7 +529,7 @@ async function gruposDirecto() {
     const out = {};
     fuentes.forEach(col => arr(col).forEach(c => {
       try {
-        const id = c && c.id && (c.id._serialized || (c.id.user ? c.id.user + "@" + (c.id.server || "g.us") : ""));
+        const id = c && c.id && (c.id._serialized || c.id.$1 || (c.id.user ? c.id.user + "@" + (c.id.server || "g.us") : ""));
         if (!id || !/@g\.us$/.test(id)) return;
         const name = c.formattedTitle || c.subject || c.name || (c.groupMetadata && c.groupMetadata.subject) || "";
         if (!(id in out) || (!out[id] && name)) out[id] = name;

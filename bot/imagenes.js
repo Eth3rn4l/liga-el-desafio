@@ -72,7 +72,7 @@ function htmlMesas(S, liga, ri, mesas, desde, parte, total) {
       const p = P[id] || { name: "?" }, d = p.deck || {};
       const [set, mazo] = (d.k || "").split("|");
       const sub = liga.startsWith("b3") ? "" : (mazo ? `${E(mazo)} · ${E(set)}` : "");
-      return `<li><span class="n">${k + 1}</span><div class="who"><b>${E(p.name)}</b>
+      return `<li><span class="n">•</span><div class="who"><b>${E(p.name)}</b>
         <span class="cmd">${pips(coloresDe(d))}${E(d.c || "Sin comandante")}</span>${sub ? `<span class="deck">${sub}</span>` : ""}</div>
         <span class="pts">${pts[id] || 0}<small>pts</small></span></li>`;
     }).join("");

@@ -42,12 +42,9 @@ Solo **lee** la liga; no puede cambiar nada.
 
 Doble clic en **INICIAR-BOT.bat** y deja esa ventana abierta (puedes minimizarla).
 
-Al abrirlo pregunta:
-
-1. **Qué liga va a manejar**: 1 Precon, 2 Bracket 3 o 3 las dos. Solo publica lo de esa liga.
-2. **Si manda ahora el mensaje para inscribirse** (S/N): manda al grupo el aviso de inscripciones abiertas con el link, si la fecha está en inscripciones.
-
-Si el bot se reinicia solo, mantiene la liga elegida y no repite el mensaje de inscripción.
+El bot maneja las dos ligas a la vez y ya no pregunta nada al abrirse: en la ventana aparece el menú,
+donde eliges el grupo, luego la liga (Precon o Bracket 3) y luego qué mandar (ver "Comandos del bot").
+El mensaje para inscribirse se manda desde el menú (opción 3).
 
 - Si se cae o se corta internet, se vuelve a abrir solo a los 15 segundos.
 - Si lo abres con la fecha ya empezada, **no repite** lo que ya pasó.
@@ -69,7 +66,7 @@ Escribe el número del grupo para entrar. Además:
 - **R**: vuelve a cargar la lista de grupos (por si agregaste el bot a un grupo nuevo)
 - **0**: muestra el menú otra vez
 
-**Dentro de un grupo**, eliges qué mandar:
+**Dentro de un grupo**, primero eliges la liga (**1) Liga Precon** o **2) Liga Bracket 3**; 0 vuelve al menú principal) y después qué mandar:
 
 | N° | Qué manda |
 |---|---|
@@ -81,11 +78,10 @@ Escribe el número del grupo para entrar. Además:
 | 6 | El podio (si la fecha aún no se cierra, sale como "Podio parcial") |
 | 7 | Un mensaje que escribes tú (para varias líneas, termina con una línea con solo un punto `.`) |
 | 8 | Una imagen de la carpeta **imagenes-para-enviar** (ya viene el *Código de la Mesa*; puedes agregar más) |
-| 0 | Volver al menú principal |
+| 0 | Volver (elegir otra liga) |
 
 Antes de enviar, el bot muestra una vista previa y pregunta **s/n**. Después de enviar sigues dentro del mismo grupo,
 así puedes mandar varias cosas seguidas; con **0** vuelves al menú principal.
-Si el grupo no es de una liga, el bot pregunta de qué liga sacar los datos (mesas, standing, etc.).
 Si mandas las mesas a mano al grupo de la liga, el bot no las vuelve a mandar solo al partir la ronda.
 
 ## Probar sin WhatsApp

@@ -883,7 +883,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       <button class="btn" id="btnPlus" type="button">+1 min</button>
       <button class="btn" id="btnReset" type="button">Reiniciar reloj</button>
       <button class="btn" id="btnNext" type="button">Siguiente ronda</button>
-      <button class="btn ghost" id="btnRearmar" type="button" hidden title="Vuelve a sortear las mesas de esta ronda. Solo mientras el reloj no ha partido y no hay resultados.">↺ Volver a armar la ronda</button>
+      <button class="btn ghost" id="btnRearmar" type="button" hidden title="Vuelve a sortear al azar las mesas de esta ronda. Solo en las rondas al azar, mientras el reloj no ha partido y no hay resultados.">↺ Volver a armar la ronda</button>
       <button class="btn primary" id="btnFinTest" type="button" hidden>Finalizar liga testeo</button>
     </div>
   </section>
@@ -3318,7 +3318,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       nb.textContent = `Armar ronda ${S.cur + 2}`; nb.classList.toggle("primary", completa);
       nb.title = completa ? "" : "Aún hay mesas sin resultado";
     }
-    $("btnRearmar").hidden = !(ADMUI() && relojSinPartir() && sinResultados());
+    $("btnRearmar").hidden = !(ADMUI() && relojSinPartir() && sinResultados() && isRandomRound(S.cfg, S.cur));
     $("btnRearmar").textContent = `↺ Volver a armar la ronda ${S.cur + 1}`;
   }
   function tick(){
@@ -3422,7 +3422,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           right = `<span class="pt">${det ? det + " · " : ""}+${points(r, id, c)}</span>`;
         }
         const mv = ADMUI() && !r && !pasada && !document.body.classList.contains("display");
-        return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">${si + 1}</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${JZ[id] ? `<span class="jz-badge" title="${esc(JZ[id].motivo || "")}">Juez: ${esc(sancTxt(JZ[id]))}</span>` : ""}${cmdLine(id)}</span>${right}</li>`;
+        return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">·</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${JZ[id] ? `<span class="jz-badge" title="${esc(JZ[id].motivo || "")}">Juez: ${esc(sancTxt(JZ[id]))}</span>` : ""}${cmdLine(id)}</span>${right}</li>`;
       }).join("");
       const jzIds = Object.keys(JZ);
       const jzNota = jzIds.length ? `<div class="juez-nota"><b>Sanción del juez</b>${jzIds.map(id => `<span>${esc(pname(id))}: ${esc(sancTxt(JZ[id]))}${JZ[id].motivo ? " · " + esc(JZ[id].motivo) : ""}</span>`).join("")}<small>${r ? "Ya descontado del standing." : "Se descuenta automáticamente al cerrar la mesa."}</small></div>` : "";
@@ -4042,8 +4042,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   $("btnMinus").addEventListener("click", () => adjust(-60000));
   $("btnReset").addEventListener("click", () => { S.timer = {running:false, endAt:0, left:S.cfg.min * 60000}; Object.keys(alerts).forEach(k => delete alerts[k]); commit(); });
   $("btnRearmar").addEventListener("click", () => {
-    if (!M.admin || !S || S.phase === "inscripcion" || !relojSinPartir() || !sinResultados()) return;
-    if (!confirm(`¿Volver a armar la ronda ${S.cur + 1}?\n\nSe vuelven a sortear las mesas de esta ronda con el mismo sistema (${PAIRINGS[S.cfg.pairing || "suizo"].split(" · ")[0]}). Los cambios que hiciste a mano en estas mesas se pierden.`)) return;
+    if (!M.admin || !S || S.phase === "inscripcion" || !relojSinPartir() || !sinResultados() || !isRandomRound(S.cfg, S.cur)) return;
+    if (!confirm(`¿Volver a armar la ronda ${S.cur + 1}?\n\nSe vuelven a sortear al azar las mesas de esta ronda. Los cambios que hiciste a mano en estas mesas se pierden.`)) return;
     if (S.cur === 0) S.orden = shuffleExcel(S.players.map(p => p.id));   // como reiniciar la fecha en el Excel: lista desordenada de nuevo
     S.rounds[S.cur] = buildRound(S, S.cur); moveSel = null;
     Object.keys(drafts).forEach(k => { if (k.startsWith("adm:" + S.cur + ":")) delete drafts[k]; });
@@ -4141,8 +4141,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       btn = `<button class="btn primary" type="button" data-guia="next">Armar ronda ${S.cur + 2}</button>`;
     } else if (!empezo && !conRes){
       titulo = `Paso ${S.cur + 2} · Ronda ${S.cur + 1} armada`;
-      txt = `Hay <b>${T.length} ${T.length === 1 ? "mesa" : "mesas"}</b>. Que cada uno busque su mesa (si alguien quedó mal, arrástralo a otra). Cuando estén sentados, inicia el reloj. Si las mesas salieron mal, puedes <b>volver a armar la ronda</b> mientras el reloj no parta.`;
-      btn = `<button class="btn primary" type="button" data-guia="start">▶ Iniciar ronda ${S.cur + 1}</button><button class="btn ghost" type="button" data-guia="rearmar">↺ Volver a armar la ronda ${S.cur + 1}</button>`;
+      txt = `Hay <b>${T.length} ${T.length === 1 ? "mesa" : "mesas"}</b>. Que cada uno busque su mesa (si alguien quedó mal, arrástralo a otra). Cuando estén sentados, inicia el reloj. ${isRandomRound(c, S.cur) ? `Si las mesas salieron mal, puedes <b>volver a armar la ronda</b> mientras el reloj no parta.` : "Esta ronda va por standing: las mesas no se vuelven a sortear (si alguien quedó mal, arrástralo)."}`;
+      btn = `<button class="btn primary" type="button" data-guia="start">▶ Iniciar ronda ${S.cur + 1}</button>${isRandomRound(c, S.cur) ? `<button class="btn ghost" type="button" data-guia="rearmar">↺ Volver a armar la ronda ${S.cur + 1}</button>` : ""}`;
     } else {
       titulo = `Ronda ${S.cur + 1} en juego`;
       txt = `<b>${conRes} de ${T.length}</b> mesas con resultado. Cuando una mesa termine, un jugador la reporta desde su celular y tú tocas <b>Aprobar reporte</b> en esa mesa (o <b>Cargar resultado</b> si nadie reportó)${faltan.length ? ` · Faltan: ${faltan.map(n => "Mesa " + n).join(", ")}` : ""}.`;

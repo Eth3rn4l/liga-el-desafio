@@ -47,15 +47,7 @@ function pregunta(txt) {
 }
 async function elegirLiga() {
   let v = (argVal("--liga") || "").toLowerCase();
-  if (!SEL[v] && process.stdin.isTTY && !ARG.includes("--grupos")) {
-    console.log("\n¿Qué liga va a manejar el bot?\n  1) Liga Precon\n  2) Liga Bracket 3\n  3) Las dos");
-    let r = ""; while (!["1", "2", "3"].includes(r)) r = await pregunta("Escribe 1, 2 o 3 y presiona Enter: ");
-    v = { 1: "precon", 2: "b3", 3: "ambas" }[r];
-    if (!ARG.includes("--prueba")) {
-      const s = await pregunta("¿Mandar ahora al grupo el mensaje para inscribirse? (s/n): ");
-      INVITAR = /^s/i.test(s);
-    }
-  }
+  if (!SEL[v]) v = "ambas";
   LIGA_SEL = SEL[v] || SEL.ambas;
   console.log(`${hora()} Liga: ${v === "precon" ? "Precon" : v === "b3" ? "Bracket 3" : "las dos"}${INVITAR ? " · se manda el mensaje de inscripción" : ""}`);
 }
@@ -217,7 +209,7 @@ const MENU_GRUPO = [
   ["6", "Podio / cierre de la fecha"],
   ["7", "Mensaje escrito por ti"],
   ["8", "Imagen (Código de la mesa u otra)"],
-  ["0", "Volver al menú principal"]
+  ["0", "Volver (elegir otra liga)"]
 ];
 const lineas = []; let esperandoLinea = null, stdinCerrado = false;
 function leerLinea(txt) {
@@ -290,14 +282,14 @@ async function verFecha() {
   console.log(`  Mensajes en espera: ${cola.length}${pausado ? " · automáticos EN PAUSA" : ""}`);
 }
 // Arma el mensaje de la opción elegida. Devuelve {msgs, que, liga, mesas} o null si no se puede.
-async function armarMensaje(op, grupo) {
+async function armarMensaje(op, grupo, ligaSel) {
   if (op === "7") {
     console.log("  Escribe el mensaje. Para varias líneas, termina con una línea que tenga solo un punto ( . ):");
     const ls = [];
     for (;;) { const l = await leerLinea(""); if (l === null || l.trim() === ".") break; ls.push(l); }
     const t = ls.join("\n").trim();
     if (!t) { console.log("  Mensaje vacío, no se envía."); return null; }
-    return { msgs: [t], que: "tu mensaje", liga: ligaDeGrupo(grupo.id) || "grupo" };
+    return { msgs: [t], que: "tu mensaje", liga: ligaSel || ligaDeGrupo(grupo.id) || "grupo" };
   }
   if (op === "8") {
     fs.mkdirSync(DIR_IMG, { recursive: true });
@@ -308,9 +300,9 @@ async function armarMensaje(op, grupo) {
     const f = arch[(parseInt(r, 10) || 0) - 1];
     if (!f) { console.log("  Cancelado."); return null; }
     const cap = await leerLinea("  Texto que acompaña la imagen (Enter = sin texto): ");
-    return { msgs: [{ tipo: "imagen", archivo: path.join(DIR_IMG, f), caption: (cap || "").trim() }], que: `la imagen ${f}`, liga: ligaDeGrupo(grupo.id) || "grupo" };
+    return { msgs: [{ tipo: "imagen", archivo: path.join(DIR_IMG, f), caption: (cap || "").trim() }], que: `la imagen ${f}`, liga: ligaSel || ligaDeGrupo(grupo.id) || "grupo" };
   }
-  const liga = await elegirLigaDatos(grupo); if (!liga) return null;
+  const liga = ligaSel || await elegirLigaDatos(grupo); if (!liga) return null;
   const d = await leerDatos(liga); if (!d) return null;
   const { S, ri, hayMesas, fecha, top } = d;
   if (op === "1" || op === "2") {
@@ -341,17 +333,36 @@ async function armarMensaje(op, grupo) {
   }
   return null;
 }
+// Dentro de un grupo: primero se elige la liga (Precon o Bracket 3) y después qué mensaje mandar
 async function menuGrupo(grupo) {
   for (;;) {
+    const ls = ligasConDatos();
     console.log(`\n------ ${grupo.nombre} ------`);
+    console.log("  ¿De qué liga quieres mandar?");
+    ls.forEach((l, i) => console.log(`  ${i + 1}) ${(NOMBRE_LIGA[l] || l).replace("🧪 ", "")}`));
+    console.log("  0) Volver al menú principal");
+    const r = await leerLinea(`\n[${grupo.nombre}] Liga (0 = menú principal): `);
+    if (r === null) return;
+    const o = r.trim();
+    if (o === "0" || /^(v|volver)$/i.test(o)) return mostrarMenu();
+    const liga = ls[(parseInt(o, 10) || 0) - 1];
+    if (!liga || !/^\d+$/.test(o)) { console.log(`  No existe la opción "${o}".`); continue; }
+    const fin = await menuMensajes(grupo, liga);
+    if (fin === "salir") return;
+  }
+}
+async function menuMensajes(grupo, liga) {
+  const titulo = `${grupo.nombre} · ${(NOMBRE_LIGA[liga] || liga).replace("🧪 ", "")}`;
+  for (;;) {
+    console.log(`\n------ ${titulo} ------`);
     console.log("  ¿Qué mensaje quieres mandar?");
     MENU_GRUPO.forEach(([n, t]) => console.log(`  ${n}) ${t}`));
-    const op = await leerLinea(`\n[${grupo.nombre}] Opción (0 = volver): `);
-    if (op === null) return;
+    const op = await leerLinea(`\n[${titulo}] Opción (0 = volver): `);
+    if (op === null) return "salir";
     const o = op.trim();
-    if (o === "0" || /^(v|volver)$/i.test(o)) return mostrarMenu();
+    if (o === "0" || /^(v|volver)$/i.test(o)) return;
     if (!MENU_GRUPO.some(([n]) => n === o)) { console.log(`  No existe la opción "${o}".`); continue; }
-    const a = await armarMensaje(o, grupo); if (!a) continue;
+    const a = await armarMensaje(o, grupo, liga); if (!a) continue;
     console.log(`\n----- Vista previa → ${grupo.nombre} -----\n${a.msgs.map(resumen).join("\n\n")}\n-------------------------------`);
     const ok = await leerLinea(`  ¿Enviar ${a.que} a "${grupo.nombre}"? (s/n): `);
     if (!/^s/i.test(ok || "")) { console.log("  No se envió."); continue; }

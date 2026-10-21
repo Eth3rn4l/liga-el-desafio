@@ -453,11 +453,28 @@ client.on("disconnected", r => { console.error(`${hora()} WhatsApp se desconect�
 client.on("ready", alListo);
 }
 // Lista de grupos (con reintentos: recién vinculado, WhatsApp tarda en sincronizar los chats)
+// Si getChats falla (pasa con algunas versiones de WhatsApp Web), los grupos se leen directo de la memoria de WhatsApp Web
+async function gruposDirecto() {
+  const page = client.pupPage; if (!page) return null;
+  const gs = await page.evaluate(() => {
+    const C = window.Store && window.Store.Chat; if (!C) return null;
+    const arr = C.getModelsArray ? C.getModelsArray() : (C.models || C._models || []);
+    return arr.filter(c => c && c.id && (c.id.server === "g.us" || /@g\.us$/.test(c.id._serialized || ""))).map(c => ({
+      id: c.id._serialized || (c.id.user + "@g.us"),
+      name: c.formattedTitle || c.name || (c.groupMetadata && c.groupMetadata.subject) || (c.contact && c.contact.name) || ""
+    }));
+  });
+  return gs ? gs.map(g => ({ id: { _serialized: g.id }, name: g.name, isGroup: true })) : null;
+}
 async function listarGrupos() {
-  for (let i = 0; i < 5; i++) {
+  let ultimoError = "";
+  for (let i = 0; i < 6; i++) {
     try { return (await client.getChats()).filter(c => c.isGroup); }
-    catch (e) { console.log(`${hora()} WhatsApp todavía está cargando los chats… (intento ${i + 1} de 5)`); await espera(10000); }
+    catch (e) { ultimoError = String(e && e.message || e).split("\n")[0].slice(0, 160); }
+    try { const g = await gruposDirecto(); if (g && g.length) { console.log(`${hora()} Grupos leídos directo de WhatsApp Web (${g.length}).`); return g; } } catch (e) {}
+    console.log(`${hora()} WhatsApp todavía está cargando los chats… (intento ${i + 1} de 6)`); await espera(10000);
   }
+  if (ultimoError) console.log(`${hora()} Detalle del error: ${ultimoError}`);
   return null;
 }
 // Un grupo se puede indicar por su nombre exacto o por su link de invitación (https://chat.whatsapp.com/...)

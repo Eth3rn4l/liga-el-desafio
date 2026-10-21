@@ -200,6 +200,18 @@ async function iniciar() {
 // Menú principal: se elige el grupo. Dentro del grupo: se elige qué mensaje mandar (0 = volver).
 let pausado = false, gruposMenu = null;
 const DIR_IMG = path.join(DIR, "imagenes-para-enviar");
+// Texto que acompaña por defecto a algunas imágenes (por nombre de archivo)
+const TEXTO_IMAGEN = {
+  "codigo-de-la-mesa.jpg": [
+    "📜 *Código de la Mesa · Liga El Desafío*",
+    "",
+    "Recordatorio con cariño (pero muy en serio): las partidas de Commander duran horas y jugamos en un espacio cerrado. 🧼",
+    "",
+    "Ningún mazo tiene protección contra el olor: ni *Hexproof*, ni *Shroud*, ni *Ward*. Llega con ropa limpia, desodorante puesto y, si vienes del trabajo o del gym, una pasadita por la ducha suma más puntos que ganar la mesa. 😅",
+    "",
+    "Esto lo hacemos por todos: un ambiente agradable hace que la gente quiera volver a jugar. ¡Gracias por cuidar la mesa y la tienda! 🐉"
+  ].join("\n")
+};
 // Opciones que se muestran → acción interna
 const MENU_GRUPO = [
   ["1", "Mensaje para inscribirse", "3"],
@@ -304,8 +316,12 @@ async function armarMensaje(op, grupo, ligaSel) {
     const r = await leerLinea("  ¿Qué imagen? (número, Enter = cancelar): ");
     const f = arch[(parseInt(r, 10) || 0) - 1];
     if (!f) { console.log("  Cancelado."); return null; }
-    const cap = await leerLinea("  Texto que acompaña la imagen (Enter = sin texto): ");
-    return { msgs: [{ tipo: "imagen", archivo: path.join(DIR_IMG, f), caption: (cap || "").trim() }], que: `la imagen ${f}`, liga: ligaSel || ligaDeGrupo(grupo.id) || "grupo" };
+    // Algunas imágenes traen un texto por defecto (Enter lo usa; "-" manda la imagen sin texto)
+    const def = TEXTO_IMAGEN[f.toLowerCase()] || "";
+    if (def) console.log(`\n  Texto por defecto:\n${def.split("\n").map(x => "    " + x).join("\n")}\n`);
+    const cap = await leerLinea(def ? "  Texto que acompaña la imagen (Enter = texto por defecto, - = sin texto, o escribe otro): " : "  Texto que acompaña la imagen (Enter = sin texto): ");
+    const t = (cap || "").trim();
+    return { msgs: [{ tipo: "imagen", archivo: path.join(DIR_IMG, f), caption: t === "-" ? "" : t || def }], que: `la imagen ${f}`, liga: ligaSel || ligaDeGrupo(grupo.id) || "grupo" };
   }
   const liga = ligaSel || await elegirLigaDatos(grupo); if (!liga) return null;
   const d = await leerDatos(liga); if (!d) return null;

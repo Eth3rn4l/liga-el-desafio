@@ -35,9 +35,10 @@ function statsHasta(S, hasta) {
   }));
   const list = Object.values(rec);
   const W = S.warnings || {};
-  list.forEach(x => { x.pts -= Math.floor((W[x.id] || 0) / WARN_LIMIT) * WARN_PEN; });
+  const JZ = S.juez || {};   // warnings y restas que puso el juez
+  list.forEach(x => { x.pts -= Math.floor(((W[x.id] || 0) + ((JZ[x.id] && JZ[x.id].w) | 0)) / WARN_LIMIT) * WARN_PEN; });
   const AJ = S.ajustes || {};
-  list.forEach(x => { if (AJ[x.id]) x.pts += (+AJ[x.id].pts || 0); });   // ajuste manual del organizador
+  list.forEach(x => { if (AJ[x.id]) x.pts += (+AJ[x.id].pts || 0); if (JZ[x.id]) x.pts += Math.min(0, JZ[x.id].pts | 0); });   // ajuste manual del organizador y del juez
   list.forEach(x => { x.buch = hasta > 1 ? x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0) : 0; });
   return rec;
 }

@@ -187,6 +187,12 @@ details.mine-claim[open] > summary::after{content:"–"}
 .g-acc small{color:var(--muted);font-size:12px}
 @media (max-width:600px){.g-acc{align-items:stretch;width:100%}.g-acc .btn{width:100%}}
 body.display .guia{display:none!important}
+.juez-box{background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.jz-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.jz{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2);display:flex;flex-direction:column;gap:8px}
+.jz.con{border-color:rgba(255,107,94,.45)}.jz.editando{border-color:var(--gold)}
+.jz-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;justify-content:space-between}.jz-h > b{font-size:15px}
+.jz-res{font-size:13px;color:var(--fg)}.jz-res small{color:var(--muted)}
 .adm-sec-body{padding:0 14px 14px;display:flex;flex-direction:column;gap:14px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-family:var(--f-num);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -858,6 +864,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   </section>
 
   <section class="mine live-only" id="mine" hidden></section>
+  <section class="juez-box live-only" id="juezBox" hidden></section>
 
   <section id="insc" class="insc live-only" hidden></section>
 
@@ -1084,6 +1091,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // Portal de jugadores: mismo link terminado en #jugador. Muestra solo lo del jugador, sin controles de organizador.
   const PORTAL = false;
   const ADMUI = () => M.admin && !PORTAL;
+  let sanc = {};   // sanciones del juez (tabla "sanciones")
   let S = null, links = {}, linkData = {}, votes = {}, regs = {}, names = {}, focus = null, editDeck = null, editReg = null;
   const alerts = {}, applying = {}, drafts = {}, openEd = {};
 
@@ -2142,8 +2150,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     box.innerHTML = `<div class="stats-head"><div><h2>Warnings de la fecha</h2><div class="sub2">Solo lo ven los organizadores. Por cada <b>${WARN_LIMIT} warnings</b> en la misma fecha, el jugador pierde <b>${WARN_PEN} punto</b> del día automáticamente (2 warnings = −1, 4 warnings = −2…). Se reinician en cada fecha nueva.</div></div></div>
       <div class="summary"><span><b>${conW}</b>${conW === 1 ? "jugador con warning" : "jugadores con warnings"}</span><span><b>${pen}</b>${pen === 1 ? "penalizado" : "penalizados"}</span><span><b>${S.phase === "inscripcion" ? "–" : "R" + (S.cur + 1)}</b>ronda actual</span></div>
       <div class="card"><input class="warn-search" id="warnSearch" type="search" placeholder="Buscar jugador" value="${esc(warnQ)}" autocomplete="off">
-      <ul class="warn-list">${list.map(p => { const n = W[p.id] || 0, x = byId[p.id];
-        return `<li class="${n >= WARN_LIMIT ? "w2" : n ? "w1" : ""}"><span><span class="nm">${esc(p.name)}</span><span class="sub">${x ? x.pts + " pts" : ""}${tableOf[p.id] != null ? " · Mesa " + (tableOf[p.id] + 1) : ""}</span></span>
+      <ul class="warn-list">${list.map(p => { const n = W[p.id] || 0, x = byId[p.id], jz = (S.juez || {})[p.id];
+        return `<li class="${n >= WARN_LIMIT ? "w2" : n ? "w1" : ""}"><span><span class="nm">${esc(p.name)}</span><span class="sub">${x ? x.pts + " pts" : ""}${tableOf[p.id] != null ? " · Mesa " + (tableOf[p.id] + 1) : ""}${jz && (jz.w || jz.pts) ? ` · Juez: ${[jz.w ? jz.w + " warning" + (jz.w === 1 ? "" : "s") : "", jz.pts ? jz.pts + " pts" + (jz.motivo ? " (" + esc(jz.motivo) + ")" : "") : ""].filter(Boolean).join(", ")}` : ""}</span></span>
           ${n >= WARN_LIMIT ? `<span class="warn-tag w2">−${warnPen(n)} ${warnPen(n) === 1 ? "pt" : "pts"}</span>` : n ? '<span class="warn-tag w1">1 warning</span>' : "<span></span>"}
           <span class="warn-ctl"><button type="button" data-warn="${esc(p.id)}" data-d="-1" ${n ? "" : "disabled"} aria-label="Quitar warning a ${esc(p.name)}">−</button><b>${n}</b><button type="button" data-warn="${esc(p.id)}" data-d="1" aria-label="Agregar warning a ${esc(p.name)}">+</button></span></li>`; }).join("") || '<li><span class="sub">Nadie coincide con la búsqueda.</span></li>'}</ul></div>`;
   }
@@ -2935,10 +2943,11 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     }));
     const list = Object.values(rec);
     const W = st.warnings || {};
-    list.forEach(x => { x.warn = W[x.id] || 0; x.pen = warnPen(x.warn); x.pts -= x.pen; x.neg += x.pen; });
+    const JZ = st.juez || {};
+    list.forEach(x => { x.warn = (W[x.id] || 0) + ((JZ[x.id] && JZ[x.id].w) | 0); x.pen = warnPen(x.warn); x.pts -= x.pen; x.neg += x.pen; });
     // Ajuste manual del organizador (corrección de puntos con motivo)
     const AJ = st.ajustes || {};
-    list.forEach(x => { const a = AJ[x.id]; x.adj = a ? (+a.pts || 0) : 0; if (x.adj){ x.pts += x.adj; if (x.adj < 0) x.neg += -x.adj; } });
+    list.forEach(x => { const a = AJ[x.id], j = JZ[x.id]; x.adj = (a ? (+a.pts || 0) : 0) + (j ? Math.min(0, j.pts | 0) : 0); if (x.adj){ x.pts += x.adj; if (x.adj < 0) x.neg += -x.adj; } });
     const conBuch = upto > 1;
     list.forEach(x => { x.buch = conBuch ? x.opps.reduce((s, o) => s + (rec[o] ? rec[o].pts : 0), 0) : 0; });
     return rec;
@@ -3082,6 +3091,73 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const best = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
     return best ? {res:by[best], n:cnt[best], kinds:Object.keys(cnt).length} : null;
   }
+  // ---------- Rol juez: warnings y restas de puntos (tabla "sanciones") ----------
+  // El juez entra como jugador; lo que marca se guarda en "sanciones" y la página del organizador lo suma a la fecha (S.juez).
+  const JUEZ_MAX = 10;
+  let juezD = {}, juezQ = "";
+  const sancFecha = () => { const out = {}; if (!S) return out; const ids = new Set(S.players.map(p => p.id));
+    Object.values(sanc).forEach(v => { if (v && v.f === (S.fecha || "") && ids.has(v.pid) && (v.w || v.pts)) out[v.pid] = {w:v.w | 0, pts:Math.min(0, v.pts | 0), motivo:v.motivo || "", por:v.por || ""}; }); return out; };
+  function syncJuez(){
+    if (!(M.mode === "live" && M.admin && S && S.phase !== "inscripcion")) return;
+    const J = sancFecha();
+    if (JSON.stringify(J) !== JSON.stringify(S.juez || {})){ S.juez = J; commit(); }
+  }
+  function renderJuez(forzar){
+    const box = $("juezBox"); if (!box) return;
+    const show = M.juez && !ADMUI() && S && S.phase !== "inscripcion" && !document.body.classList.contains("display");
+    box.hidden = !show; if (!show || (!forzar && typing(box))) return;
+    const J = sancFecha(), W = S.warnings || {}, AJ = S.ajustes || {};
+    const q = fold(juezQ).trim();
+    const lista = S.players.slice().sort((a, b) => a.name.localeCompare(b.name)).filter(p => !q || fold(p.name).includes(q));
+    const fila = p => {
+      const j = J[p.id] || {w:0, pts:0, motivo:""}, d = juezD[p.id] || j;
+      const wOrg = W[p.id] || 0, wTot = wOrg + d.w, pen = warnPen(wTot);
+      const cambio = d.w !== j.w || d.pts !== j.pts || (d.motivo || "") !== (j.motivo || "");
+      const aOrg = AJ[p.id] && +AJ[p.id].pts < 0 ? +AJ[p.id].pts : 0;
+      return `<li class="jz${cambio ? " editando" : ""}${wTot || d.pts ? " con" : ""}">
+        <div class="jz-h"><b>${esc(p.name)}</b><span class="jz-res">${wTot ? `${wTot} warning${wTot === 1 ? "" : "s"}${pen ? ` · <b class="neg">−${pen}</b>` : ""}` : ""}${d.pts ? ` · resta <b class="neg">${d.pts}</b>` : ""}${wOrg || aOrg ? ` <small>(organizador: ${[wOrg ? wOrg + " warning" + (wOrg === 1 ? "" : "s") : "", aOrg ? aOrg + " pts" : ""].filter(Boolean).join(", ")})</small>` : ""}</span></div>
+        <div class="cr-steps">
+          <div class="cr-step"><span>Warnings</span><button type="button" data-jz="w" data-d="-1" data-p="${esc(p.id)}" ${d.w <= 0 ? "disabled" : ""} aria-label="Quitar warning a ${esc(p.name)}">−</button><b>${d.w}</b><button type="button" data-jz="w" data-d="1" data-p="${esc(p.id)}" aria-label="Agregar warning a ${esc(p.name)}">+</button></div>
+          <div class="cr-step"><span>Restar puntos</span><button type="button" data-jz="pts" data-d="-1" data-p="${esc(p.id)}" ${d.pts <= -JUEZ_MAX ? "disabled" : ""} aria-label="Restar un punto a ${esc(p.name)}">−</button><b>${d.pts}</b><button type="button" data-jz="pts" data-d="1" data-p="${esc(p.id)}" ${d.pts >= 0 ? "disabled" : ""} aria-label="Devolver un punto a ${esc(p.name)}">+</button></div>
+          ${d.pts ? `<input type="text" data-jz-mot="${esc(p.id)}" maxlength="80" placeholder="Motivo de la resta (obligatorio)" value="${esc(d.motivo || "")}">` : ""}
+        </div>
+        ${cambio ? `<div class="cr-foot"><span>${d.pts && !(d.motivo || "").trim() ? "Escribe el motivo de la resta." : "Revisa y guarda."}</span><span class="cr-btns"><button type="button" class="btn ghost" data-jz-reset="${esc(p.id)}">Deshacer</button><button type="button" class="btn primary" data-jz-save="${esc(p.id)}" ${d.pts && !(d.motivo || "").trim() ? "disabled" : ""}>Guardar</button></span></div>` : ""}</li>`;
+    };
+    box.innerHTML = `<div class="stats-head"><div><h2>Juez · puntos negativos</h2><div class="sub2">Asigna warnings y restas de puntos de esta fecha. Cada <b>${WARN_LIMIT} warnings</b> restan <b>${WARN_PEN} punto</b>. Lo que guardes se suma al standing en unos segundos.</div></div></div>
+      <input class="warn-search" id="juezSearch" type="search" placeholder="Buscar jugador" value="${esc(juezQ)}" autocomplete="off">
+      <ul class="jz-list">${lista.map(fila).join("") || '<li class="jz"><span class="note">Nadie coincide con la búsqueda.</span></li>'}</ul><span class="err" id="juezErr"></span>`;
+  }
+  document.addEventListener("click", async e => {
+    const b = e.target.closest("[data-jz]"), rs = e.target.closest("[data-jz-reset]"), sv = e.target.closest("[data-jz-save]");
+    if (!(b || rs || sv) || !M.juez || !S) return;
+    const J = sancFecha();
+    if (b){
+      const id = b.dataset.p, d = juezD[id] = juezD[id] || Object.assign({w:0, pts:0, motivo:""}, J[id] || {});
+      const mot = document.querySelector(`[data-jz-mot="${id}"]`); if (mot) d.motivo = mot.value;
+      if (b.dataset.jz === "w") d.w = Math.max(0, Math.min(20, d.w + +b.dataset.d));
+      else d.pts = Math.max(-JUEZ_MAX, Math.min(0, d.pts + +b.dataset.d));
+      renderJuez(true); return;
+    }
+    if (rs){ delete juezD[rs.dataset.jzReset]; renderJuez(true); return; }
+    if (sv){
+      const id = sv.dataset.jzSave, d = juezD[id]; if (!d) return;
+      const mot = document.querySelector(`[data-jz-mot="${id}"]`); if (mot) d.motivo = mot.value.trim();
+      if (d.pts && !d.motivo) return;
+      sv.disabled = true;
+      try {
+        if (!d.w && !d.pts) await M.db.doc("sanciones/" + id).delete();
+        else await M.db.doc("sanciones/" + id).set({pid:id, f:S.fecha || "", w:d.w, pts:d.pts, motivo:d.pts ? d.motivo : "", por:M.email || "juez", at:Date.now()});
+        delete juezD[id]; renderJuez(true);
+      } catch(err){ const x = $("juezErr"); if (x) x.textContent = "No se pudo guardar. Revisa que tu cuenta tenga el rol de juez." + errDetail(err); sv.disabled = false; }
+    }
+  });
+  document.addEventListener("input", e => {
+    if (e.target.id === "juezSearch"){ juezQ = e.target.value; const pos = e.target.selectionStart; renderJuez(true); const s2 = $("juezSearch"); if (s2){ s2.focus(); try { s2.setSelectionRange(pos, pos); } catch(_){} } return; }
+    const m = e.target.closest && e.target.closest("[data-jz-mot]"); if (!m) return;
+    const id = m.dataset.jzMot, J = sancFecha(), d = juezD[id] = juezD[id] || Object.assign({w:0, pts:0, motivo:""}, J[id] || {});
+    d.motivo = m.value;
+    const li = m.closest(".jz"), btn = li && li.querySelector("[data-jz-save]"); if (btn) btn.disabled = !!(d.pts && !m.value.trim());
+  });
   function autoApply(){
     if (!(M.mode === "live" && M.admin && S && S.rounds[S.cur])) return;
     let changed = false;
@@ -3092,6 +3168,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       if (!applying[key]){ applying[key] = 1; t.result = c; changed = true; }
     });
     if (changed) commit();
+    syncJuez();
   }
 
   /* ---------- Editor de resultado (jugador y organizador) ---------- */
@@ -3226,7 +3303,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const stb = document.querySelector('.tab[data-view="sorteo"]'); if (stb) stb.hidden = !ADMUI();
     if (!ADMUI() && view === "sorteo") setView("live");
     if (vistaPendiente && M.mode !== "connecting"){ const vp = vistaPendiente; vistaPendiente = null; if (ADMUI()) setView(vp); }
-    renderCal(); renderJornada(); renderLate(); try { renderGuia(); } catch(e){ console.error(e); }
+    renderCal(); renderJornada(); renderLate(); try { renderGuia(); } catch(e){ console.error(e); } try { renderJuez(); } catch(e){ console.error(e); }
     if (view === "warn"){ if (!ADMUI()) setView("live"); else setTimeout(renderWarn, 0); }
     if (view === "sorteo") setTimeout(renderSorteo, 0);
     const conn = $("conn");
@@ -4230,7 +4307,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (!c){ startLocal("No se pudo conectar con el servidor de la liga."); return; }
     const {db, user} = c;
     M.db = db; M.user = user; M.perfil = c.perfil;
-    M.admin = c.admin; M.dev = !!(c.admin && c.dev);
+    M.admin = c.admin; M.dev = !!(c.admin && c.dev); M.juez = !!c.juez;
     // Liga de testeo: cualquiera con el link la puede ver (p. ej. desde el celular), pero solo el desarrollador la maneja
     if (TEST && !M.dev) M.admin = false;
     M.uid = c.session ? c.session.user.id : null;
@@ -4262,6 +4339,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       db.collection("inscripciones").onSnapshot(q => { regs = {}; q.docs.forEach(d => { const v = d.data(); if (v) regs[d.id] = v; }); if (ready) render(); }, () => {});
       if (c.admin) db.collection("contactos").onSnapshot(q => { contactos = {}; q.docs.forEach(d => { const v = d.data(); if (v) contactos[d.id] = v; }); if (ready){ render(); if (view === "stats") renderStats(); } }, () => {});
       db.collection("votos").onSnapshot(q => { votes = {}; q.docs.forEach(d => { const v = d.data(); if (v) votes[d.id] = v; }); if (ready){ render(); autoApply(); } }, () => {});
+      db.collection("sanciones").onSnapshot(q => { sanc = {}; q.docs.forEach(d => { const v = d.data(); if (v) sanc[d.id] = v; }); if (ready){ render(); syncJuez(); } }, () => {});
     } catch(e){ fail(e); }
     render();
   }

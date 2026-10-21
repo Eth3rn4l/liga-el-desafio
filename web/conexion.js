@@ -367,6 +367,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     votos:         {key:"user_id", shape:"data"},
     inscripciones: {key:"user_id", shape:"data"},
     contactos:     {key:"id",      shape:"data"},   // correos de jugadores: solo organizadores
+    sanciones:     {key:"id",      shape:"data", scoped:true},   // warnings y restas que pone el juez
     vinculos:      {key:"user_id", shape:"cols", scoped:true}
   };
   T.votos.scoped = true; T.inscripciones.scoped = true;
@@ -427,7 +428,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
     if (liga) LIGA_ID = liga;
     const {data:{session}} = await sb.auth.getSession();
     const u = session && session.user;
-    let admin = false, dev = false, perfil = null;
+    let admin = false, dev = false, juez = false, perfil = null;
     if (u){
       const [a, p] = await Promise.all([
         sb.rpc("es_admin"),
@@ -436,6 +437,8 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
       admin = !!(a && a.data);
       // Rol desarrollador (liga de testeo). Si la función aún no existe en Supabase, queda en falso.
       if (admin){ try { const d = await sb.rpc("es_dev"); dev = !!(d && d.data); } catch(e){} }
+      // Rol juez: puede poner puntos negativos. Si la función aún no existe en Supabase, queda en falso.
+      try { const j = await sb.rpc("es_juez"); juez = !!(j && j.data && !j.error); } catch(e){}
       perfil = p && p.data || null;
       // Cuenta nueva con Google sin perfil todavía: se pide nombre y apellido una sola vez
       if (!perfil){
@@ -464,7 +467,7 @@ a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
         return out;
       }
     };
-    return {db, user, session, perfil, admin, dev};
+    return {db, user, session, perfil, admin, dev, juez};
   }
   window.Conexion = {connect, ready: !!sb};
 })();

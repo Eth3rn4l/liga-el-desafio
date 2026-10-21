@@ -153,11 +153,41 @@ td.mesa-c{color:var(--muted);font-family:var(--f-num)}
 
 /* Admin */
 details.admin{background:var(--surface);border:1px solid var(--line);border-radius:14px}
-details.admin summary{cursor:pointer;padding:14px 16px;font-family:var(--f-display);font-weight:900;text-transform:uppercase;letter-spacing:.04em;list-style:none;display:flex;justify-content:space-between}
-details.admin summary::after{content:"+";color:var(--muted);font-weight:400}
-details.admin[open] summary::after{content:"–"}
-.admin-body{padding:0 16px 16px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
-@media (max-width:760px){.admin-body{grid-template-columns:minmax(0,1fr)}}
+details.admin > summary{cursor:pointer;padding:14px 16px;font-family:var(--f-display);font-weight:900;text-transform:uppercase;letter-spacing:.04em;list-style:none;display:flex;justify-content:space-between}
+details.admin > summary::after{content:"+";color:var(--muted);font-weight:400}
+details.admin[open] > summary::after{content:"–"}
+.admin-body{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+.adm-sub{align-self:center;font-family:var(--f-body,inherit);font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:12px;margin-left:10px;flex:1}
+details.adm-sec{border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+details.adm-sec > summary{cursor:pointer;list-style:none;display:flex;gap:12px;align-items:center;padding:12px 14px}
+details.adm-sec > summary::-webkit-details-marker{display:none}
+details.adm-sec > summary::after{content:"Abrir";margin-left:auto;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px;flex:none}
+details.adm-sec[open] > summary::after{content:"Cerrar"}
+details.adm-sec > summary .ic{font-size:22px;flex:none}
+details.adm-sec > summary > span:nth-child(2){display:flex;flex-direction:column;gap:2px;min-width:0}
+details.adm-sec > summary b{font-size:15px}
+details.adm-sec > summary small{color:var(--muted);font-size:12px}
+details.adm-sec.peligro{border-color:rgba(226,71,44,.35)}
+details.mine-claim > summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+details.mine-claim > summary::-webkit-details-marker{display:none}
+details.mine-claim > summary b{font-size:14px}
+details.mine-claim > summary::after{content:"+";margin-left:auto;color:var(--muted)}
+details.mine-claim[open] > summary::after{content:"–"}
+.guia{border:1px solid var(--gold);border-radius:14px;background:linear-gradient(180deg,rgba(233,180,76,.10),var(--surface));padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.g-pasos{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.gp{color:var(--muted);padding:3px 8px;border-radius:999px;border:1px solid var(--line)}
+.gp.ok{color:var(--ok,#6fcf8a);border-color:transparent}
+.gp.now{color:#111;background:var(--gold);border-color:var(--gold);font-weight:700}
+.gsep{color:var(--muted)}
+.g-main{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
+.g-main > div:first-child{flex:1 1 320px;min-width:0}
+.g-t{font-size:17px}
+.g-main p{margin:4px 0 0;color:var(--fg);font-size:14px;line-height:1.45}
+.g-acc{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.g-acc small{color:var(--muted);font-size:12px}
+@media (max-width:600px){.g-acc{align-items:stretch;width:100%}.g-acc .btn{width:100%}}
+body.display .guia{display:none!important}
+.adm-sec-body{padding:0 14px 14px;display:flex;flex-direction:column;gap:14px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-family:var(--f-num);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 textarea,input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
@@ -446,7 +476,7 @@ body.display .imp,body.display .imp-btn{display:none!important}
 .pen{display:inline-block;margin-left:4px;font-size:11px;color:var(--red-hi);font-family:var(--f-num)}
 .wmark{margin-left:6px;font-size:11px;color:var(--gold);font-family:var(--f-num)}
 .cal-admin{grid-column:1/-1;display:flex;flex-direction:column;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.late-box{grid-column:1/-1;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2)}
+.late-box{display:block}
 .late-box h3{margin:0;font-family:var(--f-display);font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.03em}
 .late-box .reg-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
 .late-box .reg-form .wide{grid-column:1/-1}
@@ -781,6 +811,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
 
   <div class="banner" id="offlineBanner" hidden></div>
   <div class="banner test-banner" id="testBanner" hidden><span id="testTxt"></span><span class="test-acts"><button class="btn ghost" id="btnTestLink" type="button" hidden>📱 Copiar link para celulares</button><a class="btn ghost" id="lnkReal" hidden>Ver la liga real</a><button class="btn primary" id="btnFinTest2" type="button" hidden>Finalizar liga testeo</button></span></div>
+  <div class="guia adm live-only" id="guia" hidden></div>
   <div class="banner adm live-only" id="sampleBanner" hidden>Jugadores de ejemplo. Carga los inscritos reales en el panel del organizador, al final de la página.</div>
 
   <section class="clock live-only" aria-label="Tiempo de ronda">
@@ -912,12 +943,46 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   </section>
 
   <details class="admin adm live-only" id="admin">
-    <summary>Panel del organizador</summary>
+    <summary>Panel del organizador <small class="adm-sub">Jugadores · ajustes · calendario · nueva fecha</small></summary>
     <div class="admin-body">
       <div class="jornada-info" id="jornadaInfo"></div>
       <div class="late-box" id="lateBox" hidden></div>
-      <div class="cal-admin" id="calAdmin"></div>
-      <div class="field">
+      <details class="adm-sec" data-sec="jug"><summary><span class="ic">👥</span><span><b>Jugadores de esta fecha</b><small>Mazos, códigos para el portal, drop y cuentas vinculadas</small></span></summary><div class="adm-sec-body">
+        <div class="field">
+          <label>Jugadores, mazos y códigos de acceso · <span id="decksCount"></span></label>
+          <p class="note" style="margin:0">El código de 4 letras sirve para que un jugador que inscribiste tú se vincule a su cuenta desde el portal, si no se vinculó solo por nombre.</p>
+          <ul class="links decks" id="decksList"></ul>
+        </div>
+        <div class="field">
+          <label>Cuentas vinculadas a jugadores</label>
+          <p class="note" style="margin:0">Une la <b>cuenta</b> con la que alguien entra al portal con su <b>nombre en esta fecha</b>, para que vea su mesa y pueda reportar. Quien se inscribe desde su cuenta queda vinculado solo. A los que inscribes tú se les vincula automáticamente al cerrar inscripciones si su cuenta tiene el mismo nombre y apellido; si no, usan su código. Aquí puedes deshacer un vínculo equivocado.</p>
+          <div class="row"><button class="btn ghost" id="btnAutoLink" type="button">Vincular por nombre ahora</button><span class="note" id="autoLinkNote"></span></div>
+          <ul class="links" id="linksList"></ul>
+        </div>
+      </div></details>
+      <details class="adm-sec" data-sec="cfg"><summary><span class="ic">⚙️</span><span><b>Ajustes de esta fecha</b><small>Minutos y cantidad de rondas, sistema de mesas y puntaje</small></span></summary><div class="adm-sec-body">
+        <p class="note" style="margin:0">Se cargan desde la liga del mes al abrir la fecha. Si los cambias aquí, solo afectan a esta fecha.</p>
+        <div class="row">
+          <div class="field"><label for="cfgMin">Minutos por ronda</label><input type="number" id="cfgMin" min="10" max="180"></div>
+          <div class="field"><label for="cfgRounds">Rondas</label><input type="number" id="cfgRounds" min="1" max="8"></div>
+        </div>
+        <div class="field"><label for="cfgPair">Sistema de mesas</label><select id="cfgPair"><option value="suizo">Suizo · Ronda 1 al azar, luego por standing</option><option value="desafio">Suizo Desafío · Rondas 1 y 2 al azar, luego suizo</option><option value="azar">Al azar · Todas las rondas</option></select></div>
+        <div class="row">
+          <div class="field"><label for="cfgWin">Ganar mesa</label><input type="number" id="cfgWin" min="0" max="20"></div>
+          <div class="field"><label for="cfgKill">Por kill</label><input type="number" id="cfgKill" min="0" max="20"></div>
+          <div class="field"><label for="cfgSurv">Sobrevivir</label><input type="number" id="cfgSurv" min="0" max="20"></div>
+          <div class="field"><label for="cfgCap">Tope por mesa</label><input type="number" id="cfgCap" min="1" max="20"></div>
+        </div>
+        <div class="row b3-only">
+          <div class="field"><label for="cfgJoven">Muy joven para morir (+)</label><input type="number" id="cfgJoven" min="0" max="5"></div>
+          <div class="field"><label for="cfgBruto">Demasiado bruto (−)</label><input type="number" id="cfgBruto" min="0" max="10"></div>
+        </div>
+        <p class="note">Rondas al azar: se evita repetir rivales y que se junten dos comandantes iguales en una mesa. Rondas suizas: mesas en orden de standing (puntos, kills y Buchholz); si alguien ya jugó con alguien de su mesa o tiene el mismo comandante, se cambia por el siguiente con exactamente los mismos puntos, kills y Buchholz, y al final se intercambian jugadores entre mesas con los mismos puntos si eso deja ambas mesas sin choques. Si los inscritos no son múltiplo de 4, se forman mesas de 3. Desempate: puntos, kills y Buchholz (suma de los puntos de los rivales enfrentados).</p>
+      </div></details>
+      <details class="adm-sec" data-sec="cal"><summary><span class="ic">📅</span><span><b>Calendario de ligas</b><small>Qué días se juega cada mes y cuántas fechas suman al standing</small></span></summary><div class="adm-sec-body">
+        <div class="cal-admin" id="calAdmin"></div>
+      </div></details>
+      <details class="adm-sec" data-sec="imp"><summary><span class="ic">📋</span><span><b>Inscribir muchos de una vez</b><small>Pega una lista: un jugador por línea</small></span></summary><div class="adm-sec-body"><div class="field">
         <label for="playersInput">Importar inscritos en bloque</label>
         <p class="note" style="margin:0">Una persona por línea: <b>Nombre Apellido ; Mazo ; Comandante ; Correo</b>. Comandante y correo son opcionales: si falta el comandante, se usa el de portada del precon.</p>
         <textarea id="playersInput" spellcheck="false" placeholder="Camila Soto ; Animated Army ; Bello, Bard of the Brambles&#10;Tomás Araya ; Eldrazi Unbound"></textarea>
@@ -925,6 +990,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <button class="btn" id="btnImport" type="button">Agregar a la inscripción</button>
           <span class="note" id="countNote"></span>
         </div>
+      </div></div></details>
+      <details class="adm-sec peligro" data-sec="nueva"><summary><span class="ic">🆕</span><span><b>Empezar nueva fecha · borrar datos</b><small>Para dejar lista la próxima fecha, o borrar una fecha de prueba</small></span></summary><div class="adm-sec-body"><div class="field">
+        <p class="note" style="margin:0">Al empezar una nueva fecha se abren las inscripciones desde cero. Hazlo después de <b>Cerrar liga</b>, para que la fecha anterior quede guardada en el histórico.</p>
         <div class="row">
           <button class="btn primary" id="btnLoad" type="button">Empezar nueva fecha</button>
         </div>
@@ -949,38 +1017,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           </div>
         </div>
         <span class="err" id="adminErr"></span>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
-        <div class="field"><label>Ajustes de esta fecha</label><p class="note" style="margin:0">Se cargan desde la liga del mes al abrir la fecha. Si los cambias aquí, solo afectan a esta fecha.</p></div>
-        <div class="row">
-          <div class="field"><label for="cfgMin">Minutos por ronda</label><input type="number" id="cfgMin" min="10" max="180"></div>
-          <div class="field"><label for="cfgRounds">Rondas</label><input type="number" id="cfgRounds" min="1" max="8"></div>
-        </div>
-        <div class="field"><label for="cfgPair">Sistema de mesas</label><select id="cfgPair"><option value="suizo">Suizo · Ronda 1 al azar, luego por standing</option><option value="desafio">Suizo Desafío · Rondas 1 y 2 al azar, luego suizo</option><option value="azar">Al azar · Todas las rondas</option></select></div>
-        <div class="row">
-          <div class="field"><label for="cfgWin">Ganar mesa</label><input type="number" id="cfgWin" min="0" max="20"></div>
-          <div class="field"><label for="cfgKill">Por kill</label><input type="number" id="cfgKill" min="0" max="20"></div>
-          <div class="field"><label for="cfgSurv">Sobrevivir</label><input type="number" id="cfgSurv" min="0" max="20"></div>
-          <div class="field"><label for="cfgCap">Tope por mesa</label><input type="number" id="cfgCap" min="1" max="20"></div>
-        </div>
-        <div class="row b3-only">
-          <div class="field"><label for="cfgJoven">Muy joven para morir (+)</label><input type="number" id="cfgJoven" min="0" max="5"></div>
-          <div class="field"><label for="cfgBruto">Demasiado bruto (−)</label><input type="number" id="cfgBruto" min="0" max="10"></div>
-        </div>
-        <div class="field">
-          <label>Jugadores, mazos y códigos de acceso · <span id="decksCount"></span></label>
-          <p class="note" style="margin:0">El código de 4 letras sirve para que un jugador que inscribiste tú se vincule a su cuenta desde el portal, si no se vinculó solo por nombre.</p>
-          <ul class="links decks" id="decksList"></ul>
-        </div>
-        <div class="field">
-          <label>Cuentas vinculadas a jugadores</label>
-          <p class="note" style="margin:0">Une la <b>cuenta</b> con la que alguien entra al portal con su <b>nombre en esta fecha</b>, para que vea su mesa y pueda reportar. Quien se inscribe desde su cuenta queda vinculado solo. A los que inscribes tú se les vincula automáticamente al cerrar inscripciones si su cuenta tiene el mismo nombre y apellido; si no, usan su código. Aquí puedes deshacer un vínculo equivocado.</p>
-          <div class="row"><button class="btn ghost" id="btnAutoLink" type="button">Vincular por nombre ahora</button><span class="note" id="autoLinkNote"></span></div>
-          <ul class="links" id="linksList"></ul>
-        </div>
-        <p class="note">Rondas al azar: se evita repetir rivales y que se junten dos comandantes iguales en una mesa. Rondas suizas: mesas en orden de standing (puntos, kills y Buchholz); si alguien ya jugó con alguien de su mesa o tiene el mismo comandante, se cambia por el siguiente con exactamente los mismos puntos, kills y Buchholz, y al final se intercambian jugadores entre mesas con los mismos puntos si eso deja ambas mesas sin choques. Si los inscritos no son múltiplo de 4, se forman mesas de 3. Desempate: puntos, kills y Buchholz (suma de los puntos de los rivales enfrentados).</p>
-      </div>
-      <div class="cal-admin" id="calAdmin"></div>
+      </div></div></details>
     </div>
   </details>
 </div>
@@ -3074,7 +3111,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const stb = document.querySelector('.tab[data-view="sorteo"]'); if (stb) stb.hidden = !ADMUI();
     if (!ADMUI() && view === "sorteo") setView("live");
     if (vistaPendiente && M.mode !== "connecting"){ const vp = vistaPendiente; vistaPendiente = null; if (ADMUI()) setView(vp); }
-    renderCal(); renderJornada(); renderLate();
+    renderCal(); renderJornada(); renderLate(); try { renderGuia(); } catch(e){ console.error(e); }
     if (view === "warn"){ if (!ADMUI()) setView("live"); else setTimeout(renderWarn, 0); }
     if (view === "sorteo") setTimeout(renderSorteo, 0);
     const conn = $("conn");
@@ -3204,7 +3241,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const show = ADMUI() && S && S.phase !== "inscripcion";
     box.hidden = !show; if (!show || typing(box)) return;
     const n = S.players.filter(p => p.late != null).length;
-    box.innerHTML = `<h3>Inscripción tardía</h3><p class="note" style="margin:0">Para quien llega con la fecha empezada: entra con 0 puntos y juega desde la próxima ronda. Si hay una mesa de 3 o quieres sentarlo ya, arrástralo desde “Sin mesa” a una mesa de la ronda actual.${n ? ` Tardíos en esta fecha: ${n}.` : ""}</p>${regFormHTML("rgL", null)}`;
+    const ab = !!box.querySelector("details[open]");
+    box.innerHTML = `<details class="adm-sec"${ab ? " open" : ""}><summary><span class="ic">➕</span><span><b>Inscribir a alguien que llegó tarde</b><small>Entra con 0 puntos y juega desde la próxima ronda${n ? ` · Tardíos en esta fecha: ${n}` : ""}</small></span></summary><div class="adm-sec-body"><p class="note" style="margin:0">Si hay una mesa de 3 o quieres sentarlo ya, después de inscribirlo arrástralo desde “Sin mesa” a una mesa de la ronda actual.</p>${regFormHTML("rgL", null)}</div></details>`;
   }
   $("lateBox").addEventListener("click", e => { if (e.target.closest('[data-reg-save="rgL"]')) saveReg("rgL"); });
   function renderMine(stand, tableOf, myPid){
@@ -3219,11 +3257,14 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       const taken = new Set(Object.entries(links).filter(([u]) => u !== M.uid).map(([, p]) => p));
       const opts = S.players.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p =>
         `<option value="${p.id}" ${taken.has(p.id) ? "disabled" : ""}>${esc(p.name)}${taken.has(p.id) ? " (ya vinculado)" : ""}</option>`).join("");
-      box.innerHTML = `<div class="mine-head"><div class="who"><span class="eyebrow">Tu partida</span><h2>¿Juegas en la liga?</h2></div></div>
-        <p class="msg">Elige tu nombre e ingresa tu <b>código de jugador</b> (te lo entrega el organizador al inscribirte). Se hace una sola vez: después entras directo a tu mesa y tus estadísticas.</p>
+      const cuerpo = `<p class="msg">Elige tu nombre e ingresa tu <b>código de jugador</b> (te lo entrega el organizador al inscribirte). Se hace una sola vez: después entras directo a tu mesa y tus estadísticas.</p>
         <div class="claim"><label for="claimSel" class="msg">Soy</label><select id="claimSel"><option value="">Selecciona tu nombre</option>${opts}</select>
         <label for="claimCode" class="msg">Código</label><input id="claimCode" class="code-in" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD">
         <button class="btn primary" id="btnClaim" type="button">Entrar</button><span class="err" id="claimErr"></span></div>`;
+      // Al organizador no le estorba: queda plegado por si también juega
+      const abierto = box.querySelector("details.mine-claim[open]");
+      box.innerHTML = ADMUI() ? `<details class="mine-claim"${abierto ? " open" : ""}><summary><span class="eyebrow">Tu partida</span><b>¿También juegas hoy? Vincula tu cuenta a tu nombre</b></summary>${cuerpo}</details>`
+        : `<div class="mine-head"><div class="who"><span class="eyebrow">Tu partida</span><h2>¿Juegas en la liga?</h2></div></div>${cuerpo}`;
       return;
     }
     const ti = tableOf[myPid], t = ti != null ? S.rounds[S.cur].tables[ti] : null;
@@ -3796,6 +3837,69 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   }
   // Firma de los resultados: si cambian después del cierre, se puede actualizar
   const resultsSig = () => JSON.stringify(S.rounds.map(r => r.tables.map(t => [t.seats, t.result ? sig(t.result) : null])));
+  // ---------- Guía del organizador: en qué paso va la fecha y qué hacer ahora ----------
+  function renderGuia(){
+    const g = $("guia"); if (!g) return;
+    if (!ADMUI() || !S || document.body.classList.contains("display") || view !== "live"){ g.hidden = true; return; }
+    g.hidden = false;
+    const c = S.cfg, R = c.rounds, insc = S.phase === "inscripcion";
+    const r = !insc && S.rounds[S.cur], T = r ? r.tables : [];
+    const conRes = T.filter(t => t.result).length, faltan = T.map((t, i) => t.result ? null : i + 1).filter(Boolean);
+    const total = S.timer ? c.min * 60000 : 0, empezo = !!(S.timer && (S.timer.running || S.timer.left !== total));
+    const cerrada = !insc && isClosed();
+    // pasos: 0 inscripción, 1..R rondas, R+1 cierre
+    const paso = insc ? 0 : cerrada ? R + 2 : (roundComplete() && S.cur === R - 1) ? R + 1 : S.cur + 1;
+    const chips = ["Inscripción"].concat(Array.from({length:R}, (_, i) => "Ronda " + (i + 1))).concat(["Cierre"])
+      .map((t, i) => `<span class="gp${i < paso ? " ok" : i === paso ? " now" : ""}">${i < paso ? "✓ " : ""}${t}</span>`).join('<span class="gsep">›</span>');
+    let titulo, txt, btn = "";
+    const nIns = insc ? registrants().length : S.players.length;
+    if (insc){
+      titulo = "Paso 1 · Inscripciones abiertas";
+      txt = `Van <b>${nIns}</b> ${nIns === 1 ? "inscrito" : "inscritos"}. Inscribe a los que faltan en el formulario de abajo (o ellos desde el portal). Cuando estén todos, cierra las inscripciones: la página arma las mesas de la ronda 1.`;
+      btn = `<button class="btn primary" type="button" data-guia="closeInsc" ${nIns < 3 ? "disabled" : ""}>Cerrar inscripciones y armar ronda 1</button>${nIns < 3 ? '<small>Se necesitan al menos 3 jugadores.</small>' : ""}`;
+    } else if (cerrada){
+      titulo = "Fecha terminada ✓";
+      txt = "La fecha quedó cerrada y guardada en el historial y en las estadísticas. Para la próxima fecha: abre <b>Panel del organizador → Empezar nueva fecha</b>.";
+      btn = `<button class="btn" type="button" data-guia="nueva">Ir a “Empezar nueva fecha”</button>`;
+    } else if (roundComplete() && S.cur === R - 1){
+      titulo = `Última ronda terminada`;
+      txt = "Todas las mesas tienen resultado. Revisa el standing y, si está bien, <b>cierra la liga</b>: se guarda la fecha en el historial, se actualizan las estadísticas y el bot publica el podio.";
+      btn = `<button class="btn primary" type="button" data-guia="next">${S.closedSig ? "Actualizar cierre" : "Cerrar liga y guardar la fecha"}</button>`;
+    } else if (roundComplete()){
+      titulo = `Ronda ${S.cur + 1} terminada`;
+      txt = `Todas las mesas tienen resultado. Revisa el standing y arma la ronda ${S.cur + 2}${isRandomRound(c, S.cur + 1) ? " (al azar)" : " (por standing)"}.`;
+      btn = `<button class="btn primary" type="button" data-guia="next">Armar ronda ${S.cur + 2}</button>`;
+    } else if (!empezo && !conRes){
+      titulo = `Paso ${S.cur + 2} · Ronda ${S.cur + 1} armada`;
+      txt = `Hay <b>${T.length} ${T.length === 1 ? "mesa" : "mesas"}</b>. Que cada uno busque su mesa (si alguien quedó mal, arrástralo a otra). Cuando estén sentados, inicia el reloj.`;
+      btn = `<button class="btn primary" type="button" data-guia="start">▶ Iniciar ronda ${S.cur + 1}</button>`;
+    } else {
+      titulo = `Ronda ${S.cur + 1} en juego`;
+      txt = `<b>${conRes} de ${T.length}</b> mesas con resultado. Cuando una mesa termine, toca <b>Cargar resultado</b> en esa mesa${faltan.length ? ` · Faltan: ${faltan.map(n => "Mesa " + n).join(", ")}` : ""}.`;
+      btn = faltan.length ? `<button class="btn primary" type="button" data-guia="mesa" data-t="${faltan[0] - 1}">Cargar resultado de la Mesa ${faltan[0]}</button>` : "";
+    }
+    g.innerHTML = `<div class="g-pasos">${chips}</div><div class="g-main"><div><b class="g-t">${titulo}</b><p>${txt}</p></div><div class="g-acc">${btn}</div></div>`;
+  }
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-guia]"); if (!b) return;
+    const a = b.dataset.guia;
+    if (a === "closeInsc"){ const x = $("btnCloseInsc"); if (x) x.click(); }
+    else if (a === "start") $("btnStart").click();
+    else if (a === "next") $("btnNext").click();
+    else if (a === "nueva"){ const adm = $("admin"); adm.open = true; const d = document.querySelector('details.adm-sec[data-sec="nueva"]'); if (d){ d.open = true; d.scrollIntoView({behavior:"smooth", block:"start"}); } }
+    else if (a === "mesa"){
+      const ti = b.dataset.t, ed = document.querySelector(`[data-op="edit"][data-t="${ti}"]`);
+      const art = ed && ed.closest(".mesa");
+      if (ed && !(art && art.querySelector(".ed"))) ed.click();
+      setTimeout(() => { const m = document.querySelector(`[data-op="edit"][data-t="${ti}"]`); const el = m && m.closest(".mesa"); if (el) el.scrollIntoView({behavior:"smooth", block:"start"}); }, 80);
+    }
+  });
+  // Secciones del panel del organizador: se recuerda cuáles dejaste abiertas
+  document.querySelectorAll("details.adm-sec").forEach(d => {
+    const k = "__adm_sec_" + d.dataset.sec;
+    try { const v = localStorage.getItem(k); if (v != null) d.open = v === "1"; } catch(e){}
+    d.addEventListener("toggle", () => { try { localStorage.setItem(k, d.open ? "1" : "0"); } catch(e){} });
+  });
   const isClosed = () => !!(S && S.closedSig && S.closedSig === resultsSig() && S.archivedId);
   /* ---------- Rol desarrollador: liga de testeo ---------- */
   function urlLiga(test){ return location.pathname + "?liga=" + LIGA + (test ? "&test=1" : "") + location.hash; }

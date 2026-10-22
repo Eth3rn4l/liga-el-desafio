@@ -136,7 +136,18 @@ async function enviarImagen(liga, msg) {
   if (!fs.existsSync(msg.archivo)) { console.error(`${hora()} no encontré la imagen ${msg.archivo}`); return; }
   if (SIMULAR) { console.log(`\n----- [${liga}] ${hora()} · imagen ${path.basename(msg.archivo)} -----${msg.caption ? "\n" + msg.caption : ""}\n`); return; }
   const { MessageMedia } = require("whatsapp-web.js");
-  await enviar(dest(liga), MessageMedia.fromFilePath(msg.archivo), msg.caption ? { caption: msg.caption } : {});
+  const cap = msg.caption ? { caption: msg.caption } : {};
+  if (/\.mp4$/i.test(msg.archivo)) {
+    // GIF animado: WhatsApp lo recibe como video en modo GIF (se reproduce solo y en bucle)
+    try { await enviar(dest(liga), MessageMedia.fromFilePath(msg.archivo), Object.assign({ sendVideoAsGif: true }, cap)); console.log(`${hora()} enviado a ${liga}: GIF ${path.basename(msg.archivo)}`); return; }
+    catch (e) {
+      const gif = msg.archivo.replace(/\.mp4$/i, ".gif");
+      if (!fs.existsSync(gif)) throw e;
+      console.log(`${hora()} no se pudo mandar como GIF animado (${String(e.message || e).split("\n")[0].slice(0, 80)}); se manda el .gif como imagen`);
+      msg = Object.assign({}, msg, { archivo: gif });
+    }
+  }
+  await enviar(dest(liga), MessageMedia.fromFilePath(msg.archivo), cap);
   console.log(`${hora()} enviado a ${liga}: imagen ${path.basename(msg.archivo)}`);
 }
 async function procesarCola() {
@@ -202,6 +213,7 @@ let pausado = false, gruposMenu = null;
 const DIR_IMG = path.join(DIR, "imagenes-para-enviar");
 // Texto que acompaña por defecto a algunas imágenes (por nombre de archivo)
 const TEXTO_IMAGEN = {
+  "buen-dia.mp4": "☀️ ¡Buen día, grupo!",
   "codigo-de-la-mesa.jpg": [
     "📜 *Código de la Mesa · Liga El Desafío*",
     "",
@@ -217,7 +229,7 @@ const MENU_GRUPO = [
   ["1", "Mensaje para inscribirse", "3"],
   ["2", "Mesas de la ronda actual", "1"],
   ["3", "Standing", "5"],
-  ["4", "Imágenes (Código de la mesa u otra)", "8"],
+  ["4", "Imágenes y GIFs (Código de la mesa, Buen día…)", "8"],
   ["0", "Volver", null]
 ];
 // Pantalla limpia en cada menú: solo queda el menú y el último aviso
@@ -310,7 +322,8 @@ async function armarMensaje(op, grupo, ligaSel) {
     // Las imágenes que terminan en "-precon" o "-b3" solo aparecen en esa liga
     const base = String(ligaSel || ligaDeGrupo(grupo.id) || "").replace("_test", "");
     const otra = base === "precon" ? /-b3\.[a-z]+$/i : base === "b3" ? /-precon\.[a-z]+$/i : null;
-    const arch = fs.readdirSync(DIR_IMG).filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f) && !(otra && otra.test(f))).sort();
+    const todos = fs.readdirSync(DIR_IMG);
+    const arch = todos.filter(f => /\.(jpe?g|png|webp|gif|mp4)$/i.test(f) && !(otra && otra.test(f)) && !(/\.gif$/i.test(f) && todos.includes(f.replace(/\.gif$/i, ".mp4")))).sort();
     if (!arch.length) { console.log(`  No hay imágenes. Copia la imagen en la carpeta: ${DIR_IMG}`); return null; }
     arch.forEach((f, i) => console.log(`    ${i + 1}) ${f}`));
     const r = await leerLinea("  ¿Qué imagen? (número, Enter = cancelar): ");

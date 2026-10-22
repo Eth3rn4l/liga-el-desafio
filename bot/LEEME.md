@@ -73,7 +73,8 @@ Escribe el número del grupo para entrar. Además:
 | 1 | El mensaje para inscribirse |
 | 2 | Las mesas de la ronda actual (imágenes) |
 | 3 | El standing (pregunta cuántos jugadores mostrar) |
-| 4 | Una imagen de la carpeta **imagenes-para-enviar** (ya viene el *Código de la Mesa*; puedes agregar más) |
+| 4 | Una imagen de la carpeta **imagenes-para-enviar** (Código de la Mesa, cómo reportar; puedes agregar más .jpg/.png) |
+| 5 | El GIF de buen día (animado, siempre con el texto "¡Buen día, grupo! (menos para el Kevin)"). Necesita `imagenes-para-enviar/buen-dia.mp4` |
 | 0 | Volver |
 
 Antes de enviar, el bot muestra una vista previa y pregunta **s/n**. Después de enviar sigues dentro del mismo grupo,

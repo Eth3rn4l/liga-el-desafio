@@ -142,7 +142,10 @@ async function enviarImagen(liga, msg) {
     try { await enviar(dest(liga), MessageMedia.fromFilePath(msg.archivo), Object.assign({ sendVideoAsGif: true }, cap)); console.log(`${hora()} enviado a ${liga}: GIF ${path.basename(msg.archivo)}`); return; }
     catch (e) {
       const gif = msg.archivo.replace(/\.mp4$/i, ".gif");
-      if (!fs.existsSync(gif)) throw e;
+      if (msg.soloGif || !fs.existsSync(gif)) {
+        aviso = `  ⚠ No se pudo mandar el GIF (${String(e.message || e).split("\n")[0].slice(0, 120)}). Mándame este mensaje.`;
+        throw e;
+      }
       const motivo = String(e.message || e).split("\n")[0].slice(0, 120);
       console.log(`${hora()} no se pudo mandar como GIF animado (${motivo}); se manda el .gif como imagen`);
       aviso = `  ⚠ El GIF no se pudo mandar animado (${motivo}). Se mandó como foto.`;
@@ -213,9 +216,11 @@ async function iniciar() {
 // Menú principal: se elige el grupo. Dentro del grupo: se elige qué mensaje mandar (0 = volver).
 let pausado = false, gruposMenu = null;
 const DIR_IMG = path.join(DIR, "imagenes-para-enviar");
+// Texto fijo del GIF de buen día
+const TEXTO_GIF = "☀️ ¡Buen día, grupo! (menos para el Kevin) 😎";
 // Texto que acompaña por defecto a algunas imágenes (por nombre de archivo)
 const TEXTO_IMAGEN = {
-  "buen-dia": "☀️ ¡Buen día, grupo!",
+
   "codigo-de-la-mesa": [
     "📜 *Código de la Mesa · Liga El Desafío*",
     "",
@@ -231,7 +236,8 @@ const MENU_GRUPO = [
   ["1", "Mensaje para inscribirse", "3"],
   ["2", "Mesas de la ronda actual", "1"],
   ["3", "Standing", "5"],
-  ["4", "Imágenes y GIFs (Código de la mesa, Buen día…)", "8"],
+  ["4", "Imágenes (Código de la mesa, cómo reportar)", "8"],
+  ["5", "GIF de buen día", "gif"],
   ["0", "Volver", null]
 ];
 // Pantalla limpia en cada menú: solo queda el menú y el último aviso
@@ -298,7 +304,7 @@ async function elegirLigaDatos(grupo) {
   if (!l) console.log("  Cancelado.");
   return l || null;
 }
-const resumen = msg => typeof msg === "string" ? msg : msg.tipo === "imagen" ? `[imagen: ${path.basename(msg.archivo)}]${msg.caption ? "\n" + msg.caption : ""}` : `[imágenes de las mesas]\n${msg.respaldo || msg.texto}`;
+const resumen = msg => typeof msg === "string" ? msg : msg.tipo === "imagen" ? `[${/\.mp4$/i.test(msg.archivo) ? "GIF" : "imagen"}: ${path.basename(msg.archivo)}]${msg.caption ? "\n" + msg.caption : ""}` : `[imágenes de las mesas]\n${msg.respaldo || msg.texto}`;
 async function verFecha() {
   for (const l of ligasConDatos()) {
     const d = await leerDatos(l); if (!d) continue;
@@ -319,13 +325,18 @@ async function armarMensaje(op, grupo, ligaSel) {
     if (!t) { console.log("  Mensaje vacío, no se envía."); return null; }
     return { msgs: [t], que: "tu mensaje", liga: ligaSel || ligaDeGrupo(grupo.id) || "grupo" };
   }
+  if (op === "gif") {
+    const f = path.join(DIR_IMG, "buen-dia.mp4");
+    if (!fs.existsSync(f)) { console.log(`  Falta el archivo buen-dia.mp4 en la carpeta ${DIR_IMG}`); return null; }
+    return { msgs: [{ tipo: "imagen", archivo: f, caption: TEXTO_GIF, soloGif: true }], que: "el GIF de buen día", liga: ligaSel || ligaDeGrupo(grupo.id) || "grupo" };
+  }
   if (op === "8") {
     fs.mkdirSync(DIR_IMG, { recursive: true });
     // Las imágenes que terminan en "-precon" o "-b3" solo aparecen en esa liga
     const base = String(ligaSel || ligaDeGrupo(grupo.id) || "").replace("_test", "");
     const otra = base === "precon" ? /-b3\.[a-z]+$/i : base === "b3" ? /-precon\.[a-z]+$/i : null;
     const todos = fs.readdirSync(DIR_IMG);
-    const arch = todos.filter(f => /\.(jpe?g|png|webp|gif|mp4)$/i.test(f) && !(otra && otra.test(f)) && !(/\.gif$/i.test(f) && todos.includes(f.replace(/\.gif$/i, ".mp4")))).sort();
+    const arch = todos.filter(f => /\.(jpe?g|png|webp)$/i.test(f) && !(otra && otra.test(f))).sort();
     if (!arch.length) { console.log(`  No hay imágenes. Copia la imagen en la carpeta: ${DIR_IMG}`); return null; }
     arch.forEach((f, i) => console.log(`    ${i + 1}) ${f}`));
     const r = await leerLinea("  ¿Qué imagen? (número, Enter = cancelar): ");
@@ -333,7 +344,6 @@ async function armarMensaje(op, grupo, ligaSel) {
     if (!f) { console.log("  Cancelado."); return null; }
     // Algunas imágenes traen un texto por defecto (Enter lo usa; "-" manda la imagen sin texto)
     const def = TEXTO_IMAGEN[f.toLowerCase().replace(/\.[a-z0-9]+$/, "")] || "";
-    if (/\.gif$/i.test(f)) console.log("  Ojo: un .gif llega a WhatsApp como foto quieta. Para que se mueva, pon en la carpeta el mismo GIF en .mp4 (con el mismo nombre).");
     if (def) console.log(`\n  Texto por defecto:\n${def.split("\n").map(x => "    " + x).join("\n")}\n`);
     const cap = await leerLinea(def ? "  Texto que acompaña la imagen (Enter = texto por defecto, - = sin texto, o escribe otro): " : "  Texto que acompaña la imagen (Enter = sin texto): ");
     const t = (cap || "").trim();

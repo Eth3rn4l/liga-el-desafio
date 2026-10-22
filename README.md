@@ -55,4 +55,4 @@ supabase/
 
 ## Autor
 
-Desarrollado por **Diego Bahamondez** ([@Eth3rn4l](https://github.com/Eth3rn4l)) junto a Hans, organizador de la liga en Cafetería El Desafío.
+Desarrollado por **Diego Bahamondez** ([@dibahamondez](https://github.com/dibahamondez)) junto a Hans, organizador de la liga en Cafetería El Desafío.

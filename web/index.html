@@ -413,7 +413,10 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .sf-slot.vacio .tro{opacity:.35;filter:grayscale(1)}
 .sf-slot.campeon{border-color:var(--gold);background:linear-gradient(180deg,rgba(233,180,76,.18),var(--surface-2));box-shadow:0 0 0 1px var(--gold),0 6px 24px rgba(233,180,76,.25)}
 .sf-slot.campeon b{color:var(--gold)}
-td.cmd-art{position:relative;overflow:hidden;isolation:isolate}
+td.cmd-art,.bars li.cmd-art{position:relative;overflow:hidden;isolation:isolate}
+.bars li.cmd-art{border-radius:10px}
+.bars li.cmd-art > *:not(.cmd-bg){position:relative;z-index:1}
+.bars li.cmd-art .cmd-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center 25%;opacity:.35;filter:blur(.5px)}
 td.cmd-art > *:not(.cmd-bg){position:relative;z-index:1}
 td.cmd-art .cmd-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center 25%;opacity:.45;filter:saturate(1.1) blur(.5px);
   -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.35) 35%,#000 100%);mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.35) 35%,#000 100%)}
@@ -1742,7 +1745,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function bars(rows){
     if (!rows.length) return '<p class="msg">Sin datos en este período.</p>';
     const max = Math.max(...rows.map(r => r.v), 1);
-    return `<ol class="bars">${rows.map((r, i) => `<li title="${esc(r.tip)}"><span class="rk">${i + 1}</span><div class="lbl"><div style="min-width:0">${r.icon ? `<span class="ci">${r.icon}</span>` : ""}<b>${esc(r.name)}</b>${r.sub ? `<em>${esc(r.sub)}</em>` : ""}</div><span>${esc(r.val)}</span></div><div class="track"><div class="fill" style="width:${Math.max(3, r.v / max * 100)}%"></div></div></li>`).join("")}</ol>`;
+    return `<ol class="bars">${rows.map((r, i) => `<li title="${esc(r.tip)}"${r.art ? ' class="cmd-art"' : ""}>${r.art ? artFondo(r.art) : ""}<span class="rk">${i + 1}</span><div class="lbl"><div style="min-width:0">${r.icon ? `<span class="ci">${r.icon}</span>` : ""}<b>${esc(r.name)}</b>${r.sub ? `<em>${esc(r.sub)}</em>` : ""}</div><span>${esc(r.val)}</span></div><div class="track"><div class="fill" style="width:${Math.max(3, r.v / max * 100)}%"></div></div></li>`).join("")}</ol>`;
   }
   // En modo pantalla las estadísticas se ven como las ve el público (sin edición y con el top limitado)
   const STADM = () => ADMUI() && !document.body.classList.contains("display");
@@ -1792,13 +1795,13 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     rk.forEach(e => e.jugadores.forEach(j => { if (j.cmd){ const x = CU[j.cmd] = CU[j.cmd] || {uses:0, w:0, ci:j.ci}; x.uses++; x.w += j.w; }
       const jci = ciFor(j.cmd, j.ci); if (jci != null){ const ck = ciKey(jci), y = CO[ck] = CO[ck] || {uses:0, w:0}; y.uses++; y.w += j.w; } else if (B3 && j.cmd) ciMiss.push(j.cmd); }));
     if (ciMiss.length) resolveCIs(ciMiss).then(ok => { if (ok && view === "stats") renderStats(); });
-    const cmdUse = Object.entries(CU).sort((a, b) => b[1].uses - a[1].uses || b[1].w - a[1].w).slice(0, 10).map(([n, x]) => ({name:n, sub:"", icon:(c => c != null ? ciPips(c) : "")(ciFor(n, x.ci)), v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"} · ${x.w} V`, tip:`${x.uses} inscripciones, ${x.w} mesas ganadas`}));
+    const cmdUse = Object.entries(CU).sort((a, b) => b[1].uses - a[1].uses || b[1].w - a[1].w).slice(0, 10).map(([n, x]) => ({name:n, art:B3 ? n : "", sub:"", icon:(c => c != null ? ciPips(c) : "")(ciFor(n, x.ci)), v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"} · ${x.w} V`, tip:`${x.uses} inscripciones, ${x.w} mesas ganadas`}));
     const colUse = Object.entries(CO).sort((a, b) => b[1].uses - a[1].uses).slice(0, 10).map(([ck, x]) => ({name:CI_NAMES[ck] || ck, sub:"", icon:ciPips(ck), v:x.uses, val:`${x.uses} ${x.uses === 1 ? "vez" : "veces"} · ${x.w} V`, tip:`${x.uses} inscripciones, ${x.w} mesas ganadas`}));
     // Top kills de jugadores (como la tabla "TOP KILLS" del Excel)
     const JK = {}; rk.forEach(e => e.jugadores.forEach(j => { const k = claveNombre(j.nombre); const x = JK[k] = JK[k] || {n:j.nombre, kills:0, pj:0, f:0}; x.kills += j.kills || 0; x.pj += j.pj || 0; x.f++; }));
     const killsTot = Object.values(JK).reduce((a, x) => a + x.kills, 0);
     const playerKills = Object.values(JK).filter(x => x.kills > 0).sort((a, b) => b.kills - a.kills || a.pj - b.pj).slice(0, 10).map(x => ({name:x.n, sub:"", v:x.kills, val:`${x.kills} ${x.kills === 1 ? "kill" : "kills"} · ${x.pj} PJ`, tip:`${x.kills} kills en ${x.pj} partidas (${x.f} ${x.f === 1 ? "fecha" : "fechas"})`}));
-    const cmdRows = Object.entries(C).filter(([, c]) => c.kills > 0).sort((a, b) => b[1].kills - a[1].kills || a[1].pj - b[1].pj).slice(0, 10).map(([n, c]) => ({
+    const cmdRows = Object.entries(C).filter(([, c]) => c.kills > 0).sort((a, b) => b[1].kills - a[1].kills || a[1].pj - b[1].pj).slice(0, 10).map(([n, c]) => ({art:B3 ? n : "", 
       name:n, sub:"", icon:(x => x != null ? ciPips(x) : "")(ciFor(n)), v:c.kills, val:`${c.kills} ${c.kills === 1 ? "kill" : "kills"} · ${c.pj} PJ`, tip:`${c.kills} kills en ${c.pj} partidas`}));
     const NG = {}; rk.forEach(e => e.jugadores.forEach(j => { if (j.neg > 0){ const x = NG[j.nombre] = NG[j.nombre] || {neg:0, f:0}; x.neg += j.neg; x.f++; } }));
     const negRows = Object.entries(NG).sort((a, b) => b[1].neg - a[1].neg).slice(0, 10).map(([n, x]) => ({name:n, sub:"", v:x.neg, val:`−${x.neg} pts · ${x.f} ${x.f === 1 ? "fecha" : "fechas"}`, tip:`${x.neg} puntos negativos en ${x.f} ${x.f === 1 ? "fecha" : "fechas"}`}));
@@ -1835,7 +1838,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="stand-scroll"><table><thead><tr><th class="pos-h">#</th><th class="l">Jugador</th><th>Pts</th><th title="Puntos negativos: penalizaciones y warnings">Neg</th><th>Base</th><th>Bono</th><th>${B3 ? "Comandantes" : "Mazos"}</th><th>Fechas</th><th>V</th><th>K</th><th>PJ</th><th class="l">${B3 ? "Comandante más usado" : "Mazo más usado"}</th></tr></thead><tbody>${standVis.map((p, i) => {
           const top = Object.entries(p.decks).sort((a, b) => b[1] - a[1])[0];
           const pk = fold(p.nombre).trim();
-          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${i < 4 ? " t4" : ""}${STADM() && editPlayer === pk ? " sel" : ""}" ${STADM() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${medalla(i)}</td><td class="l nm">${esc(p.nombre)}${STADM() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.pj}</td><td class="l${B3 && top && !DECK[top[0]] ? " cmd-art" : ""}" style="color:var(--muted)">${B3 && top && !DECK[top[0]] ? artFondo(top[0].replace(/^c:/, "")) : ""}${top ? (DECK[top[0]] ? `<span class="deck-set">${setIcon(DECK[top[0]].set)}${esc(DECK[top[0]].name)}</span>` : `<span class="deck-set">${(c => c != null ? `<span class="ci">${ciPips(c)}</span>` : "")(ciFor(top[0].replace(/^c:/, "")))}${esc(top[0].replace(/^c:/, ""))}</span>`) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${STADM() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú los ves a todos (${stand.length}).` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
+          return `<tr class="${i === 0 ? "top1" : i < 3 ? "top3" : ""}${i < 4 ? " t4" : ""}${STADM() && editPlayer === pk ? " sel" : ""}" ${STADM() ? `data-edit-player="${esc(pk)}" title="Editar estadísticas de ${esc(p.nombre)}" style="cursor:pointer"` : 'style="cursor:default"'}><td class="l pos">${medalla(i)}</td><td class="l nm">${esc(p.nombre)}${STADM() ? ' <span class="edit-hint">✎</span>' : ""}</td><td class="pts">${p.pts}</td><td>${p.neg ? `<span class="neg">−${p.neg}</span>` : "–"}</td><td>${p.base}</td><td>${p.bono ? `<span class="bono">+${p.bono}</span>` : "–"}</td><td title="${statMonth === "all" ? "Mazos distintos en todo el histórico" : "Mazos distintos jugados este mes"}">${statMonth === "all" ? p.distintos : `<span class="${p.distintos >= BONO_MAZOS ? "ok-t" : ""}">${Math.min(p.distintos, BONO_MAZOS)}/${BONO_MAZOS}</span>`}</td><td>${statMonth === "all" ? p.fechas : p.fechas + "/" + ((calOf(statMonth) && calOf(statMonth).fechas.length) || FECHAS_MES)}</td><td>${p.w}</td><td>${p.kills}</td><td>${p.pj}</td><td class="l${B3 && cmdDeKey(top && top[0]) ? " cmd-art" : ""}" style="color:var(--muted)">${B3 ? artFondo(cmdDeKey(top && top[0])) : ""}${top ? (DECK[top[0]] ? `<span class="deck-set">${setIcon(DECK[top[0]].set)}${esc(DECK[top[0]].name)}</span>` : `<span class="deck-set">${(c => c != null ? `<span class="ci">${ciPips(c)}</span>` : "")(ciFor(top[0].replace(/^c:/, "")))}${esc(top[0].replace(/^c:/, ""))}</span>`) : "–"}</td></tr>`; }).join("")}</tbody></table></div>${STADM() ? `<p class="note" style="margin:0">Organizador: toca a un jugador para corregir sus números. ${topN ? `Los jugadores ven solo el top ${topN}; tú los ves a todos (${stand.length}).` : "Los jugadores ven el standing completo."}</p>` : standVis.length < stand.length ? '<p class="note" style="margin:0">Se muestra el top ' + standVis.length + '. Tu posición y todos tus números están en “Mis estadísticas”.</p>' : ""}</div>
       ${STADM() && editPlayer ? editStatsHTML(evsAll, statMonth) : ""}
       <div class="stats-grid">
         <div class="card"><div class="sec-head" style="margin:0"><h3>Jugadores con más kills</h3>${seg}</div><p class="card-sub" style="margin:0"><b>${killsTot}</b> kills en total ${rankScope === "all" ? "en el histórico" : "en el " + (statMonth === "all" ? "período" : "mes")}</p>${bars(playerKills)}</div>
@@ -2546,7 +2549,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     requestAnimationFrame(fr);
   }
   // Ilustración del comandante (Scryfall, art_crop) de fondo en una celda, difuminada hacia la izquierda; con partner, la del primero
-  const artUrl = n => "https://api.scryfall.com/cards/named?exact=" + encodeURIComponent(String(n).split(" + ")[0].split(" // ")[0].trim()).replace(/'/g, "%27") + "&format=image&version=art_crop";
+  const artUrl = n => "https://api.scryfall.com/cards/named?fuzzy=" + encodeURIComponent(String(n).split(" + ")[0].split(" // ")[0].trim()).replace(/'/g, "%27") + "&format=image&version=art_crop";
+  // Nombre del comandante a partir de la clave del mazo ("c:Nombre" o un precon del catálogo)
+  const cmdDeKey = k => !k ? "" : k.startsWith("c:") ? k.slice(2) : (DECK[k] && DECK[k].cmd) || "";
   const artFondo = n => n ? `<span class="cmd-bg" aria-hidden="true" style="background-image:url('${artUrl(n)}')"></span>` : "";
   // Challa y serpentinas al pasar el mouse o tocar al campeón del salón de la fama
   let ultimaChalla = 0;
@@ -2679,7 +2684,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       // De fondo, la ilustración del comandante del ganador (Scryfall); con partner, las dos lado a lado
       const d = deckOf(showWinner), cmd = d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "";
       const arts = cmd ? cmd.split(" + ").map(n => n.split(" // ")[0].trim()).filter(Boolean).slice(0, 2) : [];
-      const fondo = arts.length ? `<div class="wc-art n${arts.length}" aria-hidden="true">${arts.map(n => `<span style="background-image:url('https://api.scryfall.com/cards/named?exact=${encodeURIComponent(n).replace(/'/g, "%27")}&format=image&version=art_crop')"></span>`).join("")}</div>` : "";
+      const fondo = arts.length ? `<div class="wc-art n${arts.length}" aria-hidden="true">${arts.map(n => `<span style="background-image:url('https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(n).replace(/'/g, "%27")}&format=image&version=art_crop')"></span>`).join("")}</div>` : "";
       const clave = showWinner + "|" + cmd;
       if (wc.dataset.k !== clave){ wc.dataset.k = clave;
         wc.innerHTML = `${fondo}<div class="wc-body"><div class="eyebrow">Ganador del sorteo · ${gan.indexOf(showWinner) + 1}°</div><div class="wn">${esc(pname(showWinner))}</div>${cmdLine(showWinner, true)}</div>`; }

@@ -1008,7 +1008,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="card"><h3 id="poolTitle">En la ruleta</h3><p class="card-sub adm">Toca la × para sacar a alguien del sorteo (por ejemplo, si ya se fue).</p><div class="chips" id="poolChips"></div></div>
         <div class="card" id="exclCard" hidden><h3 id="exclTitle">Quitados del sorteo</h3><div class="chips" id="exclChips"></div></div>
         <div class="card adm" id="noSorteoCard"></div>
-        <div class="ban-wrap"><button class="btn ghost" id="btnBan" type="button" aria-expanded="false">BAN</button><div class="ban-box" id="banBox" hidden></div></div>
+        <div class="ban-wrap" hidden style="display:none"><button class="btn ghost" id="btnBan" type="button" aria-expanded="false">BAN</button><div class="ban-box" id="banBox" hidden></div></div>
         <div class="row adm"><button class="btn ghost" id="btnResetSorteo" type="button">Reiniciar sorteo</button>
           <span class="confirm" id="confirmReset" hidden><span>Se borran los ganadores y vuelven todos a la ruleta.</span><button class="btn primary" id="btnResetYes" type="button">Sí, reiniciar</button><button class="btn" id="btnResetNo" type="button">Cancelar</button></span></div>
       </div>
@@ -2487,8 +2487,6 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // g: "sacar" (saca a un grupo) o "solo" (deja solo a un grupo)
   const FILTROS = [
     {k:"sinTop4", g:"sacar", t:"Los 4 primeros del día", d:"Los 4 mejores del standing de hoy no participan"},
-    {k:"sinVictoriaMes", g:"sacar", t:"Quienes ganaron una mesa este mes", d:"Contando las mesas de hoy"},
-    {k:"sinPremioMes", g:"sacar", t:"Quienes ya ganaron un sorteo este mes", d:"En otra fecha del mes"},
     {k:"sinNegMes", g:"sacar", t:"Quienes tuvieron puntos negativos este mes", d:"Por warnings, sanciones del juez o descuentos, contando hoy"},
     {k:"sinWarn", g:"sacar", t:"Quienes tienen warnings hoy", d:"Aunque todavía no les resten puntos"},
     {k:"sinDrop", g:"sacar", t:"Quienes se retiraron antes de terminar", d:"Jugadores con drop en esta fecha"},

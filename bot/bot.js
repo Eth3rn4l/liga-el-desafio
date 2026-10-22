@@ -143,7 +143,9 @@ async function enviarImagen(liga, msg) {
     catch (e) {
       const gif = msg.archivo.replace(/\.mp4$/i, ".gif");
       if (!fs.existsSync(gif)) throw e;
-      console.log(`${hora()} no se pudo mandar como GIF animado (${String(e.message || e).split("\n")[0].slice(0, 80)}); se manda el .gif como imagen`);
+      const motivo = String(e.message || e).split("\n")[0].slice(0, 120);
+      console.log(`${hora()} no se pudo mandar como GIF animado (${motivo}); se manda el .gif como imagen`);
+      aviso = `  ⚠ El GIF no se pudo mandar animado (${motivo}). Se mandó como foto.`;
       msg = Object.assign({}, msg, { archivo: gif });
     }
   }
@@ -213,8 +215,8 @@ let pausado = false, gruposMenu = null;
 const DIR_IMG = path.join(DIR, "imagenes-para-enviar");
 // Texto que acompaña por defecto a algunas imágenes (por nombre de archivo)
 const TEXTO_IMAGEN = {
-  "buen-dia.mp4": "☀️ ¡Buen día, grupo!",
-  "codigo-de-la-mesa.jpg": [
+  "buen-dia": "☀️ ¡Buen día, grupo!",
+  "codigo-de-la-mesa": [
     "📜 *Código de la Mesa · Liga El Desafío*",
     "",
     "Recordatorio con cariño (pero muy en serio): las partidas de Commander duran horas y jugamos en un espacio cerrado. 🧼",
@@ -330,7 +332,8 @@ async function armarMensaje(op, grupo, ligaSel) {
     const f = arch[(parseInt(r, 10) || 0) - 1];
     if (!f) { console.log("  Cancelado."); return null; }
     // Algunas imágenes traen un texto por defecto (Enter lo usa; "-" manda la imagen sin texto)
-    const def = TEXTO_IMAGEN[f.toLowerCase()] || "";
+    const def = TEXTO_IMAGEN[f.toLowerCase().replace(/\.[a-z0-9]+$/, "")] || "";
+    if (/\.gif$/i.test(f)) console.log("  Ojo: un .gif llega a WhatsApp como foto quieta. Para que se mueva, pon en la carpeta el mismo GIF en .mp4 (con el mismo nombre).");
     if (def) console.log(`\n  Texto por defecto:\n${def.split("\n").map(x => "    " + x).join("\n")}\n`);
     const cap = await leerLinea(def ? "  Texto que acompaña la imagen (Enter = texto por defecto, - = sin texto, o escribe otro): " : "  Texto que acompaña la imagen (Enter = sin texto): ");
     const t = (cap || "").trim();

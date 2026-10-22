@@ -415,6 +415,10 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .sf-slot.campeon b{color:var(--gold)}
 /* Jugadores repetidos */
 #genBox[hidden]{display:none}
+.filt-g{display:flex;flex-direction:column;gap:8px}.filt-g + .filt-g{margin-top:10px}
+.filt-t{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ns-add{display:flex;gap:8px;margin-top:10px}.ns-add input{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--fg);font:inherit}
+#noSorteoCard[hidden]{display:none}
 #genBox{align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--gold);border-radius:10px;padding:8px 10px}
 .alias-card{display:flex;flex-direction:column;gap:12px}
 .alias-sug,.alias-man{display:flex;flex-direction:column;gap:8px}
@@ -1003,7 +1007,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <div class="card"><h3>Ganadores</h3><ol class="win-list" id="winList"></ol></div>
         <div class="card"><h3 id="poolTitle">En la ruleta</h3><p class="card-sub adm">Toca la × para sacar a alguien del sorteo (por ejemplo, si ya se fue).</p><div class="chips" id="poolChips"></div></div>
         <div class="card" id="exclCard" hidden><h3 id="exclTitle">Quitados del sorteo</h3><div class="chips" id="exclChips"></div></div>
-        <div class="card"><h3>Top 4 del día</h3><p class="card-sub" id="topNote"></p><ol class="win-list toplist" id="topList"></ol></div>
+        <div class="card adm" id="noSorteoCard"></div>
         <div class="ban-wrap"><button class="btn ghost" id="btnBan" type="button" aria-expanded="false">BAN</button><div class="ban-box" id="banBox" hidden></div></div>
         <div class="row adm"><button class="btn ghost" id="btnResetSorteo" type="button">Reiniciar sorteo</button>
           <span class="confirm" id="confirmReset" hidden><span>Se borran los ganadores y vuelven todos a la ruleta.</span><button class="btn primary" id="btnResetYes" type="button">Sí, reiniciar</button><button class="btn" id="btnResetNo" type="button">Cancelar</button></span></div>
@@ -2480,16 +2484,40 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   let wheelRot = 0, spinning = null, seenSpin = null, showWinner = null, holding = null;
   const shortName = id => { const p = S && S.players.find(x => x.id === id); if (!p) return "?"; const f = p.first || p.name.split(" ")[0], l = p.last || p.name.split(" ").slice(1).join(" "); return f + (l ? " " + l.charAt(0) + "." : ""); };
   // Filtros del sorteo (se combinan: el jugador tiene que cumplir todos los marcados)
+  // g: "sacar" (saca a un grupo) o "solo" (deja solo a un grupo)
   const FILTROS = [
-    {k:"sinTop4", t:"Fuera del top 4", d:"No entran los 4 primeros del standing del día"},
-    {k:"cero", t:"0 puntos hoy", d:"Quienes no sumaron puntos en la jornada"},
-    {k:"nuevos", t:"Primera vez en la liga", d:"No aparecen en ninguna fecha guardada"},
-    {k:"sinVictoriaMes", t:"Sin mesas ganadas en el mes", d:"No han ganado una mesa este mes, contando hoy"},
-    {k:"sinPremioMes", t:"Sin premio de sorteo en el mes", d:"No han ganado un sorteo en otra fecha del mes"},
-    {k:"sinWarn", t:"Sin warnings", d:"No entran jugadores con warnings en esta fecha"},
-    {k:"sinDrop", t:"Sin drops", d:"No entran quienes dejaron la fecha antes de terminar"}
+    {k:"sinTop4", g:"sacar", t:"Los 4 primeros del día", d:"Los 4 mejores del standing de hoy no participan"},
+    {k:"sinVictoriaMes", g:"sacar", t:"Quienes ganaron una mesa este mes", d:"Contando las mesas de hoy"},
+    {k:"sinPremioMes", g:"sacar", t:"Quienes ya ganaron un sorteo este mes", d:"En otra fecha del mes"},
+    {k:"sinNegMes", g:"sacar", t:"Quienes tuvieron puntos negativos este mes", d:"Por warnings, sanciones del juez o descuentos, contando hoy"},
+    {k:"sinWarn", g:"sacar", t:"Quienes tienen warnings hoy", d:"Aunque todavía no les resten puntos"},
+    {k:"sinDrop", g:"sacar", t:"Quienes se retiraron antes de terminar", d:"Jugadores con drop en esta fecha"},
+    {k:"cero", g:"solo", t:"Los que hicieron 0 puntos hoy", d:"Premio de consuelo"},
+    {k:"nuevos", g:"solo", t:"Los que juegan su primera fecha", d:"No aparecen en ninguna fecha anterior"}
   ];
+  // Lista fija: personas que nunca entran a la ruleta (organizadores, juez, socios…). Se guarda en el calendario de la liga.
+  const noSorteo = () => ((CAL && CAL.noSorteo) || []);
+  const enNoSorteo = nombre => { const k = claveNombre(canon(nombre)); return noSorteo().some(n => claveNombre(canon(n)) === k); };
   const sorteoFiltros = () => Object.assign({sinTop4:true, sinDrop:true}, (S && S.sorteo && S.sorteo.filtros) || {});
+  function renderNoSorteo(){
+    const box = $("noSorteoCard"); if (!box || typing(box)) return;
+    if (!ADMUI()){ box.hidden = true; return; }
+    box.hidden = false;
+    const lista = noSorteo();
+    const opciones = (S ? S.players : []).filter(p => !enNoSorteo(p.name)).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${esc(p.name)}">`).join("");
+    box.innerHTML = `<h3>Nunca entran a la ruleta</h3><p class="card-sub">Lista fija para todas las fechas de esta liga: organizadores, juez, socios… Aunque jueguen, no participan del sorteo.</p>
+      <div class="chips">${lista.length ? lista.map(n => `<span class="xc">${esc(n)}<button type="button" data-nosorteo-del="${esc(n)}" aria-label="Quitar a ${esc(n)} de la lista" title="Quitar de la lista">×</button></span>`).join("") : '<span class="note">Nadie en la lista.</span>'}</div>
+      <div class="row ns-add"><input id="noSorteoIn" list="noSorteoOpts" placeholder="Nombre y apellido" autocomplete="off"><datalist id="noSorteoOpts">${opciones}</datalist><button type="button" class="btn" data-nosorteo-add>Agregar</button></div>`;
+  }
+  document.addEventListener("click", e => {
+    const add = e.target.closest("[data-nosorteo-add]"), del = e.target.closest("[data-nosorteo-del]");
+    if (!(add || del) || !M.admin) return;
+    if (add){ const v = ($("noSorteoIn").value || "").trim().replace(/\s+/g, " "); if (!v || enNoSorteo(v)) { $("noSorteoIn").value = ""; return; } CAL.noSorteo = noSorteo().concat([v]); }
+    else CAL.noSorteo = noSorteo().filter(n => n !== del.dataset.nosorteoDel);
+    const inp = $("noSorteoIn"); if (inp){ inp.value = ""; inp.blur(); }
+    saveCal(); renderSorteo();
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target && e.target.id === "noSorteoIn"){ e.preventDefault(); const b = document.querySelector("[data-nosorteo-add]"); if (b) b.click(); } });
   function sorteoData(){
     if (!S || !S.players.length || S.phase === "inscripcion") return {pool:[], top:[], gan:[], counts:{}, why:{}};
     const st = standings(S), top = st.slice(0, 4).map(x => x.id);
@@ -2498,9 +2526,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     const ym = curMes();
     const otras = Object.values(hist).filter(e => e && e.fecha && e.id !== S.archivedId && !e.ejemplo);
     const key = id => fold(pname(id)).trim();
-    const vistos = new Set(), ganMes = new Set(), premioMes = new Set();
+    const vistos = new Set(), ganMes = new Set(), premioMes = new Set(), negMes = new Set();
     otras.forEach(e => {
-      (e.jugadores || []).forEach(j => { const k = fold(j.nombre).trim(); vistos.add(k); if (mesDe(e) === ym && j.w > 0) ganMes.add(k); });
+      (e.jugadores || []).forEach(j => { const k = fold(j.nombre).trim(); vistos.add(k); if (mesDe(e) === ym && j.w > 0) ganMes.add(k); if (mesDe(e) === ym && (j.neg > 0 || j.adj < 0)) negMes.add(k); });
       if (mesDe(e) === ym) (e.sorteo || []).forEach(n => premioMes.add(fold(n).trim()));
     });
     const test = {
@@ -2510,14 +2538,16 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       sinVictoriaMes: id => !ganMes.has(key(id)) && !(byId[id] && byId[id].w > 0),
       sinPremioMes: id => !premioMes.has(key(id)),
       sinWarn: id => !((S.warnings || {})[id] > 0),
-      sinDrop: id => !isDrop(id)
+      sinDrop: id => !isDrop(id),
+      sinNegMes: id => !negMes.has(key(id)) && !(byId[id] && byId[id].neg > 0)
     };
     const activos = FILTROS.filter(x => f[x.k]);
     const excl = (S.sorteo && S.sorteo.excluidos) || [];
-    const libres = S.players.filter(p => !gan.includes(p.id) && !excl.includes(p.id));
+    const fijos = S.players.filter(p => enNoSorteo(p.name)).map(p => p.id);
+    const libres = S.players.filter(p => !gan.includes(p.id) && !excl.includes(p.id) && !fijos.includes(p.id));
     const counts = {}; FILTROS.forEach(x => counts[x.k] = libres.filter(p => test[x.k](p.id)).length);
     const pool = libres.filter(p => activos.every(x => test[x.k](p.id))).sort((a, b) => a.name.localeCompare(b.name)).map(p => p.id);
-    return {pool, top, gan, st, f, activos, counts, why: (S.sorteo && S.sorteo.motivo) || {}};
+    return {pool, top, gan, st, f, activos, counts, libres:libres.length, fijos, why: (S.sorteo && S.sorteo.motivo) || {}};
   }
   function drawWheel(list, hi){
     const c = $("wheel"); if (!c) return;
@@ -2769,10 +2799,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     $("sorteoSub").textContent = !S || !S.players.length ? "Cuando haya inscritos en la jornada, aparecerán aquí." :
       S.phase === "inscripcion" ? "El sorteo se habilita cuando se cierran las inscripciones." :
       `Elige quiénes entran a la ruleta. Puedes cambiar los filtros entre giros: los ganadores no vuelven a salir.`;
-    const {f, activos, counts} = sorteoData();
+    const {f, activos, counts, libres:nLib, fijos, pool:poolD} = sorteoData();
     const lock = !ADMUI() || !!spinning || !!holding;
-    $("filtSub").textContent = activos && activos.length ? (activos.length > 1 ? "Tienen que cumplir todos los marcados." : "") : "Sin filtros: entran todos los inscritos que no han ganado.";
-    if (!typing($("filtBox"))) $("filtBox").innerHTML = S && S.players.length && S.phase !== "inscripcion" ? FILTROS.map(x => `<label class="${f[x.k] ? "on" : ""}${!ADMUI() && !f[x.k] ? " off" : ""}"><input type="checkbox" data-filt="${x.k}" ${f[x.k] ? "checked" : ""} ${lock ? "disabled" : ""}><span>${x.t}<small>${x.d}</small></span><span class="cnt">${counts[x.k] || 0}</span></label>`).join("") : "";
+    $("filtSub").innerHTML = S && S.players.length && S.phase !== "inscripcion" ? `Marca a quiénes sacar de la ruleta. Quedan <b>${poolD.length}</b> ${poolD.length === 1 ? "participante" : "participantes"}${(fijos || []).length ? ` · ${(fijos || []).length} en la lista “Nunca entran”` : ""}.` : "";
+    const filtro = x => { const saca = (nLib || 0) - (counts[x.k] || 0); return `<label class="${f[x.k] ? "on" : ""}${!ADMUI() && !f[x.k] ? " off" : ""}"><input type="checkbox" data-filt="${x.k}" ${f[x.k] ? "checked" : ""} ${lock ? "disabled" : ""}><span>${x.t}<small>${x.d}</small></span><span class="cnt" title="${x.g === "solo" ? "Personas que quedan con este filtro" : "Personas que saca este filtro"}">${x.g === "solo" ? (counts[x.k] || 0) : (saca ? "−" + saca : "0")}</span></label>`; };
+    if (!typing($("filtBox"))) $("filtBox").innerHTML = S && S.players.length && S.phase !== "inscripcion" ? `<div class="filt-g"><b class="filt-t">Sacar de la ruleta a…</b>${FILTROS.filter(x => x.g === "sacar").map(filtro).join("")}</div><div class="filt-g"><b class="filt-t">Que participen solo…</b>${FILTROS.filter(x => x.g === "solo").map(filtro).join("")}</div>` : "";
+    renderNoSorteo();
     const why = (S && S.sorteo && S.sorteo.motivo) || {};
     $("winList").innerHTML = shownGan.length ? shownGan.map((id, i) => `<li><span class="pos-n">${i + 1}°</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span><span class="why">${esc(why[id] || "Sorteo general")}</span></span></li>`).join("") : '<li style="display:block;color:var(--muted)">Todavía no hay ganadores.</li>';
     const poolShown = spinning ? spinning.list : holding ? holding.list : pool;
@@ -2784,8 +2816,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     $("exclTitle").textContent = `Quitados del sorteo (${excl.length})`;
     $("exclChips").innerHTML = excl.map(id => canEdit ? `<span class="xc out"><s>${esc(pname(id))}</s><button type="button" data-incl="${esc(id)}" aria-label="Devolver a ${esc(pname(id))} a la ruleta" title="Devolver a la ruleta">↺</button></span>` : `<span class="out"><s>${esc(pname(id))}</s></span>`).join("");
     const done = S && S.rounds && S.rounds.length === S.cfg.rounds && roundComplete();
-    $("topNote").textContent = done ? "Según el standing final de la jornada." : "Según el standing actual: puede cambiar hasta que termine la última ronda.";
-    $("topList").innerHTML = top.map((id, i) => `<li><span class="pos-n">${i + 1}°</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span><span class="cmd">${st[i].pts} pts</span></span></li>`).join("") || '<li style="display:block;color:var(--muted)">Sin standing todavía.</li>';
+    if ($("topNote")) $("topNote").textContent = done ? "Según el standing final de la jornada." : "Según el standing actual: puede cambiar hasta que termine la última ronda.";
+    if ($("topList")) $("topList").innerHTML = top.map((id, i) => `<li><span class="pos-n">${i + 1}°</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span><span class="cmd">${st[i].pts} pts</span></span></li>`).join("") || '<li style="display:block;color:var(--muted)">Sin standing todavía.</li>';
     const canSpin = ADMUI() && !spinning && !holding && pool.length > 0;
     $("btnSpin").hidden = !ADMUI(); $("btnSpin").disabled = !canSpin;
     $("btnSpin").textContent = pool.length ? "Girar la ruleta" : "No quedan participantes";

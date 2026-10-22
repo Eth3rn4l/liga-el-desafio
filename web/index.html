@@ -2924,9 +2924,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
 
   /* ---------- Puntaje: ganar / kills / sobrevivir, con tope por mesa ---------- */
   const isWin = (res, pid) => res.w === pid;
-  const kills = (res, pid) => (res.k && res.k[pid]) || 0;
-  // Kills de comandante (por daño de comandante): punto extra por cada una, con su propio tope (como el Excel)
-  const ckills = (res, pid) => (res.c && res.c[pid]) || 0;
+  // Solo existen las kills: las antiguas "kills de comandante" (res.c) se cuentan como kills normales
+  const kills = (res, pid) => ((res.k && res.k[pid]) || 0) + ((res.c && res.c[pid]) || 0);
+  const ckills = () => 0;
   const CMDK = c => c.cmdKill == null ? 1 : c.cmdKill, CMDCAP = c => c.cmdCap == null ? 3 : c.cmdCap;
   const alive = (res, pid) => (res.a || []).includes(pid);
   // Bracket 3: j = eliminados antes de terminar su 6.º turno, b = eliminaciones tempranas por jugador, x = "No es tu lugar" (0 puntos en la mesa)
@@ -2936,18 +2936,17 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function points(res, pid, c){
     if (!res) return 0;
     if (dq(res, pid)) return 0;
-    // Como el Excel: ganar o empatar, más kills × puntos por kill, más kills de comandante (con su tope), y el total con tope por mesa
-    let p = (isWin(res, pid) ? c.win : alive(res, pid) ? c.surv : 0) + kills(res, pid) * c.kill + Math.min(CMDCAP(c), ckills(res, pid) * CMDK(c));
+    // Ganar o empatar, más kills × puntos por kill, y el total con tope por mesa
+    let p = (isWin(res, pid) ? c.win : alive(res, pid) ? c.surv : 0) + kills(res, pid) * c.kill;
     if (young(res, pid)) p += c.joven || 0;
     return Math.min(c.cap, p) - brute(res, pid) * (c.bruto || 0);
   }
   function norm(d){
-    const k = {}; Object.keys(d.k || {}).sort().forEach(p => { if (d.k[p] > 0) k[p] = d.k[p]; });
+    const k = {}; [...new Set(Object.keys(d.k || {}).concat(Object.keys(d.c || {})))].sort().forEach(p => { const v = kills(d, p); if (v > 0) k[p] = v; });
     const out = {w: d.w || null, k, a: (d.a || []).slice().sort()};
     if (d.j && d.j.length) out.j = d.j.slice().sort();
     const b = {}; Object.keys(d.b || {}).sort().forEach(p => { if (d.b[p] > 0) b[p] = d.b[p]; }); if (Object.keys(b).length) out.b = b;
     if (d.x && d.x.length) out.x = d.x.slice().sort();
-    const cc = {}; Object.keys(d.c || {}).sort().forEach(p => { if (d.c[p] > 0) cc[p] = d.c[p]; }); if (Object.keys(cc).length) out.c = cc;
     return out;
   }
   const sig = res => JSON.stringify(norm(res));
@@ -3202,9 +3201,9 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     else if (est === "a"){ if (d.w === pid) d.w = null; if (!d.a.includes(pid)) d.a.push(pid); d.j = (d.j || []).filter(x => x !== pid); }
     else { if (d.w === pid) d.w = null; d.a = d.a.filter(x => x !== pid); }
     const max = t.seats.length - 1;
-    k = Math.max(0, Math.min(max, k | 0)); c = Math.max(0, Math.min(max, c | 0));
+    k = Math.max(0, Math.min(max, (k | 0) + (c | 0)));   // las kills de comandante cuentan como kills
     if (k) d.k[pid] = k; else delete d.k[pid];
-    if (c) d.c[pid] = c; else delete d.c[pid];
+    if (d.c) delete d.c[pid];
     if (brute(d, pid) > k) d.b[pid] = k;
     const sumK = t.seats.reduce((s, p) => s + kills(d, p) + ckills(d, p), 0), dead = t.seats.length - d.a.length;
     const err = sumK > dead ? `En esta mesa quedarían ${sumK} kills y solo ${dead} ${dead === 1 ? "eliminado" : "eliminados"}. Baja kills o revisa quién quedó vivo (las kills de los demás se corrigen en su propia ficha).` : "";
@@ -3411,7 +3410,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           <button type="button" class="tg ${w ? "on win" : ""}" data-act="win" data-p="${p}" aria-pressed="${w}">Ganó</button>
           <button type="button" class="tg ${al ? "on" : ""}" data-act="alive" data-p="${p}" aria-pressed="${al}">${al ? "Vivo" : "Eliminado"}</button>
           <span class="kc"><button type="button" data-act="k-" data-p="${p}" aria-label="Quitar kill a ${esc(pname(p))}">−</button><b>${k}</b><span>kills</span><button type="button" data-act="k+" data-p="${p}" aria-label="Sumar kill a ${esc(pname(p))}">+</button></span>
-          ${B3 ? `<span class="kc" title="Kills por daño de comandante (columna Cmd Kills del Excel): cada una suma ${CMDK(S.cfg)} punto, máximo ${CMDCAP(S.cfg)} por mesa"><button type="button" data-act="c-" data-p="${p}" aria-label="Quitar kill de comandante a ${esc(pname(p))}">−</button><b>${ckills(d, p)}</b><span>cmd kills</span><button type="button" data-act="c+" data-p="${p}" aria-label="Sumar kill de comandante a ${esc(pname(p))}">+</button></span>` : ""}
+
           ${B3 ? `<button type="button" class="tg ${young(d, p) ? "on young" : ""}" data-act="young" data-p="${p}" aria-pressed="${young(d, p)}" ${al ? "disabled" : ""} title="Eliminado antes de terminar su 6.º turno">Muy joven</button>
           <span class="kc" title="Eliminaciones que hizo antes de que la víctima terminara su 6.º turno"><button type="button" data-act="b-" data-p="${p}" aria-label="Quitar eliminación temprana a ${esc(pname(p))}">−</button><b>${brute(d, p)}</b><span>tempranas</span><button type="button" data-act="b+" data-p="${p}" aria-label="Sumar eliminación temprana a ${esc(pname(p))}">+</button></span>
           <button type="button" class="tg ${dq(d, p) ? "on dq" : ""}" data-act="dq" data-p="${p}" aria-pressed="${dq(d, p)}" title="Controló la mesa o hizo combo antes del turno 7 del primer jugador">No es tu lugar</button>` : ""}
@@ -3433,8 +3432,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     } else if (act === "alive"){
       if (d.a.includes(p)){ d.a = d.a.filter(x => x !== p); if (d.w === p) d.w = null; }
       else { d.a.push(p); if (d.w && d.w !== p) d.w = null; }
-    } else if (act === "k+"){ d.k[p] = Math.min(seats.length - 1, kills(d, p) + 1); }
-    else if (act === "k-"){ d.k[p] = Math.max(0, kills(d, p) - 1); if (brute(d, p) > kills(d, p)) d.b[p] = kills(d, p); }
+    } else if (act === "k+"){ d.k[p] = Math.min(seats.length - 1, kills(d, p) + 1); if (d.c) delete d.c[p]; }
+    else if (act === "k-"){ d.k[p] = Math.max(0, kills(d, p) - 1); if (d.c) delete d.c[p]; if (brute(d, p) > kills(d, p)) d.b[p] = kills(d, p); }
     else if (act === "c+"){ d.c[p] = Math.min(seats.length - 1, ckills(d, p) + 1); }
     else if (act === "c-"){ d.c[p] = Math.max(0, ckills(d, p) - 1); }
     else if (act === "young"){ d.j = young(d, p) ? d.j.filter(x => x !== p) : d.j.concat([p]); }
@@ -3881,8 +3880,8 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       const ws = items.filter(it => it.win), ties = items.filter(it => it.tie && !it.win);
       if (ws.length > 1) out.err.push(`Mesa ${n}: hay ${ws.length} ganadores marcados.`);
       // Como el Excel, cada fila suma por sí sola: puede haber un ganador y además jugadores que empataron
-      const res = {w:ws.length === 1 ? ws[0].pid : null, a:(ws.length === 1 ? [ws[0].pid] : []).concat(ties.map(it => it.pid)), k:{}, c:{}};
-      items.forEach(it => { if (it.k) res.k[it.pid] = Math.min(seats.length - 1, it.k); if (it.ck) res.c[it.pid] = Math.min(seats.length - 1, it.ck); });
+      const res = {w:ws.length === 1 ? ws[0].pid : null, a:(ws.length === 1 ? [ws[0].pid] : []).concat(ties.map(it => it.pid)), k:{}};
+      items.forEach(it => { if (it.k || it.ck) res.k[it.pid] = Math.min(seats.length - 1, (it.k || 0) + (it.ck || 0)); });
       if (!res.w && !res.a.length) out.avisos.push(`Mesa ${ti + 1}: sin ganador ni empate marcados; todos quedan eliminados.`);
       const sumK = seats.reduce((s, p) => s + kills(res, p) + ckills(res, p), 0), dead = seats.length - res.a.length;
       if (sumK > dead) out.err.push(`Mesa ${n}: ${sumK} kills pero solo ${dead} eliminados.`);
@@ -4147,8 +4146,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         else { if (d.w === p) d.w = null; d.a = d.a.filter(x => x !== p); }
         if (d.a.includes(p)) d.j = d.j.filter(x => x !== p);
       } else {
-        const f = cs.dataset.ctStep, o = f === "k" ? d.k : d.c;
-        o[p] = Math.max(0, Math.min(seats.length - 1, (o[p] || 0) + +cs.dataset.d)); if (!o[p]) delete o[p];
+        d.k[p] = Math.max(0, Math.min(seats.length - 1, kills(d, p) + +cs.dataset.d)); if (d.c) delete d.c[p]; if (!d.k[p]) delete d.k[p];
         if (brute(d, p) > kills(d, p)) d.b[p] = kills(d, p);
       }
       render(); return;

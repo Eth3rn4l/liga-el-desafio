@@ -4,18 +4,19 @@
 const WARN_LIMIT = 2, WARN_PEN = 1;   // cada 2 warnings en una fecha = −1 punto (igual que la página)
 const NOMBRE_LIGA = { precon: "Liga Precon", b3: "Liga Bracket 3", precon_test: "🧪 Liga Precon (testeo)", b3_test: "🧪 Liga Bracket 3 (testeo)" };
 
-const kills = (r, p) => (r.k && r.k[p]) || 0;
+// Solo existen las kills: las antiguas kills de comandante (r.c) se cuentan como kills normales
+const kills = (r, p) => ((r.k && r.k[p]) || 0) + ((r.c && r.c[p]) || 0);
 const vivo = (r, p) => (r.a || []).includes(p);
 const joven = (r, p) => (r.j || []).includes(p);
 const bruto = (r, p) => (r.b && r.b[p]) || 0;
 const dq = (r, p) => (r.x || []).includes(p);
 const gana = (r, p) => r.w === p;
-const ckills = (r, p) => (r.c && r.c[p]) || 0;   // kills de comandante: +1 cada una, con tope propio (igual que la página)
+const ckills = () => 0;
 
 function puntos(r, p, c) {
   if (!r || dq(r, p)) return 0;
   // Igual que la página y el Excel: ganar o empatar + kills + kills de comandante (con su tope), y tope por mesa
-  let x = (gana(r, p) ? c.win : vivo(r, p) ? c.surv : 0) + kills(r, p) * c.kill + Math.min(c.cmdCap == null ? 3 : c.cmdCap, ckills(r, p) * (c.cmdKill == null ? 1 : c.cmdKill));
+  let x = (gana(r, p) ? c.win : vivo(r, p) ? c.surv : 0) + kills(r, p) * c.kill;
   if (joven(r, p)) x += c.joven || 0;
   return Math.min(c.cap, x) - bruto(r, p) * (c.bruto || 0);
 }

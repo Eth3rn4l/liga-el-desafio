@@ -1192,6 +1192,15 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (got){ try { localStorage.setItem(CI_CK, JSON.stringify(CI_CACHE)); } catch(e){} }
     return got;
   }
+  // Comandantes de fechas anteriores (estadísticas, standing del mes): también se busca su identidad de color
+  let ciHistT = 0;
+  function precargarCIHist(){
+    clearTimeout(ciHistT);
+    ciHistT = setTimeout(async () => {
+      const names = Object.values(hist || {}).flatMap(e => (e.jugadores || []).map(j => j.cmd || (j.k && DECK[j.k] && DECK[j.k].cmd))).filter(Boolean);
+      if (names.length && await resolveCIs(names, true)) ciRefresh();
+    }, 300);
+  }
   // El organizador completa la identidad de color de los inscritos que no la tienen (p. ej. inscripción masiva)
   let ciFixing = false;
   async function fixMissingCI(){
@@ -1750,6 +1759,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   // En modo pantalla las estadísticas se ven como las ve el público (sin edición y con el top limitado)
   const STADM = () => ADMUI() && !document.body.classList.contains("display");
   function renderStats(){
+    precargarCIHist();
     const box = $("stats"); if (!box || view !== "stats" || typing(box)) return;
     const evsAll = allEvents(); cuentaList = evsAll; const evs = evsAll.filter(cuenta);
     const months = [...new Set(evs.map(mesDe))].sort().reverse();

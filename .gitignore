@@ -4,3 +4,7 @@
 *.csv
 importar_*.sql
 .DS_Store
+
+# GIFs/videos agregados localmente al bot (no se publican en el repo)
+bot/imagenes-para-enviar/*.gif
+bot/imagenes-para-enviar/*.mp4

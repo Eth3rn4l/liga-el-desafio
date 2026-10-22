@@ -415,6 +415,15 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .sf-slot.campeon b{color:var(--gold)}
 /* Jugadores repetidos */
 #genBox[hidden]{display:none}
+.seat-warn,.jz-warn{display:inline-flex;align-items:center;gap:6px;margin-top:4px}
+.sw-add{border:1px solid rgba(233,180,76,.6);background:rgba(233,180,76,.1);color:var(--gold);border-radius:999px;padding:2px 10px;font:inherit;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+.sw-add:hover{background:rgba(233,180,76,.22)}
+.jz-warn .sw-add{padding:6px 14px;font-size:13px}
+.sw-n{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--gold);color:#1a1205;font-size:11px;display:inline-grid;place-items:center}
+.jz-warn .sw-n{min-width:24px;height:24px;font-size:13px}
+.sw-rm{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:13px;line-height:1;display:inline-grid;place-items:center;cursor:pointer;padding:0}
+.jz-warn .sw-rm{width:26px;height:26px}
+.sw-badge{display:inline-block;margin-top:2px;font-size:11px;color:var(--gold)}
 .filt-g{display:flex;flex-direction:column;gap:8px}.filt-g + .filt-g{margin-top:10px}
 .filt-t{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .ns-add{display:flex;gap:8px;margin-top:10px}.ns-add input{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--fg);font:inherit}
@@ -3318,7 +3327,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         return `<li class="jz${cambio ? " editando" : ""}${j.w || j.pts ? " con" : ""}">
           <div class="jz-h"><b>${esc(pname(id))}</b>${j.w || j.pts ? `<span class="jz-res"><b class="neg">${esc(sancTxt(j))}</b></span>` : ""}</div>
           <div class="cr-steps">
-            <div class="cr-step"><span>Warnings</span><button type="button" data-jz="w" data-d="-1" data-k="${esc(k)}" ${d.w <= 0 ? "disabled" : ""} aria-label="Quitar warning a ${esc(pname(id))}">−</button><b>${d.w}</b><button type="button" data-jz="w" data-d="1" data-k="${esc(k)}" aria-label="Agregar warning a ${esc(pname(id))}">+</button></div>
+            <div class="jz-warn"><button type="button" class="sw-add" data-jz="w" data-d="1" data-k="${esc(k)}" title="Cada clic suma un warning">Warning</button>${d.w ? `<b class="sw-n">${d.w}</b><button type="button" class="sw-rm" data-jz="w" data-d="-1" data-k="${esc(k)}" aria-label="Quitar un warning a ${esc(pname(id))}" title="Quitar un warning">−</button>` : ""}</div>
             <div class="cr-step"><span>Restar puntos</span><button type="button" data-jz="pts" data-d="-1" data-k="${esc(k)}" ${d.pts <= -JUEZ_MAX ? "disabled" : ""} aria-label="Restar un punto a ${esc(pname(id))}">−</button><b>${d.pts}</b><button type="button" data-jz="pts" data-d="1" data-k="${esc(k)}" ${d.pts >= 0 ? "disabled" : ""} aria-label="Devolver un punto a ${esc(pname(id))}">+</button></div>
             ${d.w || d.pts ? `<input type="text" data-jz-mot="${esc(k)}" maxlength="80" placeholder="Motivo (obligatorio)" value="${esc(d.motivo || "")}">` : ""}
           </div>
@@ -3566,6 +3575,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       const r = t.result, pr = !pasada && !r && proposal(ti);
       const tag = r ? `<span class="tag ${r.w ? "ok" : "draw"}">${r.w ? "Terminada" : "Por tiempo"}</span>` : `<span class="tag">${t.seats.length} jugadores</span>`;
       const JZ = (M.admin || M.juez) ? sancMesa(vr, ti) : {};
+      const WO = S.warnings || {}, wEd = ADMUI() && !document.body.classList.contains("display");
       const seats = t.seats.map((id, si) => {
         let right = `<span class="pt">${tot[id]} pts</span>`, cls = "";
         if (r){
@@ -3574,7 +3584,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
           right = `<span class="pt">${det ? det + " · " : ""}+${points(r, id, c)}</span>`;
         }
         const mv = ADMUI() && !r && !pasada && !document.body.classList.contains("display");
-        return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">·</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${JZ[id] ? `<span class="jz-badge" title="${esc(JZ[id].motivo || "")}">Juez: ${esc(sancTxt(JZ[id]))}</span>` : ""}${cmdLine(id)}</span>${right}</li>`;
+        return `<li class="seat ${cls}${id === myPid ? " me" : ""}${moveSel === id ? " picked" : ""}${isDrop(id) ? " dropped" : ""}" data-pid="${id}"${mv ? ' draggable="true" title="Arrastra para mover a otra mesa (o toca para elegir y luego toca el destino)"' : ""}><span class="n">·</span><span class="nm-wrap"><span class="nm">${esc(pname(id))}</span>${JZ[id] ? `<span class="jz-badge" title="${esc(JZ[id].motivo || "")}">Juez: ${esc(sancTxt(JZ[id]))}</span>` : ""}${cmdLine(id)}${wEd ? `<span class="seat-warn"><button type="button" class="sw-add" data-swarn="${esc(id)}" data-d="1" title="Cada clic suma un warning (cada ${WARN_LIMIT} en la fecha restan ${WARN_PEN} punto)">Warning</button>${WO[id] ? `<b class="sw-n">${WO[id]}</b><button type="button" class="sw-rm" data-swarn="${esc(id)}" data-d="-1" aria-label="Quitar un warning a ${esc(pname(id))}" title="Quitar un warning">−</button>` : ""}</span>` : (WO[id] && (M.admin || M.juez) ? `<span class="sw-badge">${WO[id]} warning${WO[id] === 1 ? "" : "s"}</span>` : "")}</span>${right}</li>`;
       }).join("");
       const jzIds = Object.keys(JZ);
       const jzNota = jzIds.length ? `<div class="juez-nota"><b>Sanción del juez</b>${jzIds.map(id => `<span>${esc(pname(id))}: ${esc(sancTxt(JZ[id]))}${JZ[id].motivo ? " · " + esc(JZ[id].motivo) : ""}</span>`).join("")}<small>${r ? "Ya descontado del standing." : "Se descuenta automáticamente al cerrar la mesa."}</small></div>` : "";
@@ -4041,6 +4051,15 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     if (li && li.dataset.pid !== pid && m.dataset.t !== "new") moveSeat(pid, null, li.dataset.pid);
     else moveSeat(pid, m.dataset.t === "new" ? "new" : +m.dataset.t);
   });
+  // Warnings del organizador desde la mesa (antes que el resto de los clics de la mesa: no selecciona al jugador)
+  $("tables").addEventListener("click", e => {
+    const b = e.target.closest("[data-swarn]"); if (!b) return;
+    e.stopPropagation(); e.preventDefault();
+    if (!M.admin || !S) return;
+    const W = Object.assign({}, S.warnings || {}), id = b.dataset.swarn;
+    W[id] = Math.max(0, (W[id] || 0) + Number(b.dataset.d)); if (!W[id]) delete W[id];
+    S.warnings = W; commit();
+  }, true);
   $("tables").addEventListener("click", e => {
     if (ADMUI() && S && S.phase !== "inscripcion" && !e.target.closest("button, .ed, input")){
       if (e.target.closest("[data-newtable]")) return;

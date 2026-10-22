@@ -414,6 +414,8 @@ body.view-stats .live-only,body.view-sorteo .live-only,body.view-warn .live-only
 .sf-slot.campeon{border-color:var(--gold);background:linear-gradient(180deg,rgba(233,180,76,.18),var(--surface-2));box-shadow:0 0 0 1px var(--gold),0 6px 24px rgba(233,180,76,.25)}
 .sf-slot.campeon b{color:var(--gold)}
 /* Jugadores repetidos */
+#genBox[hidden]{display:none}
+#genBox{align-items:center;gap:10px;flex-wrap:wrap;border:1px dashed var(--gold);border-radius:10px;padding:8px 10px}
 .alias-card{display:flex;flex-direction:column;gap:12px}
 .alias-sug,.alias-man{display:flex;flex-direction:column;gap:8px}
 .alias-t{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
@@ -1053,6 +1055,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
         <label for="playersInput">Importar inscritos en bloque</label>
         <p class="note" style="margin:0">Una persona por línea: <b>Nombre Apellido ; Mazo ; Comandante ; Correo</b>. Comandante y correo son opcionales: si falta el comandante, se usa el de portada del precon.</p>
         <textarea id="playersInput" spellcheck="false" placeholder="Camila Soto ; Animated Army ; Bello, Bard of the Brambles&#10;Tomás Araya ; Eldrazi Unbound"></textarea>
+        <div class="row test-only" id="genBox" hidden><span class="note" style="margin:0"><b>Liga de testeo:</b> llena la lista con jugadores de prueba</span><select id="genN" aria-label="Cantidad de jugadores"><option>8</option><option selected>12</option><option>16</option><option>20</option><option>24</option></select><button class="btn" id="btnGen" type="button">Generar jugadores de prueba</button></div>
         <div class="row">
           <button class="btn" id="btnImport" type="button">Agregar a la inscripción</button>
           <span class="note" id="countNote"></span>
@@ -2626,10 +2629,45 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
     requestAnimationFrame(fr);
   }
   // Ilustración del comandante (Scryfall, art_crop) de fondo en una celda, difuminada hacia la izquierda; con partner, la del primero
-  const artUrl = n => "https://api.scryfall.com/cards/named?fuzzy=" + encodeURIComponent(String(n).split(" + ")[0].split(" // ")[0].trim()).replace(/'/g, "%27") + "&format=image&version=art_crop";
+  // Ilustración del comandante: se consulta Scryfall como datos y se usa la dirección directa de la imagen
+  // (cards.scryfall.io). Pedir la imagen a api.scryfall.com desde otra página ya no funciona.
+  const ART_CK = "__art_cache1";
+  let ART = {}; try { ART = JSON.parse(localStorage.getItem(ART_CK) || "{}"); } catch(e){}
+  const artPend = new Set(), artPedidos = new Set(); let artT = 0;
+  const artNombre = n => String(n || "").split(" + ")[0].split(" // ")[0].trim();
+  const artDe = card => { const u = (card.image_uris && card.image_uris.art_crop) || (card.card_faces && card.card_faces[0] && card.card_faces[0].image_uris && card.card_faces[0].image_uris.art_crop); return u || null; };
+  function artUrl(n){
+    const nm = artNombre(n), k = fold(nm).trim(); if (!k) return "";
+    if (k in ART) return ART[k] || "";
+    if (!artPedidos.has(k)){ artPend.add(nm); clearTimeout(artT); artT = setTimeout(cargarArte, 120); }
+    return "";
+  }
+  async function cargarArte(){
+    const want = [...artPend].filter(n => !artPedidos.has(fold(n).trim())); artPend.clear();
+    if (!want.length) return;
+    want.forEach(n => artPedidos.add(fold(n).trim()));
+    let got = false;
+    const put = (n, card) => { const u = artDe(card); ART[fold(n).trim()] = u; ART[fold(card.name).trim()] = u; if (card.name.includes(" // ")) ART[fold(card.name.split(" // ")[0]).trim()] = u; got = true; };
+    for (let i = 0; i < want.length; i += 75){
+      const chunk = want.slice(i, i + 75);
+      try {
+        const r = await fetch("https://api.scryfall.com/cards/collection", {method:"POST", headers:{"Content-Type":"application/json", Accept:"application/json"}, body:JSON.stringify({identifiers:chunk.map(name => ({name}))})});
+        if (!r.ok){ chunk.forEach(n => artPedidos.delete(fold(n).trim())); continue; }
+        const j = await r.json();
+        (j.data || []).forEach(c => { const n = chunk.find(x => fold(x).trim() === fold(c.name).trim() || fold(x).trim() === fold(c.name.split(" // ")[0]).trim()) || c.name; put(n, c); });
+        let f = 0;
+        for (const x of (j.not_found || []).map(x => x.name)){
+          if (f++ >= 20) break;
+          try { const c = await getJSON("https://api.scryfall.com/cards/named?fuzzy=" + encodeURIComponent(x)); if (c && c.name) put(x, c); else if (c === null){ ART[fold(x).trim()] = null; got = true; } } catch(e){}
+          await pausa(110);
+        }
+      } catch(e){ chunk.forEach(n => artPedidos.delete(fold(n).trim())); }
+    }
+    if (got){ try { localStorage.setItem(ART_CK, JSON.stringify(ART)); } catch(e){} ciRefresh(); try { renderSorteo(); } catch(e){} }
+  }
   // Nombre del comandante a partir de la clave del mazo ("c:Nombre" o un precon del catálogo)
   const cmdDeKey = k => !k ? "" : k.startsWith("c:") ? k.slice(2) : (DECK[k] && DECK[k].cmd) || "";
-  const artFondo = n => n ? `<span class="cmd-bg" aria-hidden="true" style="background-image:url('${artUrl(n)}')"></span>` : "";
+  const artFondo = n => { const u = n ? artUrl(n) : ""; return u ? `<span class="cmd-bg" aria-hidden="true" style="background-image:url('${u.replace(/'/g, "%27")}')"></span>` : ""; };
   // Challa y serpentinas al pasar el mouse o tocar al campeón del salón de la fama
   let ultimaChalla = 0;
   function challa(el){
@@ -2761,11 +2799,12 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
       // De fondo, la ilustración del comandante del ganador (Scryfall); con partner, las dos lado a lado
       const d = deckOf(showWinner), cmd = d ? (d.c || (DECK[d.k] && DECK[d.k].cmd) || "") : "";
       const arts = cmd ? cmd.split(" + ").map(n => n.split(" // ")[0].trim()).filter(Boolean).slice(0, 2) : [];
-      const fondo = arts.length ? `<div class="wc-art n${arts.length}" aria-hidden="true">${arts.map(n => `<span style="background-image:url('https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(n).replace(/'/g, "%27")}&format=image&version=art_crop')"></span>`).join("")}</div>` : "";
-      const clave = showWinner + "|" + cmd;
+      const urls = arts.map(artUrl).filter(Boolean);
+      const fondo = urls.length ? `<div class="wc-art n${urls.length}" aria-hidden="true">${urls.map(u => `<span style="background-image:url('${u.replace(/'/g, "%27")}')"></span>`).join("")}</div>` : "";
+      const clave = showWinner + "|" + cmd + "|" + urls.join(",");
       if (wc.dataset.k !== clave){ wc.dataset.k = clave;
         wc.innerHTML = `${fondo}<div class="wc-body"><div class="eyebrow">Ganador del sorteo · ${gan.indexOf(showWinner) + 1}°</div><div class="wn">${esc(pname(showWinner))}</div>${cmdLine(showWinner, true)}</div>`; }
-      wc.classList.toggle("con-arte", !!arts.length);
+      wc.classList.toggle("con-arte", !!urls.length);
     } else if (!spinning) wc.hidden = true;
   }
   function spin(){
@@ -4146,6 +4185,26 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   });
 
   $("playersInput").addEventListener("input", () => $("countNote").textContent = "");
+  // Liga de testeo: jugadores de prueba listos para inscribir (Precon: precon + comandante; B3: comandante)
+  const GEN_NOM = ["Nicolás","Eric","Héctor","Juan","Camila","Tomás","Valentina","Benjamín","Fernanda","Matías","Javiera","Ignacio","Catalina","Diego","Antonia","Felipe","Constanza","Sebastián","Martina","Joaquín","Isidora","Vicente","Florencia","Cristóbal","Josefa","Agustín","Trinidad","Maximiliano","Emilia","Gabriel"];
+  const GEN_APE = ["Núñez","Riquelme","Salcedo","Soto","Araya","Rojas","Fuentes","Muñoz","Contreras","Pino","Vera","González","Díaz","Morales","Reyes","Castillo","Torres","Espinoza","Sepúlveda","Tapia","Vargas","Carrasco","Figueroa","Bravo","Cortés","Lagos","Navarro","Olivares","Paredes","Zúñiga"];
+  const GEN_B3 = ["Atraxa, Praetors' Voice","Krenko, Mob Boss","Edgar Markov","The Ur-Dragon","Meren of Clan Nel Toth","Lathril, Blade of the Elves","Wilhelt, the Rotcleaver","Prosper, Tome-Bound","Miirym, Sentinel Wyrm","Isshin, Two Heavens as One","Chulane, Teller of Tales","Niv-Mizzet, Parun","Kaalia of the Vast","Muldrotha, the Gravetide","Sythis, Harvest's Hand","Teysa Karlov","Yuriko, the Tiger's Shadow","Korvold, Fae-Cursed King","Omnath, Locus of Creation","Pantlaza, Sun-Favored","Hakbal of the Surging Soul","Ulalek, Fused Atrocity","Teval, the Balanced Scale","Zhulodok, Void Gorger","Satya, Aetherflux Genius","Valgavoth, Harrower of Souls","Jodah, the Unifier","Sliver Overlord","Light-Paws, Emperor's Voice","Rhys the Redeemed"];
+  const mezclar = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+  $("btnGen").addEventListener("click", () => {
+    const n = +$("genN").value || 12;
+    const ya = new Set(registrants().map(r => fold(fullName(r)).trim()).concat($("playersInput").value.split("\n").map(l => fold(l.split(/[;|]/)[0] || "").trim())));
+    const nombres = mezclar(GEN_NOM.flatMap(a => GEN_APE.map(b => a + " " + b))).filter(x => !ya.has(fold(x).trim())).slice(0, n);
+    let lineas;
+    if (B3) lineas = mezclar(GEN_B3).slice(0, n).map((c, i) => `${nombres[i]} ; ${c}`);
+    else {
+      const usados = new Set(), mazos = mezclar(Object.values(DECK).filter(d => d && d.name && d.cmd && !/secret lair/i.test(d.set || ""))).filter(d => !usados.has(d.cmd) && usados.add(d.cmd));
+      lineas = mazos.slice(0, n).map((d, i) => `${nombres[i]} ; ${d.name} — ${d.set} ; ${d.cmd}`);
+    }
+    const prev = $("playersInput").value.trim();
+    $("playersInput").value = (prev ? prev + "\n" : "") + lineas.join("\n");
+    $("playersInput").dispatchEvent(new Event("input", {bubbles:true}));
+    $("countNote").textContent = `${lineas.length} jugadores de prueba listos. Revisa la lista y toca “Agregar a la inscripción”.`;
+  });
   $("btnImport").addEventListener("click", () => {
     if (!inscOpen()){ $("countNote").textContent = "Primero empieza una nueva fecha para abrir inscripciones."; return; }
     const lines = $("playersInput").value.split("\n").map(l => l.trim()).filter(Boolean);
@@ -4261,6 +4320,7 @@ body.display .buch,body.display .mesa.bucket,body.display #moveHint{display:none
   function devUI(){
     document.body.classList.toggle("modo-test", TEST);
     const b = $("btnTest"); if (b){ b.hidden = !M.dev; b.textContent = TEST ? "Volver a la liga real" : "Iniciar liga de testeo"; }
+    const g = $("genBox"); if (g) g.hidden = !TEST;
     $("testBanner").hidden = !TEST;
     if (!TEST) return;
     $("testTxt").innerHTML = M.dev
